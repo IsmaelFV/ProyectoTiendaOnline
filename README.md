@@ -1,5 +1,7 @@
 # 🛍️ FashionMarket - E-commerce Premium de Moda
 
+<!-- Build: 2026-01-13-20:00 -->
+
 Tienda online profesional de moda (Mujer & Hombre) construida con **Astro 5.0**, **Tailwind CSS**, **Supabase** y **navegación tipo H&M**.
 
 [![Seguridad](https://img.shields.io/badge/Seguridad-Nivel%20Empresarial-green)](./ARQUITECTURA_SEGURIDAD_TOTAL.md)
