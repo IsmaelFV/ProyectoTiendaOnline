@@ -94,7 +94,7 @@ const pageDescription = subcategory.description || `Descubre nuestra colección 
   <div class="flex flex-col lg:flex-row min-h-screen">
     <!-- Navegación lateral -->
     <aside class="lg:sticky lg:top-20 lg:self-start">
-      <CategoryNav currentGender={gender} client:load />
+      <CategoryNav currentGender={gender as 'hombre' | 'mujer'} client:load />
     </aside>
 
     <!-- Contenido principal -->

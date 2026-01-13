@@ -4,7 +4,7 @@ import { supabase } from '../../../lib/supabase';
 
 // Inicializar Stripe
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-01-27.acacia',
+  apiVersion: '2025-12-15.clover',
 });
 
 const endpointSecret = import.meta.env.STRIPE_WEBHOOK_SECRET;
