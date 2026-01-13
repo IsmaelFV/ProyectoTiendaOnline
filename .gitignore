@@ -30,3 +30,8 @@ pnpm-debug.log*
 
 # Astro
 .astro/
+
+# backups
+*.backup
+*.backup-*/
+src.backup-*/
