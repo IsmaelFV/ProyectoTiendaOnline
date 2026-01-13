@@ -277,16 +277,21 @@ const availableMaterials = ['Algodón', 'Poliéster', 'Lana', 'Seda', 'Lino', 'D
                 )}
 
                 <div class="flex gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (page <= 3) {
-                      pageNum = i + 1;
-                    } else if (page >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = page - 2 + i;
+                  {Array.from({ length: Math.min(5, totalPages) }, (_unused, i) => {
+                    let pageNum = i + 1;
+                    
+                    // Calcular número de página según posición
+                    const pagesCount = totalPages;
+                    const currentPage = page;
+                    
+                    if (pagesCount > 5) {
+                      if (currentPage > 3) {
+                        if (currentPage + 2 < pagesCount) {
+                          pageNum = currentPage - 2 + i;
+                        } else {
+                          pageNum = pagesCount - 4 + i;
+                        }
+                      }
                     }
                     
                     return (
