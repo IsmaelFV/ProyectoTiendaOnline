@@ -1,0 +1,40 @@
+---
+const currentYear = new Date().getFullYear();
+---
+
+<footer class="bg-brand-navy text-white mt-24">
+  <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div class="col-span-1 md:col-span-2">
+        <h3 class="font-serif text-2xl font-bold mb-4">FashionMarket</h3>
+        <p class="text-brand-cream/80 max-w-md">
+          Moda masculina premium. Diseños atemporales que combinan elegancia y comodidad.
+        </p>
+      </div>
+      
+      <div>
+        <h4 class="font-semibold mb-4">Navegación</h4>
+        <ul class="space-y-2 text-brand-cream/80">
+          <li><a href="/productos" class="hover:text-brand-gold transition-colors">Productos</a></li>
+          <li><a href="/categoria/camisas" class="hover:text-brand-gold transition-colors">Camisas</a></li>
+          <li><a href="/categoria/pantalones" class="hover:text-brand-gold transition-colors">Pantalones</a></li>
+          <li><a href="/categoria/trajes" class="hover:text-brand-gold transition-colors">Trajes</a></li>
+        </ul>
+      </div>
+      
+      <div>
+        <h4 class="font-semibold mb-4">Información</h4>
+        <ul class="space-y-2 text-brand-cream/80">
+          <li><a href="/sobre-nosotros" class="hover:text-brand-gold transition-colors">Sobre Nosotros</a></li>
+          <li><a href="/contacto" class="hover:text-brand-gold transition-colors">Contacto</a></li>
+          <li><a href="/envios" class="hover:text-brand-gold transition-colors">Envíos</a></li>
+          <li><a href="/devoluciones" class="hover:text-brand-gold transition-colors">Devoluciones</a></li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="border-t border-white/10 mt-8 pt-8 text-center text-brand-cream/60 text-sm">
+      <p>&copy; {currentYear} FashionMarket. Todos los derechos reservados.</p>
+    </div>
+  </div>
+</footer>

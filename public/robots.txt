@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /internal-admin/
+Disallow: /api/
+
+Allow: /
+Allow: /productos/
+Allow: /categoria/

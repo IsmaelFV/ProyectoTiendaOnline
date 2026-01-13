@@ -1,0 +1,113 @@
+---
+export const prerender = false;
+
+import AdminLayout from '@layouts/AdminLayout.astro';
+import { supabase } from '@lib/supabase';
+
+const { data: products } = await supabase
+  .from('products')
+  .select('*', { count: 'exact' });
+
+const { data: categories } = await supabase
+  .from('categories')
+  .select('*', { count: 'exact' });
+
+const totalProducts = products?.length || 0;
+const totalCategories = categories?.length || 0;
+const lowStockProducts = products?.filter(p => p.stock < 5).length || 0;
+---
+
+<AdminLayout>
+  <div class="mb-8">
+    <h1 class="font-serif text-3xl font-bold text-brand-navy mb-2">
+      Panel de Administración
+    </h1>
+    <p class="text-brand-slate">
+      Bienvenido al panel de control de FashionMarket
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-brand-slate mb-1">Total Productos</p>
+          <p class="text-3xl font-bold text-brand-navy">{totalProducts}</p>
+        </div>
+        <div class="w-12 h-12 bg-brand-navy/10 rounded-lg flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-brand-navy">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-brand-slate mb-1">Categorías</p>
+          <p class="text-3xl font-bold text-brand-navy">{totalCategories}</p>
+        </div>
+        <div class="w-12 h-12 bg-brand-gold/10 rounded-lg flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-brand-gold">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-brand-slate mb-1">Stock Bajo</p>
+          <p class="text-3xl font-bold text-red-600">{lowStockProducts}</p>
+        </div>
+        <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-red-600">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg shadow">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <h2 class="font-serif text-xl font-bold text-brand-navy">
+        Acciones Rápidas
+      </h2>
+    </div>
+    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <a
+        href="/admin/productos/nuevo"
+        class="flex items-center gap-4 p-4 border-2 border-brand-slate/20 rounded-lg hover:border-brand-navy transition-colors group"
+      >
+        <div class="w-12 h-12 bg-brand-navy rounded-lg flex items-center justify-center group-hover:bg-brand-gold transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-white">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-semibold text-brand-navy">Nuevo Producto</h3>
+          <p class="text-sm text-brand-slate">Añadir un producto al catálogo</p>
+        </div>
+      </a>
+
+      <a
+        href="/admin/productos"
+        class="flex items-center gap-4 p-4 border-2 border-brand-slate/20 rounded-lg hover:border-brand-navy transition-colors group"
+      >
+        <div class="w-12 h-12 bg-brand-navy rounded-lg flex items-center justify-center group-hover:bg-brand-gold transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-white">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-semibold text-brand-navy">Gestionar Productos</h3>
+          <p class="text-sm text-brand-slate">Ver y editar productos existentes</p>
+        </div>
+      </a>
+    </div>
+  </div>
+</AdminLayout>

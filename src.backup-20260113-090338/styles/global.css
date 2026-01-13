@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+  
+  * {
+    @apply border-brand-slate/20;
+  }
+  
+  body {
+    @apply bg-brand-cream text-brand-charcoal font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-navy text-white px-6 py-3 rounded-none font-medium tracking-wide 
+           hover:bg-brand-charcoal transition-colors duration-200 
+           focus:outline-none focus:ring-2 focus:ring-brand-gold focus:ring-offset-2;
+  }
+  
+  .btn-secondary {
+    @apply bg-transparent border-2 border-brand-navy text-brand-navy px-6 py-3 rounded-none 
+           font-medium tracking-wide hover:bg-brand-navy hover:text-white 
+           transition-colors duration-200 focus:outline-none focus:ring-2 
+           focus:ring-brand-gold focus:ring-offset-2;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 border border-brand-slate/30 rounded-none 
+           focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-transparent
+           bg-white text-brand-charcoal placeholder:text-brand-slate/50;
+  }
+  
+  .card {
+    @apply bg-white shadow-sm hover:shadow-md transition-shadow duration-300;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

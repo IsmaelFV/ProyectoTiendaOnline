@@ -1,0 +1,210 @@
+---
+/**
+ * ============================================================================
+ * Página: Categoría por Género
+ * ============================================================================
+ * Rutas dinámicas:
+ * - /mujer/[category]
+ * - /hombre/[category]
+ * Ejemplo: /mujer/ropa-mujer, /hombre/camisetas-hombre
+ * ============================================================================
+ */
+
+import PublicLayout from '../../../layouts/PublicLayout.astro';
+import CategoryNav from '../../../components/navigation/CategoryNav';
+import ProductCard from '../../../components/product/ProductCard.astro';
+import { supabase } from '../../../lib/supabase';
+import type { Product, Category } from '../../../lib/supabase';
+
+const { gender, category: categorySlug } = Astro.params;
+
+if (!gender || !['mujer', 'hombre'].includes(gender)) {
+  return Astro.redirect('/404');
+}
+
+// Obtener género
+const { data: genderData } = await supabase
+  .from('genders')
+  .select('id, name, slug')
+  .eq('slug', gender)
+  .single();
+
+if (!genderData) {
+  return Astro.redirect('/404');
+}
+
+// Obtener categoría
+const { data: categoryData } = await supabase
+  .from('categories')
+  .select(`
+    *,
+    parent:parent_id(name, slug)
+  `)
+  .eq('slug', categorySlug)
+  .eq('gender_id', genderData.id)
+  .single();
+
+if (!categoryData) {
+  return Astro.redirect('/404');
+}
+
+const category = categoryData as Category;
+
+// Si es una categoría con hijos, obtener también las subcategorías
+let subcategories: Category[] = [];
+if (category.level === 1) {
+  const { data } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('parent_id', category.id)
+    .order('display_order');
+  
+  subcategories = (data || []) as Category[];
+}
+
+// Obtener productos de esta categoría (usando product_categories para soporte múltiple)
+const { data: productCategoryRelations } = await supabase
+  .from('product_categories')
+  .select('product_id')
+  .eq('category_id', category.id);
+
+const productIds = (productCategoryRelations || []).map(rel => rel.product_id);
+
+const { data: products } = productIds.length > 0 ? await supabase
+  .from('products')
+  .select(`
+    *,
+    category:categories!products_category_id_fkey(name, slug)
+  `)
+  .in('id', productIds)
+  .order('featured', { ascending: false })
+  .order('created_at', { ascending: false })
+  .limit(48) : { data: [] };
+
+const productsArray = (products || []) as Product[];
+
+// Breadcrumbs
+const breadcrumbs = [
+  { name: genderData.name, href: `/${gender}` },
+  { name: category.name, href: `/${gender}/${categorySlug}` }
+];
+---
+
+<PublicLayout 
+  title={`${category.name} - ${genderData.name} - FashionMarket`}
+  description={category.description || `Descubre nuestra colección de ${category.name.toLowerCase()}`}
+>
+  <div class="flex flex-col lg:flex-row min-h-screen">
+    <!-- Navegación lateral -->
+    <aside class="lg:sticky lg:top-20 lg:self-start">
+      <CategoryNav 
+        currentGender={gender as 'mujer' | 'hombre'} 
+        currentCategory={categorySlug}
+        client:load 
+      />
+    </aside>
+
+    <!-- Contenido principal -->
+    <main class="flex-1 bg-gray-50">
+      <!-- Breadcrumbs -->
+      <div class="bg-white border-b border-gray-200 py-4 px-6">
+        <div class="max-w-7xl mx-auto">
+          <nav class="flex items-center space-x-2 text-sm text-gray-600">
+            <a href="/" class="hover:text-brand-navy">Inicio</a>
+            {breadcrumbs.map((crumb, index) => (
+              <>
+                <span>/</span>
+                {index === breadcrumbs.length - 1 ? (
+                  <span class="text-brand-navy font-medium">{crumb.name}</span>
+                ) : (
+                  <a href={crumb.href} class="hover:text-brand-navy">{crumb.name}</a>
+                )}
+              </>
+            ))}
+          </nav>
+        </div>
+      </div>
+
+      <!-- Header de categoría -->}
+      <section class="bg-white py-12 px-6 border-b border-gray-200">
+        <div class="max-w-7xl mx-auto">
+          <h1 class="text-4xl font-light text-gray-900 uppercase tracking-wider mb-4">
+            {category.name}
+          </h1>
+          {category.description && (
+            <p class="text-lg text-gray-600 max-w-2xl">
+              {category.description}
+            </p>
+          )}
+        </div>
+      </section>
+
+      <!-- Subcategorías (si existen) -->}
+      {subcategories.length > 0 && (
+        <section class="py-8 px-6 bg-white border-b border-gray-200">
+          <div class="max-w-7xl mx-auto">
+            <h2 class="text-sm uppercase tracking-wider text-gray-600 mb-4">Comprar por:</h2>
+            <div class="flex flex-wrap gap-3">
+              {subcategories.map(sub => (
+                <a
+                  href={`/${gender}/${category.slug}/${sub.slug}`}
+                  class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-lg transition-colors text-sm"
+                >
+                  {sub.name}
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <!-- Productos -->}
+      <section class="py-12 px-6">
+        <div class="max-w-7xl mx-auto">
+          <div class="flex items-center justify-between mb-8">
+            <p class="text-gray-600">
+              {productsArray.length} {productsArray.length === 1 ? 'producto' : 'productos'}
+            </p>
+            
+            <select class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-navy focus:border-transparent">
+              <option value="relevance">Ordenar por: Relevancia</option>
+              <option value="newest">Más recientes</option>
+              <option value="price_asc">Precio: Menor a mayor</option>
+              <option value="price_desc">Precio: Mayor a menor</option>
+            </select>
+          </div>
+
+          {productsArray.length > 0 ? (
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {productsArray.map((product) => (
+                <ProductCard product={product} key={product.id} />
+              ))}
+            </div>
+          ) : (
+            <div class="text-center py-16">
+              <svg class="w-24 h-24 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              </svg>
+              <p class="text-gray-500 text-lg mb-2">No hay productos en esta categoría todavía</p>
+              <p class="text-gray-400 text-sm mb-6">Estamos trabajando para traerte las últimas tendencias</p>
+              <a 
+                href={`/${gender}`}
+                class="inline-block px-6 py-3 bg-brand-navy text-white hover:bg-gray-800 transition-colors rounded-lg"
+              >
+                Ver todas las categorías
+              </a>
+            </div>
+          )}
+
+          {productsArray.length >= 48 && (
+            <div class="text-center mt-12">
+              <button class="px-8 py-3 border border-gray-300 text-gray-900 hover:bg-gray-100 transition-colors uppercase tracking-wider text-sm">
+                Cargar más productos
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+    </main>
+  </div>
+</PublicLayout>

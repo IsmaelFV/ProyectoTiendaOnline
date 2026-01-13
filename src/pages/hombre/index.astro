@@ -1,0 +1,151 @@
+---
+/**
+ * ============================================================================
+ * Página: Hombre
+ * ============================================================================
+ * Ruta: /hombre
+ * Landing page con todos los productos de hombre + navegación por categorías
+ * ============================================================================
+ */
+
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import CategoryNav from '../../components/navigation/CategoryNav';
+import ProductCard from '../../components/product/ProductCard.astro';
+import { supabase } from '../../lib/supabase';
+import type { Product } from '../../lib/supabase';
+
+// Obtener ID del género hombre
+const { data: gender } = await supabase
+  .from('genders')
+  .select('id, name')
+  .eq('slug', 'hombre')
+  .single();
+
+if (!gender) {
+  return Astro.redirect('/404');
+}
+
+// Obtener productos de hombre (destacados primero, luego novedades)
+const { data: products, error } = await supabase
+  .from('products')
+  .select(`
+    *,
+    category:categories!products_category_id_fkey(name, slug)
+  `)
+  .eq('gender_id', gender.id)
+  .order('featured', { ascending: false })
+  .order('is_new', { ascending: false })
+  .order('created_at', { ascending: false })
+  .limit(24);
+
+console.log('🔍 DEBUG HOMBRE - Productos:');
+console.log('- Gender ID:', gender.id);
+console.log('- Cantidad productos:', products?.length || 0);
+console.log('- Error:', error);
+if (products && products.length > 0) {
+  console.log('- Primer producto:', products[0].name);
+}
+
+const productsArray = (products || []) as Product[];
+---
+
+<PublicLayout title="Hombre - FashionMarket" description="Descubre la última moda masculina">
+  <div class="flex flex-col lg:flex-row min-h-screen">
+    <!-- Navegación lateral -->
+    <aside class="lg:sticky lg:top-20 lg:self-start">
+      <CategoryNav currentGender="hombre" client:load />
+    </aside>
+
+    <!-- Contenido principal -->
+    <main class="flex-1 bg-gray-50">
+      {/* Hero Banner */}
+      <section class="bg-gradient-to-r from-gray-800 to-brand-navy text-white py-16 px-6">
+        <div class="max-w-4xl mx-auto text-center">
+          <h1 class="text-5xl font-light mb-4 uppercase tracking-wider">Hombre</h1>
+          <p class="text-xl font-light text-gray-200">
+            Descubre la última moda masculina
+          </p>
+        </div>
+      </section>
+
+      {/* Destacados */}
+      <section class="py-8 px-6 bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <a 
+              href="/hombre/novedades-hombre" 
+              class="group relative h-48 bg-cover bg-center rounded-lg overflow-hidden"
+              style="background-image: url('https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?w=400&h=300&fit=crop')"
+            >
+              <div class="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+                <span class="text-white text-xl font-light uppercase tracking-wider">Novedades</span>
+              </div>
+            </a>
+
+            <a 
+              href="/hombre/rebajas-hombre" 
+              class="group relative h-48 bg-cover bg-center rounded-lg overflow-hidden"
+              style="background-image: url('https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=400&h=300&fit=crop')"
+            >
+              <div class="absolute inset-0 bg-red-600/60 group-hover:bg-red-600/70 transition-colors flex items-center justify-center">
+                <span class="text-white text-xl font-semibold uppercase tracking-wider">Rebajas</span>
+              </div>
+            </a>
+
+            <a 
+              href="/hombre/ropa-hombre" 
+              class="group relative h-48 bg-cover bg-center rounded-lg overflow-hidden"
+              style="background-image: url('https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?w=400&h=300&fit=crop')"
+            >
+              <div class="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+                <span class="text-white text-xl font-light uppercase tracking-wider">Ropa</span>
+              </div>
+            </a>
+
+            <a 
+              href="/hombre/zapatos-hombre" 
+              class="group relative h-48 bg-cover bg-center rounded-lg overflow-hidden"
+              style="background-image: url('https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=300&fit=crop')"
+            >
+              <div class="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+                <span class="text-white text-xl font-light uppercase tracking-wider">Zapatos</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Productos */}
+      <section class="py-12 px-6">
+        <div class="max-w-7xl mx-auto">
+          <h2 class="text-3xl font-light mb-8 text-gray-900 uppercase tracking-wider">
+            Todos los productos
+          </h2>
+
+          {productsArray.length > 0 ? (
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {productsArray.map((product) => (
+                <ProductCard product={product} key={product.id} />
+              ))}
+            </div>
+          ) : (
+            <div class="text-center py-16">
+              <p class="text-gray-500 text-lg">No hay productos disponibles en esta sección.</p>
+              <a href="/" class="text-brand-navy hover:underline mt-4 inline-block">
+                Volver al inicio
+              </a>
+            </div>
+          )}
+
+          {productsArray.length >= 24 && (
+            <div class="text-center mt-12">
+              <button class="px-8 py-3 border border-gray-300 text-gray-900 hover:bg-gray-100 transition-colors uppercase tracking-wider text-sm">
+                Cargar más productos
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+    </main>
+  </div>
+</PublicLayout>

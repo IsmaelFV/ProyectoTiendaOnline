@@ -1,0 +1,107 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+---
+
+<PublicLayout title="Pago Cancelado">
+  <div class="min-h-screen bg-gradient-to-b from-gray-50 to-white py-16">
+    <div class="max-w-2xl mx-auto px-4">
+      <!-- Icono de cancelación -->
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-24 h-24 bg-gray-100 rounded-full mb-6">
+          <svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </div>
+        <h1 class="text-4xl font-bold text-gray-900 mb-2">Pago Cancelado</h1>
+        <p class="text-xl text-gray-600">No se ha procesado ningún cargo</p>
+      </div>
+
+      <!-- Tarjeta de información -->
+      <div class="bg-white rounded-lg shadow-lg p-8 mb-6">
+        <h2 class="text-2xl font-semibold text-gray-900 mb-4">¿Qué ha pasado?</h2>
+        <p class="text-gray-600 mb-6">
+          Has cancelado el proceso de pago. No te preocupes, <strong>no se ha realizado ningún cargo</strong> 
+          en tu tarjeta y tu carrito de compra sigue intacto.
+        </p>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div class="flex items-start">
+            <svg class="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div class="ml-3">
+              <h3 class="text-blue-900 font-medium mb-1">Tus productos te esperan</h3>
+              <p class="text-blue-700 text-sm">
+                Los artículos que seleccionaste siguen en tu carrito. Puedes completar la compra cuando estés listo.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Razones comunes -->
+      <div class="bg-white rounded-lg shadow-lg p-8 mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">¿Por qué cancelar?</h3>
+        <ul class="space-y-3 text-gray-600">
+          <li class="flex items-start">
+            <svg class="w-5 h-5 text-gray-400 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path>
+            </svg>
+            <span>¿Quieres revisar tu carrito? Puedes modificar cantidades o eliminar productos antes de pagar.</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="w-5 h-5 text-gray-400 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path>
+            </svg>
+            <span>¿Problemas con el método de pago? Acepta tarjetas de crédito, débito y otros métodos seguros.</span>
+          </li>
+          <li class="flex items-start">
+            <svg class="w-5 h-5 text-gray-400 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path>
+            </svg>
+            <span>¿Necesitas más información? Consulta nuestra política de envíos y devoluciones.</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Acciones -->
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a
+          href="/"
+          class="inline-flex items-center justify-center px-6 py-3 bg-white text-gray-700 font-semibold rounded-md border-2 border-gray-300 hover:border-brand-gold transition-colors"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+          </svg>
+          Volver al inicio
+        </a>
+
+        <button
+          id="openCart"
+          class="inline-flex items-center justify-center px-6 py-3 bg-brand-gold text-white font-semibold rounded-md hover:bg-yellow-600 transition-colors"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+          </svg>
+          Ver mi carrito
+        </button>
+      </div>
+
+      <!-- Contacto -->
+      <div class="text-center mt-8">
+        <p class="text-gray-600 mb-2">¿Tienes alguna pregunta?</p>
+        <a href="mailto:soporte@tutienda.com" class="text-brand-gold hover:text-yellow-600 font-medium">
+          Contacta con nuestro equipo
+        </a>
+      </div>
+    </div>
+  </div>
+</PublicLayout>
+
+<script>
+  // Abrir el carrito cuando se haga clic en el botón
+  document.getElementById('openCart')?.addEventListener('click', () => {
+    // Disparar evento personalizado para abrir el carrito
+    window.dispatchEvent(new CustomEvent('openCart'));
+  });
+</script>

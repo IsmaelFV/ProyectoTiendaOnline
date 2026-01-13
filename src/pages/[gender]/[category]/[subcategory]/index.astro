@@ -1,0 +1,170 @@
+---
+/**
+ * ============================================================================
+ * Página: Subcategoría de Nivel 3
+ * ============================================================================
+ * Ruta: /[gender]/[category]/[subcategory]
+ * Ejemplo: /mujer/ropa-mujer/vestidos
+ * Muestra productos de una subcategoría específica
+ * ============================================================================
+ */
+
+import PublicLayout from '../../../../layouts/PublicLayout.astro';
+import ProductCard from '../../../../components/product/ProductCard.astro';
+import CategoryNav from '../../../../components/navigation/CategoryNav';
+import { supabase } from '../../../../lib/supabase';
+import type { Product, Category } from '../../../../lib/supabase';
+
+const { gender, category: categorySlug, subcategory: subcategorySlug } = Astro.params;
+
+if (!gender || !categorySlug || !subcategorySlug) {
+  return Astro.redirect('/404');
+}
+
+// Validar que el género existe
+const { data: genderData } = await supabase
+  .from('genders')
+  .select('id, name, slug')
+  .eq('slug', gender)
+  .single();
+
+if (!genderData) {
+  return Astro.redirect('/404');
+}
+
+// Obtener categoría padre (nivel 1)
+const { data: parentCategory } = await supabase
+  .from('categories')
+  .select('id, name, slug, level')
+  .eq('slug', categorySlug)
+  .eq('gender_id', genderData.id)
+  .eq('level', 1)
+  .single();
+
+if (!parentCategory) {
+  return Astro.redirect('/404');
+}
+
+// Obtener subcategoría (nivel 2)
+const { data: subcategory } = await supabase
+  .from('categories')
+  .select('id, name, slug, level, parent_id, description')
+  .eq('slug', subcategorySlug)
+  .eq('parent_id', parentCategory.id)
+  .eq('level', 2)
+  .single();
+
+if (!subcategory) {
+  return Astro.redirect('/404');
+}
+
+// Obtener productos de esta subcategoría usando product_categories
+const { data: productCategoryRelations } = await supabase
+  .from('product_categories')
+  .select('product_id')
+  .eq('category_id', subcategory.id);
+
+const productIds = (productCategoryRelations || []).map(rel => rel.product_id);
+
+const { data: products } = productIds.length > 0 ? await supabase
+  .from('products')
+  .select(`
+    *,
+    category:categories!products_category_id_fkey(name, slug)
+  `)
+  .in('id', productIds)
+  .order('featured', { ascending: false })
+  .order('created_at', { ascending: false })
+  .limit(48) : { data: [] };
+
+const productsArray = (products || []) as Product[];
+
+// Breadcrumbs
+const breadcrumbs = [
+  { name: genderData.name, href: `/${gender}` },
+  { name: parentCategory.name, href: `/${gender}/${categorySlug}` },
+  { name: subcategory.name, href: `/${gender}/${categorySlug}/${subcategorySlug}` }
+];
+
+const pageTitle = `${subcategory.name} - ${genderData.name}`;
+const pageDescription = subcategory.description || `Descubre nuestra colección de ${subcategory.name.toLowerCase()}`;
+---
+
+<PublicLayout title={pageTitle} description={pageDescription}>
+  <div class="flex flex-col lg:flex-row min-h-screen">
+    <!-- Navegación lateral -->
+    <aside class="lg:sticky lg:top-20 lg:self-start">
+      <CategoryNav currentGender={gender} client:load />
+    </aside>
+
+    <!-- Contenido principal -->
+    <main class="flex-1">
+      <!-- Breadcrumbs -->
+      <nav class="bg-gray-50 border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <ol class="flex items-center space-x-2 text-sm">
+            <li><a href="/" class="text-gray-500 hover:text-gray-700">Inicio</a></li>
+            {breadcrumbs.map((crumb, index) => (
+              <li class="flex items-center">
+                <svg class="h-4 w-4 text-gray-400 mx-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+                {index === breadcrumbs.length - 1 ? (
+                  <span class="text-gray-900 font-medium">{crumb.name}</span>
+                ) : (
+                  <a href={crumb.href} class="text-gray-500 hover:text-gray-700">{crumb.name}</a>
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
+      </nav>
+
+      <!-- Hero de categoría -->
+      <div class="bg-gradient-to-r from-brand-navy to-brand-charcoal text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h1 class="text-4xl font-bold mb-2">{subcategory.name}</h1>
+          <p class="text-lg text-gray-200">{pageDescription}</p>
+          <div class="mt-4 text-sm text-gray-300">
+            {productsArray.length} {productsArray.length === 1 ? 'producto' : 'productos'}
+          </div>
+        </div>
+      </div>
+
+      <!-- Productos -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {productsArray.length === 0 ? (
+          <div class="text-center py-16">
+            <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+            </svg>
+            <h3 class="mt-4 text-lg font-medium text-gray-900">No hay productos disponibles</h3>
+            <p class="mt-2 text-sm text-gray-500">Próximamente añadiremos productos en esta categoría.</p>
+            <div class="mt-6">
+              <a href={`/${gender}/${categorySlug}`} class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-navy hover:bg-brand-charcoal">
+                Volver a {parentCategory.name}
+              </a>
+            </div>
+          </div>
+        ) : (
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {productsArray.map((product) => (
+              <ProductCard product={product} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <!-- Información adicional -->
+      {subcategory.description && (
+        <div class="bg-gray-50 border-t">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="prose prose-lg max-w-none">
+              <p class="text-gray-700">{subcategory.description}</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  </div>
+</PublicLayout>

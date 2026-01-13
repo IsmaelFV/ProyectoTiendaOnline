@@ -1,0 +1,281 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { supabase } from '../../../lib/supabase';
+
+// Protección: solo admins
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+if (!accessToken) {
+  return Astro.redirect('/admin/login');
+}
+
+// Verificar si es admin
+const { data: { user } } = await supabase.auth.getUser(accessToken);
+if (!user) {
+  return Astro.redirect('/admin/login');
+}
+
+const { data: adminUser } = await supabase
+  .from('admin_users')
+  .select('*')
+  .eq('user_id', user.id);
+
+if (!adminUser || adminUser.length === 0) {
+  return Astro.redirect('/admin/login');
+}
+
+// Obtener filtros de la URL
+const url = new URL(Astro.request.url);
+const statusFilter = url.searchParams.get('status') || 'all';
+const searchQuery = url.searchParams.get('search') || '';
+
+// Consultar pedidos
+let query = supabase
+  .from('orders')
+  .select('*')
+  .order('created_at', { ascending: false });
+
+// Aplicar filtros
+if (statusFilter !== 'all') {
+  query = query.eq('status', statusFilter);
+}
+
+if (searchQuery) {
+  query = query.or(`order_number.ilike.%${searchQuery}%,shipping_full_name.ilike.%${searchQuery}%`);
+}
+
+const { data: orders, error } = await query;
+
+// Función para formatear moneda
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(amount);
+}
+
+// Función para formatear fecha
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+// Función para obtener el color del estado
+function getStatusColor(status: string) {
+  const colors: { [key: string]: string } = {
+    pending: 'bg-gray-100 text-gray-800',
+    confirmed: 'bg-blue-100 text-blue-800',
+    processing: 'bg-yellow-100 text-yellow-800',
+    shipped: 'bg-purple-100 text-purple-800',
+    delivered: 'bg-green-100 text-green-800',
+    cancelled: 'bg-red-100 text-red-800',
+    refunded: 'bg-orange-100 text-orange-800'
+  };
+  return colors[status] || 'bg-gray-100 text-gray-800';
+}
+
+// Función para traducir estados
+function translateStatus(status: string) {
+  const translations: { [key: string]: string } = {
+    pending: 'Pendiente',
+    confirmed: 'Confirmado',
+    processing: 'Procesando',
+    shipped: 'Enviado',
+    delivered: 'Entregado',
+    cancelled: 'Cancelado',
+    refunded: 'Reembolsado'
+  };
+  return translations[status] || status;
+}
+---
+
+<AdminLayout title="Gestión de Pedidos">
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Pedidos</h1>
+        <p class="mt-1 text-sm text-gray-600">Gestiona todos los pedidos de la tienda</p>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-lg shadow p-6">
+      <form method="GET" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Búsqueda -->
+        <div>
+          <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
+            Buscar
+          </label>
+          <input
+            type="text"
+            name="search"
+            id="search"
+            value={searchQuery}
+            placeholder="Nº pedido o cliente..."
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-gold focus:border-transparent"
+          />
+        </div>
+
+        <!-- Estado -->
+        <div>
+          <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
+            Estado
+          </label>
+          <select
+            name="status"
+            id="status"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-gold focus:border-transparent"
+          >
+            <option value="all" selected={statusFilter === 'all'}>Todos</option>
+            <option value="pending" selected={statusFilter === 'pending'}>Pendiente</option>
+            <option value="confirmed" selected={statusFilter === 'confirmed'}>Confirmado</option>
+            <option value="processing" selected={statusFilter === 'processing'}>Procesando</option>
+            <option value="shipped" selected={statusFilter === 'shipped'}>Enviado</option>
+            <option value="delivered" selected={statusFilter === 'delivered'}>Entregado</option>
+            <option value="cancelled" selected={statusFilter === 'cancelled'}>Cancelado</option>
+            <option value="refunded" selected={statusFilter === 'refunded'}>Reembolsado</option>
+          </select>
+        </div>
+
+        <!-- Botón filtrar -->
+        <div class="flex items-end">
+          <button
+            type="submit"
+            class="w-full bg-brand-gold text-white px-6 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
+          >
+            Filtrar
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Tabla de pedidos -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+      {error ? (
+        <div class="p-6 text-center text-red-600">
+          Error al cargar los pedidos: {error.message}
+        </div>
+      ) : !orders || orders.length === 0 ? (
+        <div class="p-12 text-center text-gray-500">
+          <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+          </svg>
+          <p class="text-lg font-medium">No hay pedidos</p>
+          <p class="text-sm mt-1">Los pedidos aparecerán aquí cuando los clientes realicen compras.</p>
+        </div>
+      ) : (
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Pedido
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Cliente
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Fecha
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Total
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Estado
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Pago
+                </th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              {orders.map((order) => (
+                <tr class="hover:bg-gray-50">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">{order.order_number}</div>
+                    {order.tracking_number && (
+                      <div class="text-xs text-gray-500">Tracking: {order.tracking_number}</div>
+                    )}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">{order.shipping_full_name}</div>
+                    <div class="text-xs text-gray-500">{order.shipping_city}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDate(order.created_at)}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">{formatCurrency(order.total)}</div>
+                    <div class="text-xs text-gray-500">{order.payment_method}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                      {translateStatus(order.status)}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      order.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
+                      order.payment_status === 'failed' ? 'bg-red-100 text-red-800' :
+                      order.payment_status === 'refunded' ? 'bg-orange-100 text-orange-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {order.payment_status === 'paid' ? 'Pagado' :
+                       order.payment_status === 'failed' ? 'Fallido' :
+                       order.payment_status === 'refunded' ? 'Reembolsado' :
+                       'Pendiente'}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <a
+                      href={`/admin/pedidos/${order.id}`}
+                      class="text-brand-gold hover:text-yellow-600 transition-colors"
+                    >
+                      Ver detalles
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+
+    <!-- Estadísticas rápidas -->
+    {orders && orders.length > 0 && (
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-lg shadow p-4">
+          <div class="text-sm text-gray-600">Total pedidos</div>
+          <div class="text-2xl font-bold text-gray-900">{orders.length}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+          <div class="text-sm text-gray-600">Pendientes</div>
+          <div class="text-2xl font-bold text-yellow-600">
+            {orders.filter(o => o.status === 'pending').length}
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+          <div class="text-sm text-gray-600">Enviados</div>
+          <div class="text-2xl font-bold text-purple-600">
+            {orders.filter(o => o.status === 'shipped').length}
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+          <div class="text-sm text-gray-600">Entregados</div>
+          <div class="text-2xl font-bold text-green-600">
+            {orders.filter(o => o.status === 'delivered').length}
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+</AdminLayout>

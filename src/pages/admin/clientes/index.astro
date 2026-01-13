@@ -1,0 +1,179 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { supabase } from '../../../lib/supabase';
+
+// Protección: solo admins
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+if (!accessToken) {
+  return Astro.redirect('/admin/login');
+}
+
+// Verificar si es admin
+const { data: { user } } = await supabase.auth.getUser(accessToken);
+if (!user) {
+  return Astro.redirect('/admin/login');
+}
+
+const { data: adminUser } = await supabase
+  .from('admin_users')
+  .select('*')
+  .eq('user_id', user.id);
+
+if (!adminUser || adminUser.length === 0) {
+  return Astro.redirect('/admin/login');
+}
+
+// Obtener todos los pedidos con información del usuario
+const { data: orders, error } = await supabase
+  .from('orders')
+  .select('user_id, shipping_full_name, total, created_at')
+  .order('created_at', { ascending: false });
+
+// Agrupar por usuario
+const clientsMap = new Map();
+if (orders) {
+  orders.forEach((order) => {
+    if (order.user_id) {
+      if (!clientsMap.has(order.user_id)) {
+        clientsMap.set(order.user_id, {
+          id: order.user_id,
+          name: order.shipping_full_name,
+          orderCount: 0,
+          totalSpent: 0,
+          lastOrder: order.created_at
+        });
+      }
+      const client = clientsMap.get(order.user_id);
+      client.orderCount += 1;
+      client.totalSpent += parseFloat(order.total);
+    }
+  });
+}
+
+const clients = Array.from(clientsMap.values()).sort((a, b) => 
+  new Date(b.lastOrder).getTime() - new Date(a.lastOrder).getTime()
+);
+
+// Función para formatear fecha
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+
+// Función para formatear moneda
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(amount);
+}
+---
+
+<AdminLayout title="Gestión de Clientes">
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Clientes</h1>
+        <p class="mt-1 text-sm text-gray-600">Gestiona los usuarios registrados</p>
+      </div>
+    </div>
+
+    <!-- Tabla de clientes -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+      {!clients || clients.length === 0 ? (
+        <div class="p-12 text-center text-gray-500">
+          <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <p class="text-lg font-medium">No hay clientes</p>
+          <p class="text-sm mt-1">Los clientes con pedidos aparecerán aquí.</p>
+        </div>
+      ) : (
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Cliente
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ID
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Pedidos
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Total Gastado
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Último Pedido
+                </th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              {clients.map((client) => (
+                <tr class="hover:bg-gray-50">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">{client.name}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-xs text-gray-500 font-mono">{client.id.slice(0, 8)}...</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                      {client.orderCount} pedidos
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {formatCurrency(client.totalSpent)}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDate(client.lastOrder)}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <a
+                      href={`/admin/pedidos?search=${encodeURIComponent(client.name)}`}
+                      class="text-brand-gold hover:text-yellow-600 transition-colors"
+                    >
+                      Ver pedidos
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+    </div>
+
+    <!-- Estadísticas -->
+    {clients && clients.length > 0 && (
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg shadow p-4">
+          <div class="text-sm text-gray-600">Total clientes</div>
+          <div class="text-2xl font-bold text-gray-900">{clients.length}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+          <div class="text-sm text-gray-600">Total pedidos</div>
+          <div class="text-2xl font-bold text-blue-600">
+            {clients.reduce((sum, c) => sum + c.orderCount, 0)}
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+          <div class="text-sm text-gray-600">Ingresos totales</div>
+          <div class="text-2xl font-bold text-green-600">
+            {formatCurrency(clients.reduce((sum, c) => sum + c.totalSpent, 0))}
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+</AdminLayout>

@@ -1,0 +1,237 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { supabase } from '../../../lib/supabase';
+
+// Protección: solo admins
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+if (!accessToken) {
+  return Astro.redirect('/admin/login');
+}
+
+// Verificar si es admin
+const { data: { user } } = await supabase.auth.getUser(accessToken);
+if (!user) {
+  return Astro.redirect('/admin/login');
+}
+
+const { data: adminUser } = await supabase
+  .from('admin_users')
+  .select('*')
+  .eq('user_id', user.id);
+
+if (!adminUser || adminUser.length === 0) {
+  return Astro.redirect('/admin/login');
+}
+
+// Obtener productos
+const { data: products, error } = await supabase
+  .from('products')
+  .select('*')
+  .order('created_at', { ascending: false });
+
+// Función para formatear moneda
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(amount / 100);
+}
+---
+
+<AdminLayout title="Gestión de Productos">
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Productos</h1>
+        <p class="mt-1 text-sm text-gray-600">Gestiona el catálogo de productos</p>
+      </div>
+      <a
+        href="/admin/productos/nuevo"
+        class="bg-brand-gold text-white px-6 py-2 rounded-lg hover:bg-yellow-600 transition-colors flex items-center space-x-2"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        <span>Nuevo Producto</span>
+      </a>
+    </div>
+
+    <!-- Tabla de productos -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+      {error ? (
+        <div class="p-6 text-center text-red-600">
+          Error al cargar los productos: {error.message}
+        </div>
+      ) : !products || products.length === 0 ? (
+        <div class="p-12 text-center text-gray-500">
+          <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+          <p class="text-lg font-medium">No hay productos</p>
+          <p class="text-sm mt-1">Comienza agregando tu primer producto.</p>
+          <a
+            href="/admin/productos/nuevo"
+            class="mt-4 inline-flex items-center px-4 py-2 bg-brand-gold text-white rounded-lg hover:bg-yellow-600"
+          >
+            Crear Producto
+          </a>
+        </div>
+      ) : (
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Producto
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Precio
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Stock
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Categoría
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Género
+                </th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              {products.map((product) => (
+                <tr class="hover:bg-gray-50">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center">
+                      <img
+                        src={product.image_urls?.[0] || '/placeholder.png'}
+                        alt={product.name}
+                        class="w-12 h-12 object-cover rounded"
+                      />
+                      <div class="ml-4">
+                        <div class="text-sm font-medium text-gray-900">{product.name}</div>
+                        <div class="text-xs text-gray-500">{product.slug}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {formatCurrency(product.price)}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      product.stock > 10 ? 'bg-green-100 text-green-800' :
+                      product.stock > 0 ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {product.stock} unidades
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {product.category}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                    {product.gender}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                    <a
+                      href={`/admin/productos/${product.id}/editar`}
+                      class="text-blue-600 hover:text-blue-900"
+                    >
+                      Editar
+                    </a>
+                    <button
+                      data-product-id={product.id}
+                      data-product-name={product.name}
+                      class="delete-btn text-red-600 hover:text-red-900"
+                    >
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+
+    <!-- Estadísticas -->
+    {products && products.length > 0 && (
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-lg shadow p-4">
+          <div class="text-sm text-gray-600">Total productos</div>
+          <div class="text-2xl font-bold text-gray-900">{products.length}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+          <div class="text-sm text-gray-600">En stock</div>
+          <div class="text-2xl font-bold text-green-600">
+            {products.filter(p => p.stock > 0).length}
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+          <div class="text-sm text-gray-600">Sin stock</div>
+          <div class="text-2xl font-bold text-red-600">
+            {products.filter(p => p.stock === 0).length}
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+          <div class="text-sm text-gray-600">Valor inventario</div>
+          <div class="text-2xl font-bold text-blue-600">
+            {formatCurrency(products.reduce((sum, p) => sum + (p.price * p.stock), 0))}
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+</AdminLayout>
+
+<script>
+  // Manejar eliminación de productos
+  document.addEventListener('DOMContentLoaded', () => {
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+    
+    deleteButtons.forEach(button => {
+      button.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        const productId = button.getAttribute('data-product-id');
+        const productName = button.getAttribute('data-product-name');
+        
+        if (!confirm(`¿Estás seguro de que quieres eliminar "${productName}"?\n\nEsta acción no se puede deshacer.`)) {
+          return;
+        }
+        
+        button.disabled = true;
+        button.textContent = 'Eliminando...';
+        
+        try {
+          const response = await fetch('/api/products/delete', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id: productId })
+          });
+          
+          const result = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(result.error || 'Error al eliminar el producto');
+          }
+          
+          // Recargar la página para ver los cambios
+          window.location.reload();
+          
+        } catch (error) {
+          alert(error.message);
+          button.disabled = false;
+          button.textContent = 'Eliminar';
+        }
+      });
+    });
+  });
+</script>

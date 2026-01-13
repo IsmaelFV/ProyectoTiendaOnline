@@ -1,0 +1,47 @@
+---
+import { formatPrice } from '@lib/utils';
+import { ImagePresets } from '@lib/cloudinary';
+import type { Product } from '@lib/supabase';
+
+interface Props {
+  product: Product;
+}
+
+const { product } = Astro.props;
+const mainImage = product.images?.[0] || '/placeholder.jpg';
+// Optimizar imagen para tarjetas de producto (400x500px)
+const optimizedImage = ImagePresets.productCard(mainImage);
+---
+
+<article class="card group">
+  <a href={`/productos/${product.slug}`} class="block">
+    <div class="aspect-[3/4] overflow-hidden bg-gray-100">
+      <img
+        src={optimizedImage}
+        alt={product.name}
+        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        loading="lazy"
+      />
+    </div>
+    
+    <div class="p-6">
+      <h3 class="font-serif text-xl font-semibold text-brand-navy mb-2 group-hover:text-brand-gold transition-colors">
+        {product.name}
+      </h3>
+      
+      <p class="text-brand-charcoal font-semibold text-lg">
+        {formatPrice(product.price)}
+      </p>
+      
+      {product.stock > 0 ? (
+        <p class="text-sm text-brand-slate mt-2">
+          {product.stock} unidades disponibles
+        </p>
+      ) : (
+        <p class="text-sm text-red-600 mt-2 font-medium">
+          Agotado
+        </p>
+      )}
+    </div>
+  </a>
+</article>
