@@ -125,7 +125,7 @@ const productsArray = (products || []) as Product[];
           {productsArray.length > 0 ? (
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {productsArray.map((product) => (
-                <ProductCard product={product} key={product.id} />
+                <ProductCard product={product} />
               ))}
             </div>
           ) : (
