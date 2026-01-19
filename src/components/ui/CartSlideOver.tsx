@@ -2,7 +2,8 @@ import { useStore } from '@nanostores/react';
 import { isCartOpen, cartItems, cartTotal, closeCart, updateQuantity, removeFromCart, clearCart } from '@stores/cart';
 import { formatPrice } from '@lib/utils';
 import { ImagePresets } from '@lib/cloudinary';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import DiscountCodeInput from '@components/islands/DiscountCodeInput';
 
 export default function CartSlideOver() {
   const open = useStore(isCartOpen);
@@ -10,8 +11,26 @@ export default function CartSlideOver() {
   const total = useStore(cartTotal);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [appliedDiscount, setAppliedDiscount] = useState<any>(null);
+  const [finalTotal, setFinalTotal] = useState(total);
 
   const itemsArray = Object.entries(items).map(([key, item]) => ({ key, ...item }));
+
+  // Sincronizar finalTotal con el total del carrito cuando cambia
+  useEffect(() => {
+    if (!appliedDiscount) {
+      setFinalTotal(total);
+    }
+  }, [total, appliedDiscount]);
+
+  const handleDiscountApplied = (discountData: any) => {
+    setAppliedDiscount(discountData);
+    if (discountData && discountData.final_total !== undefined) {
+      setFinalTotal(discountData.final_total);
+    } else {
+      setFinalTotal(total);
+    }
+  };
 
   const handleCheckout = async () => {
     setIsProcessing(true);
@@ -30,7 +49,10 @@ export default function CartSlideOver() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ items: checkoutItems })
+        body: JSON.stringify({ 
+          items: checkoutItems,
+          discountCode: appliedDiscount?.code || null
+        })
       });
 
       const data = await response.json();
@@ -167,9 +189,28 @@ export default function CartSlideOver() {
             </div>
 
             <div className="border-t px-6 py-4 space-y-4">
-              <div className="flex justify-between items-center text-lg font-semibold">
-                <span>Total:</span>
-                <span className="font-serif text-2xl text-brand-navy">{formatPrice(total)}</span>
+              <DiscountCodeInput 
+                cartTotal={total} 
+                onDiscountApplied={handleDiscountApplied}
+              />
+              
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm text-gray-600">
+                  <span>Subtotal:</span>
+                  <span>{formatPrice(total)}</span>
+                </div>
+                
+                {appliedDiscount && appliedDiscount.discount_amount > 0 && (
+                  <div className="flex justify-between items-center text-sm text-green-600 font-medium">
+                    <span>Descuento:</span>
+                    <span>-{formatPrice(appliedDiscount.discount_amount)}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between items-center text-lg font-semibold pt-2 border-t">
+                  <span>Total:</span>
+                  <span className="font-serif text-2xl text-brand-navy">{formatPrice(finalTotal)}</span>
+                </div>
               </div>
               
               {error && (

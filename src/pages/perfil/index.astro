@@ -1,21 +1,40 @@
 ---
 import PublicLayout from '@layouts/PublicLayout.astro';
-import { supabase } from '@lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
-// Verificar autenticación
+// Crear cliente de Supabase con anon key (respeta RLS)
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+
+// Obtener tokens de las cookies
 const accessToken = Astro.cookies.get('sb-access-token')?.value;
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
 
-if (!accessToken) {
+if (!accessToken || !refreshToken) {
   return Astro.redirect('/auth/login');
 }
 
+// Crear cliente con autorización
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+  global: {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  },
+});
+
+// Verificar usuario
 const { data: { user }, error } = await supabase.auth.getUser(accessToken);
 
 if (error || !user) {
   return Astro.redirect('/auth/login');
 }
 
-// Obtener pedidos del usuario
+// Obtener pedidos del usuario (con RLS activo)
 const { data: orders } = await supabase
   .from('orders')
   .select('*')

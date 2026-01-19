@@ -8,6 +8,17 @@ const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2025-12-15.clover',
 });
 
+// Helper para crear cupón de Stripe dinámicamente
+async function createStripeCoupon(discountAmountCents: number, totalAmountCents: number): Promise<string> {
+  const coupon = await stripe.coupons.create({
+    amount_off: discountAmountCents,
+    currency: 'eur',
+    duration: 'once',
+    name: `Descuento -${(discountAmountCents / 100).toFixed(2)}€`
+  });
+  return coupon.id;
+}
+
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     // 1. Verificar autenticación del usuario (OPCIONAL - permite checkout como invitado)
@@ -21,7 +32,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // 2. Obtener los items del carrito desde el request
     const body = await request.json();
-    const { items } = body;
+    const { items, discountCode } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return new Response(JSON.stringify({ 
@@ -156,8 +167,64 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
+    // 6.5. Validar y aplicar código de descuento si existe
+    let discountAmount = 0;
+    let discountData: any = null;
+
+    if (discountCode && discountCode.trim()) {
+      const supabaseAdmin = createServerSupabaseClient();
+      const { data: validationResult, error: discountError } = await supabaseAdmin.rpc('validate_discount_code', {
+        p_code: discountCode.trim(),
+        p_cart_total: totalAmount / 100, // Convertir a euros
+        p_user_id: user?.id || null
+      });
+
+      if (discountError) {
+        console.error('Error validating discount code:', discountError);
+        // Cancelar reservas si falla
+        if (reservationIds.length > 0) {
+          await supabaseAdmin.rpc('cancel_reservation', {
+            p_session_id: tempSessionId,
+            p_reason: 'discount_validation_error'
+          });
+        }
+        return new Response(JSON.stringify({ 
+          error: 'Error al validar el código de descuento' 
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const validation = validationResult as { valid: boolean; message: string; discount_amount?: number; code?: string };
+
+      if (!validation.valid) {
+        // Cancelar reservas si el código no es válido
+        if (reservationIds.length > 0) {
+          await supabaseAdmin.rpc('cancel_reservation', {
+            p_session_id: tempSessionId,
+            p_reason: 'invalid_discount_code'
+          });
+        }
+        return new Response(JSON.stringify({ 
+          error: validation.message 
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Aplicar descuento
+      discountAmount = Math.round((validation.discount_amount || 0) * 100); // Convertir a centavos
+      discountData = validation;
+      console.log(`💰 Descuento aplicado: ${discountCode} (-${discountAmount / 100}€)`);
+    }
+
+    // Calcular total final
+    const finalTotalAmount = totalAmount - discountAmount;
+
     // 7. Crear sesión de Stripe Checkout
-    const session = await stripe.checkout.sessions.create({
+    const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: lineItems,
@@ -171,12 +238,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         total_amount: totalAmount.toString(),
         temp_session_id: tempSessionId, // ⭐ Para actualizar reservas después
         reservation_ids: JSON.stringify(reservationIds), // ⭐ IDs de reservas
+        discount_code: discountCode || '',
+        discount_amount: discountAmount.toString(),
       },
       shipping_address_collection: {
         allowed_countries: ['ES', 'FR', 'DE', 'IT', 'PT', 'US'],
       },
       expires_at: Math.floor(Date.now() / 1000) + (3 * 60 * 60), // ⭐ 3 horas (Stripe: mín 30 min, máx 24 hrs)
-    });
+    };
+
+    // Aplicar descuento en Stripe si existe
+    if (discountAmount > 0) {
+      sessionConfig.discounts = [{
+        coupon: await createStripeCoupon(discountAmount, totalAmount)
+      }];
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     // 8. Actualizar reservas con el session_id real de Stripe
     const { error: updateError } = await supabaseAdmin

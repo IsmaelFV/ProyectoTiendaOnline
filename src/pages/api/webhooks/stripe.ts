@@ -92,7 +92,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     console.log('📋 Session metadata:', session.metadata);
     console.log('📋 Customer details:', session.customer_details);
     
-    const { user_id } = session.metadata || {};
+    const { user_id, discount_code } = session.metadata || {};
 
     // ⭐ PASO 0: Confirmar reservas de stock (marcar como completadas)
     console.log('🔒 Confirmando reservas de stock...');
@@ -130,8 +130,9 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     const totalCents = session.amount_total || 0;
     const taxCents = session.total_details?.amount_tax || 0;
     const shippingCents = session.total_details?.amount_shipping || 0;
+    const discountCents = session.total_details?.amount_discount || 0;
 
-    console.log('💰 Amounts - Subtotal:', subtotalCents, 'Total:', totalCents, 'Tax:', taxCents, 'Shipping:', shippingCents);
+    console.log('💰 Amounts - Subtotal:', subtotalCents, 'Total:', totalCents, 'Tax:', taxCents, 'Shipping:', shippingCents, 'Discount:', discountCents);
 
     // 1. Crear el pedido en la base de datos (order_number se autogenera con trigger)
     console.log('💾 Creando pedido en BD...');
@@ -149,13 +150,13 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       subtotal: subtotalCents / 100,
       shipping_cost: shippingCents / 100,
       tax: taxCents / 100,
-      discount: 0,
+      discount: discountCents / 100,
       total: totalCents / 100,
       payment_method: 'card',
       payment_status: 'paid',
       payment_id: session.payment_intent as string,
       status: 'confirmed',
-      customer_notes: null,
+      customer_notes: discount_code ? `Código aplicado: ${discount_code}` : null,
       admin_notes: `Stripe Session: ${session.id} | Email: ${session.customer_details?.email || session.customer_email}`,
     };
 
@@ -174,6 +175,21 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
 
     const orderNumber = order.order_number;
     console.log(`✅ Order created: ${orderNumber} (ID: ${order.id})`);
+
+    // 1.5. Incrementar contador de usos del código de descuento si se usó
+    if (discount_code && discountCents > 0) {
+      console.log(`🎫 Incrementando uso del código: ${discount_code}`);
+      const { error: discountError } = await supabaseAdmin.rpc('increment_discount_usage', {
+        p_code: discount_code
+      });
+      
+      if (discountError) {
+        console.error('⚠️ Error al incrementar uso del código:', discountError);
+        // No lanzar error, el pedido ya está creado
+      } else {
+        console.log(`✅ Código ${discount_code} registrado como usado`);
+      }
+    }
 
     // 2. Procesar line_items de Stripe para crear order_items y actualizar stock
     for (const lineItem of lineItems.data) {

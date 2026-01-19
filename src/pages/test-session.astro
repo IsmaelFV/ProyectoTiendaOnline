@@ -1,0 +1,131 @@
+---
+import { createServerSupabaseClient } from '../lib/auth';
+
+const supabase = createServerSupabaseClient(Astro);
+const { data: { session } } = await supabase.auth.getSession();
+
+// Buscar pedidos con este user_id
+let orders = null;
+if (session?.user) {
+  const { data } = await supabase
+    .from('orders')
+    .select('order_number, status, total, created_at')
+    .eq('user_id', session.user.id)
+    .order('created_at', { ascending: false });
+  orders = data;
+}
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Sesión y Pedidos</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #00ff00;
+    }
+    .section {
+      background: #2a2a2a;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: 1px solid #00ff00;
+    }
+    .error { color: #ff4444; }
+    .success { color: #00ff00; }
+    .warning { color: #ffaa00; }
+    pre {
+      background: #000;
+      padding: 10px;
+      border-radius: 3px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Diagnóstico de Sesión y Pedidos</h1>
+
+  <div class="section">
+    <h2>1️⃣ Estado de Sesión</h2>
+    {session ? (
+      <div class="success">
+        <p>✅ <strong>SESIÓN ACTIVA</strong></p>
+        <pre>{JSON.stringify({
+          user_id: session.user.id,
+          email: session.user.email,
+          created_at: session.user.created_at
+        }, null, 2)}</pre>
+      </div>
+    ) : (
+      <div class="error">
+        <p>❌ <strong>NO HAY SESIÓN ACTIVA</strong></p>
+        <p>Necesitas iniciar sesión primero</p>
+        <a href="/auth/login" style="color: #00ff00;">→ Ir a login</a>
+      </div>
+    )}
+  </div>
+
+  {session && (
+    <div class="section">
+      <h2>2️⃣ Pedidos Encontrados</h2>
+      {orders && orders.length > 0 ? (
+        <div class="success">
+          <p>✅ <strong>Se encontraron {orders.length} pedido(s)</strong></p>
+          <pre>{JSON.stringify(orders, null, 2)}</pre>
+          <p><a href="/perfil/mis-pedidos" style="color: #00ff00;">→ Ver en Mis Pedidos</a></p>
+        </div>
+      ) : (
+        <div class="warning">
+          <p>⚠️ <strong>NO SE ENCONTRARON PEDIDOS</strong></p>
+          <p>Posibles causas:</p>
+          <ul>
+            <li>Hiciste checkout sin estar logueado (pedidos NULL)</li>
+            <li>Estás usando una cuenta diferente</li>
+            <li>Las políticas RLS no están aplicadas</li>
+          </ul>
+        </div>
+      )}
+    </div>
+  )}
+
+  <div class="section">
+    <h2>3️⃣ User ID Esperado</h2>
+    <p>El pedido <code>ORD-20260119-1792</code> pertenece a:</p>
+    <pre>283869ea-97e3-41e4-a959-4bc197c108ec</pre>
+    {session && (
+      <p class={session.user.id === '283869ea-97e3-41e4-a959-4bc197c108ec' ? 'success' : 'error'}>
+        {session.user.id === '283869ea-97e3-41e4-a959-4bc197c108ec' 
+          ? '✅ COINCIDE - Este es el usuario correcto' 
+          : `❌ NO COINCIDE - Tu user_id es: ${session.user.id}`
+        }
+      </p>
+    )}
+  </div>
+
+  <div class="section">
+    <h2>4️⃣ Pedidos en Base de Datos</h2>
+    <p>Pedidos totales: 3</p>
+    <ul>
+      <li class="success">ORD-20260119-1792 → CON user_id (visible si estás logueado con esa cuenta)</li>
+      <li class="error">ORD-20260115-4569 → NULL (invitado, nunca visible en perfil)</li>
+      <li class="error">ORD-1768329380213-2PMJX4EBI → NULL (invitado, nunca visible en perfil)</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>🎯 Solución</h2>
+    <ol>
+      <li>Inicia sesión con el email de la cuenta: <code>283869ea-97e3-41e4-a959-4bc197c108ec</code></li>
+      <li>Recarga esta página: <a href="/test-session" style="color: #00ff00;">/test-session</a></li>
+      <li>Deberías ver "1 pedido encontrado"</li>
+      <li>Luego ve a <a href="/perfil/mis-pedidos" style="color: #00ff00;">Mis Pedidos</a></li>
+    </ol>
+    <p class="warning">⚠️ Los pedidos NULL (invitado) no se pueden recuperar en el perfil</p>
+  </div>
+</body>
+</html>

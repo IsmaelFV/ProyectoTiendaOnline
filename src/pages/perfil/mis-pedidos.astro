@@ -1,16 +1,43 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
-import { createServerSupabaseClient } from '../../lib/auth';
+import { createClient } from '@supabase/supabase-js';
 
-// Proteger la ruta - requiere autenticación
-const supabase = createServerSupabaseClient(Astro);
-const { data: { session } } = await supabase.auth.getSession();
+// Crear cliente de Supabase con anon key (respeta RLS)
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
-if (!session) {
+// Obtener tokens de las cookies
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+if (!accessToken || !refreshToken) {
   return Astro.redirect('/auth/login?redirect=/perfil/mis-pedidos');
 }
 
-// Obtener pedidos del usuario
+// Crear cliente y establecer sesión manualmente
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+  global: {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  },
+});
+
+// Verificar usuario
+const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
+
+if (authError || !user) {
+  console.error('Auth error:', authError);
+  return Astro.redirect('/auth/login?redirect=/perfil/mis-pedidos');
+}
+
+console.log('✅ Usuario autenticado:', user.id, user.email);
+
+// Obtener pedidos del usuario (con RLS activo)
 const { data: orders, error } = await supabase
   .from('orders')
   .select(`
@@ -19,11 +46,13 @@ const { data: orders, error } = await supabase
       *
     )
   `)
-  .eq('user_id', session.user.id)
+  .eq('user_id', user.id)
   .order('created_at', { ascending: false });
 
+console.log('📦 Pedidos encontrados:', orders?.length || 0);
 if (error) {
-  console.error('Error fetching orders:', error);
+  console.error('❌ Error fetching orders:', error);
+  console.error('User ID buscado:', user.id);
 }
 
 // Función para formatear fecha
@@ -197,6 +226,19 @@ const getStatusBadge = (status: string) => {
                       Cancelar pedido
                     </button>
                   ) : null}
+
+                  {order.status === 'delivered' ? (
+                    <button 
+                      data-order-id={order.id}
+                      data-order-number={order.order_number}
+                      class="request-return inline-flex items-center px-4 py-2 border border-blue-300 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                      </svg>
+                      Solicitar devolución
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -222,7 +264,213 @@ const getStatusBadge = (status: string) => {
     )}
   </div>
 
+  <!-- Toast de notificación -->
+  <div id="toast" class="hidden fixed bottom-4 right-4 z-50 transform transition-all duration-300">
+    <div class="bg-white rounded-lg shadow-lg border-l-4 border-green-500 p-4 max-w-md">
+      <div class="flex items-center">
+        <svg id="toast-icon" class="h-6 w-6 text-green-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p id="toast-message" class="text-gray-800 font-medium"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de confirmación de cancelación -->
+  <div id="cancel-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      <!-- Overlay -->
+      <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" id="modal-overlay"></div>
+
+      <!-- Modal centrado -->
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+      <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+        <div class="sm:flex sm:items-start">
+          <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+            <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+              ¿Cancelar pedido?
+            </h3>
+            <div class="mt-2">
+              <p class="text-sm text-gray-500">
+                ¿Estás seguro de que quieres cancelar este pedido? El stock se restaurará automáticamente.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse gap-3">
+          <button
+            type="button"
+            id="confirm-cancel"
+            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors"
+          >
+            Sí, cancelar pedido
+          </button>
+          <button
+            type="button"
+            id="close-modal"
+            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm transition-colors"
+          >
+            No, mantener pedido
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de información de devoluciones -->
+  <div id="return-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      <!-- Overlay -->
+      <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" id="return-modal-overlay"></div>
+
+      <!-- Modal centrado -->
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+      <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
+        <div class="absolute top-4 right-4">
+          <button id="close-return-modal" class="text-gray-400 hover:text-gray-500">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="sm:flex sm:items-start">
+          <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+            <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+          </div>
+          <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">
+              Política de Devoluciones
+            </h3>
+            <div class="mt-4 text-sm text-gray-600 space-y-4">
+              <div class="bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
+                <p class="font-medium text-blue-800">Pedido: <span id="return-order-number" class="font-mono"></span></p>
+              </div>
+
+              <div>
+                <h4 class="font-semibold text-gray-900 mb-2">📦 Condiciones de devolución:</h4>
+                <ul class="list-disc list-inside space-y-1 ml-2">
+                  <li>Tienes <strong>30 días</strong> desde la recepción del pedido</li>
+                  <li>Los productos deben estar <strong>sin usar y con etiquetas</strong></li>
+                  <li>Incluye el <strong>comprobante de compra</strong> original</li>
+                  <li>Los productos en oferta no son reembolsables</li>
+                  <li>Los gastos de envío de devolución corren a tu cargo</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 class="font-semibold text-gray-900 mb-2">📞 ¿Cómo solicitar la devolución?</h4>
+                <p>Contáctanos a través de cualquiera de estos canales:</p>
+                <div class="mt-2 space-y-2">
+                  <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <a href="mailto:devoluciones@tienda.com?subject=Solicitud de devolución - Pedido #" class="text-blue-600 hover:text-blue-800 hover:underline">
+                      devoluciones@tienda.com
+                    </a>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <a href="tel:+34900123456" class="text-blue-600 hover:text-blue-800 hover:underline">
+                      +34 900 123 456
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="font-semibold text-gray-900 mb-2">💡 Información útil:</h4>
+                <ul class="list-disc list-inside space-y-1 ml-2">
+                  <li>Procesamos devoluciones en <strong>5-7 días hábiles</strong></li>
+                  <li>El reembolso se realizará por el mismo método de pago</li>
+                  <li>Guarda el número de seguimiento del envío de devolución</li>
+                  <li>Empaqueta bien el producto para evitar daños en el transporte</li>
+                </ul>
+              </div>
+
+              <div class="bg-amber-50 border-l-4 border-amber-400 p-3 rounded">
+                <p class="text-sm text-amber-800">
+                  <strong>Tip:</strong> Copia el número de pedido para incluirlo en tu solicitud
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-6 flex flex-col sm:flex-row gap-3">
+          <button
+            type="button"
+            id="copy-order-number"
+            class="flex-1 inline-flex justify-center items-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            <span id="copy-btn-text">Copiar nº de pedido</span>
+          </button>
+          <a
+            href="mailto:devoluciones@tienda.com?subject=Solicitud de devolución"
+            id="email-return-link"
+            class="flex-1 inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            Enviar email
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // Función para mostrar toast
+    function showToast(message: string, type: 'success' | 'error' = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+      
+      if (!toast || !toastMessage || !toastIcon) return;
+
+      toastMessage.textContent = message;
+      
+      // Cambiar colores según el tipo
+      const toastDiv = toast.querySelector('div');
+      if (type === 'error') {
+        toastDiv?.classList.remove('border-green-500');
+        toastDiv?.classList.add('border-red-500');
+        toastIcon.classList.remove('text-green-500');
+        toastIcon.classList.add('text-red-500');
+        toastIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />';
+      } else {
+        toastDiv?.classList.remove('border-red-500');
+        toastDiv?.classList.add('border-green-500');
+        toastIcon.classList.remove('text-red-500');
+        toastIcon.classList.add('text-green-500');
+        toastIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />';
+      }
+      
+      // Mostrar toast
+      toast.classList.remove('hidden');
+      
+      // Ocultar después de 3 segundos
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+
     // Manejar descarga de facturas
     document.querySelectorAll('.download-invoice').forEach(button => {
       button.addEventListener('click', async (e) => {
@@ -251,7 +499,7 @@ const getStatusBadge = (status: string) => {
           btn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path></svg> Descargar factura';
         } catch (error) {
           console.error('Error:', error);
-          alert('Error al descargar la factura. Por favor, intenta de nuevo.');
+          showToast('Error al descargar la factura', 'error');
           btn.disabled = false;
           btn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path></svg> Descargar factura';
         }
@@ -259,34 +507,154 @@ const getStatusBadge = (status: string) => {
     });
 
     // Manejar cancelación de pedidos
+    let currentOrderId: string | undefined;
+    const modal = document.getElementById('cancel-modal');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const closeModalBtn = document.getElementById('close-modal');
+    const confirmCancelBtn = document.getElementById('confirm-cancel');
+
+    // Abrir modal
     document.querySelectorAll('.cancel-order').forEach(button => {
-      button.addEventListener('click', async (e) => {
+      button.addEventListener('click', (e) => {
         const btn = e.currentTarget as HTMLButtonElement;
-        const orderId = btn.dataset.orderId;
+        currentOrderId = btn.dataset.orderId;
+        modal?.classList.remove('hidden');
+      });
+    });
+
+    // Cerrar modal
+    const closeModal = () => {
+      modal?.classList.add('hidden');
+      currentOrderId = undefined;
+    };
+
+    closeModalBtn?.addEventListener('click', closeModal);
+    modalOverlay?.addEventListener('click', closeModal);
+
+    // Confirmar cancelación
+    confirmCancelBtn?.addEventListener('click', async () => {
+      if (!currentOrderId) return;
+
+      const orderId = currentOrderId;
+      closeModal();
+
+      // Buscar el botón original y cambiar su estado
+      const originalBtn = document.querySelector(`.cancel-order[data-order-id="${orderId}"]`) as HTMLButtonElement;
+      if (originalBtn) {
+        originalBtn.disabled = true;
+        originalBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2 inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Cancelando...';
+      }
+
+      try {
+        // Obtener el token de Supabase
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(
+          import.meta.env.PUBLIC_SUPABASE_URL,
+          import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+        );
         
-        if (!confirm('¿Estás seguro de que quieres cancelar este pedido?')) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          showToast('Debes iniciar sesión para cancelar un pedido', 'error');
+          setTimeout(() => {
+            window.location.href = '/auth/login?redirect=/perfil/mis-pedidos';
+          }, 2000);
           return;
         }
 
-        btn.disabled = true;
-        btn.textContent = 'Cancelando...';
-
-        try {
-          const response = await fetch(`/api/orders/${orderId}/cancel`, {
-            method: 'POST'
-          });
-          
-          if (!response.ok) throw new Error('Error al cancelar el pedido');
-          
-          alert('Pedido cancelado correctamente');
-          window.location.reload();
-        } catch (error) {
-          console.error('Error:', error);
-          alert('Error al cancelar el pedido. Por favor, contacta con soporte.');
-          btn.disabled = false;
-          btn.textContent = 'Cancelar pedido';
+        const response = await fetch('/api/orders/cancel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ orderId })
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+          showToast(result.message || 'Error al cancelar el pedido', 'error');
+          if (originalBtn) {
+            originalBtn.disabled = false;
+            originalBtn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Cancelar pedido';
+          }
+          return;
         }
+        
+        // Mostrar mensaje de éxito y recargar después de 1 segundo
+        showToast(result.message);
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } catch (error) {
+        console.error('Error:', error);
+        showToast('Error inesperado al cancelar el pedido', 'error');
+        if (originalBtn) {
+          originalBtn.disabled = false;
+          originalBtn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Cancelar pedido';
+        }
+      }
+    });
+
+    // ===== MODAL DE DEVOLUCIONES =====
+    let currentReturnOrderNumber: string | undefined;
+    const returnModal = document.getElementById('return-modal');
+    const returnModalOverlay = document.getElementById('return-modal-overlay');
+    const closeReturnModalBtn = document.getElementById('close-return-modal');
+    const copyOrderNumberBtn = document.getElementById('copy-order-number');
+    const returnOrderNumberSpan = document.getElementById('return-order-number');
+    const emailReturnLink = document.getElementById('email-return-link') as HTMLAnchorElement;
+    const copyBtnText = document.getElementById('copy-btn-text');
+
+    // Abrir modal de devoluciones
+    document.querySelectorAll('.request-return').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const btn = e.currentTarget as HTMLButtonElement;
+        currentReturnOrderNumber = btn.dataset.orderNumber;
+        
+        if (returnOrderNumberSpan && currentReturnOrderNumber) {
+          returnOrderNumberSpan.textContent = currentReturnOrderNumber;
+        }
+        
+        // Actualizar el link de email con el número de pedido
+        if (emailReturnLink && currentReturnOrderNumber) {
+          emailReturnLink.href = `mailto:devoluciones@tienda.com?subject=Solicitud de devolución - Pedido ${currentReturnOrderNumber}&body=Hola,%0D%0A%0D%0AQuisiera solicitar la devolución del pedido ${currentReturnOrderNumber}.%0D%0A%0D%0AMotivo de la devolución:%0D%0A[Escribe aquí el motivo]%0D%0A%0D%0AGracias.`;
+        }
+        
+        returnModal?.classList.remove('hidden');
       });
     });
+
+    // Cerrar modal de devoluciones
+    const closeReturnModal = () => {
+      returnModal?.classList.add('hidden');
+      currentReturnOrderNumber = undefined;
+      if (copyBtnText) {
+        copyBtnText.textContent = 'Copiar nº de pedido';
+      }
+    };
+
+    closeReturnModalBtn?.addEventListener('click', closeReturnModal);
+    returnModalOverlay?.addEventListener('click', closeReturnModal);
+
+    // Copiar número de pedido al portapapeles
+    copyOrderNumberBtn?.addEventListener('click', async () => {
+      if (!currentReturnOrderNumber) return;
+
+      try {
+        await navigator.clipboard.writeText(currentReturnOrderNumber);
+        if (copyBtnText) {
+          copyBtnText.textContent = '✓ Copiado';
+          setTimeout(() => {
+            copyBtnText.textContent = 'Copiar nº de pedido';
+          }, 2000);
+        }
+        showToast('Número de pedido copiado al portapapeles', 'success');
+      } catch (err) {
+        console.error('Error al copiar:', err);
+        showToast('No se pudo copiar al portapapeles', 'error');
+      }
+    });
   </script>
-</BaseLayout>
+</PublicLayout>

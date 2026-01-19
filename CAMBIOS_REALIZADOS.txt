@@ -1,0 +1,737 @@
+================================================================================
+RESUMEN DE CAMBIOS REALIZADOS - ProyectoTiendaOnline
+================================================================================
+Fecha: 19 de enero de 2026
+Commit: 590fd6d - feat: reorganizar categorías, carrito persistente, sistema 
+        de facturas y reserva de stock
+
+================================================================================
+ÍNDICE
+================================================================================
+1. Reorganización de Categorías
+2. Sistema de Carrito Persistente
+3. Sistema de Reserva de Stock (Anti-Overselling)
+4. Sistema de Facturas Automáticas
+5. Gestión de Pedidos
+6. Sincronización de Sesión
+7. Scripts de Testing y Diagnóstico
+8. Archivos Modificados y Nuevos
+
+
+================================================================================
+1. REORGANIZACIÓN DE CATEGORÍAS
+================================================================================
+
+PROBLEMA IDENTIFICADO:
+- Las subcategorías "Camisetas" y "Camisas" aparecían como categorías 
+  principales en el menú lateral, fuera del apartado "Ropa"
+- Los productos no tenían categorías asignadas correctamente después de 
+  cambios en la estructura de categorías
+
+SOLUCIÓN IMPLEMENTADA:
+
+A) Scripts SQL creados:
+   
+   fix-categories-hierarchy.sql
+   └─ Primera versión que usaba DELETE (causó problemas con foreign keys)
+   
+   fix-categories-reorganize-clean.sql
+   └─ Segunda versión, también usaba DELETE
+   
+   fix-categories-sin-delete.sql ✅ (CORRECTO)
+   └─ Versión final que usa UPDATE en lugar de DELETE
+   └─ Preserva los IDs originales de las categorías
+   └─ Reorganiza la jerarquía moviendo subcategorías dentro de "Ropa"
+   
+   reasignar-productos-categorias.sql ✅ (CRÍTICO - DEBE EJECUTARSE)
+   └─ Reasigna productos a categorías usando pattern matching ILIKE
+   └─ Busca palabras clave en nombres de productos
+   └─ Ejemplos: productos con "camiseta" → camisetas-mujer/hombre
+              productos con "pantalón" → pantalones-mujer/hombre
+              productos con "vestido" → vestidos-mujer
+
+B) Cambios en el código:
+
+   src/components/navigation/CategoryNav.tsx
+   └─ Filtro cambiado de "c.level === 1" a "!c.parent_id"
+   └─ Solo muestra categorías principales (sin parent_id)
+   └─ Función cleanCategoryName() elimina sufijos de género
+   
+   src/pages/[gender]/[category]/index.astro
+   └─ Query cambiado de usar tabla product_categories a category_id directo
+   └─ Incluye productos de subcategorías: .in('category_id', categoryIds)
+   
+   src/pages/[gender]/[category]/[subcategory]/index.astro
+   └─ Query simplificado a .eq('category_id', subcategory.id)
+
+C) Script de verificación:
+
+   check-categories.js
+   └─ Script Node.js para inspeccionar estructura de categorías
+   └─ Muestra level, parent_id, gender_id de cada categoría
+   └─ Útil para debugging
+
+ESTRUCTURA RESULTANTE:
+Mujer/Hombre
+├── Rebajas (slug: rebajas)
+├── Novedades (slug: novedades)
+├── Ropa (CATEGORÍA PRINCIPAL - expandible)
+│   ├── Camisetas (subcategoría nivel 2)
+│   ├── Camisas (subcategoría nivel 2)
+│   ├── Vestidos (subcategoría nivel 2 - solo mujer)
+│   ├── Pantalones (subcategoría nivel 2)
+│   ├── Jeans (subcategoría nivel 2)
+│   ├── Faldas (subcategoría nivel 2 - solo mujer)
+│   ├── Sudaderas (subcategoría nivel 2)
+│   ├── Chaquetas (subcategoría nivel 2)
+│   ├── Abrigos (subcategoría nivel 2)
+│   └── Polos (subcategoría nivel 2 - solo hombre)
+├── Accesorios
+├── Zapatos
+└── Sport
+
+
+================================================================================
+2. SISTEMA DE CARRITO PERSISTENTE
+================================================================================
+
+PROBLEMA IDENTIFICADO:
+- El carrito se guardaba en localStorage del navegador
+- Cuando dos usuarios diferentes usaban el mismo navegador, compartían carrito
+- Problema de privacidad y UX grave
+- El carrito se perdía al limpiar el navegador
+
+SOLUCIÓN IMPLEMENTADA:
+
+A) Migración SQL: migrations/003_persistent_cart.sql
+
+   TABLAS CREADAS:
+   
+   shopping_carts
+   ├── id (UUID, PRIMARY KEY)
+   ├── user_id (UUID, UNIQUE, FK → auth.users)
+   ├── created_at (TIMESTAMP)
+   └── updated_at (TIMESTAMP)
+   
+   Relación: 1 usuario = 1 carrito
+   
+   cart_items
+   ├── id (UUID, PRIMARY KEY)
+   ├── cart_id (UUID, FK → shopping_carts)
+   ├── product_id (UUID, FK → products)
+   ├── size (TEXT)
+   ├── quantity (INTEGER, CHECK > 0)
+   ├── created_at (TIMESTAMP)
+   └── updated_at (TIMESTAMP)
+   
+   UNIQUE(cart_id, product_id, size)
+   → Un producto+talla solo puede estar una vez en el carrito
+
+   FUNCIONES SQL CREADAS:
+   
+   1. get_or_create_cart(p_user_id UUID) → UUID
+      └─ Obtiene el carrito del usuario o lo crea si no existe
+      
+   2. add_to_cart(p_user_id, p_product_id, p_size, p_quantity) → JSON
+      └─ Añade producto al carrito o incrementa cantidad
+      └─ Maneja duplicados automáticamente
+      
+   3. update_cart_item_quantity(p_user_id, p_product_id, p_size, p_quantity) → JSON
+      └─ Actualiza cantidad de un item
+      └─ Si quantity = 0, elimina el item
+      
+   4. remove_from_cart(p_user_id, p_product_id, p_size) → JSON
+      └─ Elimina un item específico del carrito
+      
+   5. clear_cart(p_user_id) → JSON
+      └─ Vacía completamente el carrito
+      
+   6. get_cart_with_products(p_user_id) → TABLE
+      └─ Obtiene todos los items con información completa de productos
+      └─ JOIN con tabla products para traer nombre, precio, imagen, etc.
+
+   ROW LEVEL SECURITY (RLS):
+   └─ Policies creadas para que cada usuario solo vea su propio carrito
+   └─ "Users can view own cart"
+   └─ "Users can insert own cart items"
+   └─ "Users can update own cart items"
+   └─ "Users can delete own cart items"
+
+B) Script de corrección adicional:
+
+   fix-cart-functions.sql
+   └─ Recrea las funciones con SECURITY DEFINER correcto
+   └─ Soluciona problemas de permisos
+
+C) Scripts de testing:
+
+   debug-cart.js
+   └─ Script para ejecutar en la consola del navegador
+   └─ Verifica estado de localStorage
+   └─ Verifica sesión de Supabase
+   └─ Muestra claves relacionadas con el carrito
+   
+   test-cart-isolation.js
+   └─ Script Node.js para verificar aislamiento de carritos
+   └─ Lista todos los carritos en la BD
+   └─ Verifica políticas RLS
+   └─ Comprueba que las funciones funcionan
+
+DOCUMENTACIÓN:
+   CARRITO_PERSISTENTE.md
+   └─ Guía completa de implementación
+   └─ Arquitectura del sistema
+   └─ Instrucciones de migración
+   └─ Troubleshooting
+
+FLUJO RESULTANTE:
+1. Usuario inicia sesión → se crea/obtiene su carrito en BD
+2. Usuario añade producto → se guarda en cart_items con su cart_id
+3. Usuario cierra sesión → carrito permanece en BD
+4. Usuario vuelve → recupera su carrito intacto
+5. Otro usuario en el mismo navegador → tiene su propio carrito separado
+
+
+================================================================================
+3. SISTEMA DE RESERVA DE STOCK (ANTI-OVERSELLING)
+================================================================================
+
+PROBLEMA IDENTIFICADO:
+- En alta concurrencia, múltiples usuarios podían comprar el mismo producto
+- Race conditions causaban overselling (vender más stock del disponible)
+- Necesidad de reservar stock temporalmente durante el checkout
+
+SOLUCIÓN IMPLEMENTADA:
+
+A) Migración SQL: migrations/002_stock_reservations.sql
+
+   TABLA CREADA:
+   
+   stock_reservations
+   ├── id (UUID, PRIMARY KEY)
+   ├── product_id (UUID, FK → products)
+   ├── quantity (INTEGER, CHECK > 0)
+   ├── session_id (TEXT) → ID de sesión Stripe o temporal
+   ├── user_id (UUID, FK → auth.users, nullable)
+   ├── reserved_at (TIMESTAMP)
+   ├── expires_at (TIMESTAMP) → TTL de 15 minutos
+   ├── status (TEXT) → active, completed, expired, cancelled
+   ├── created_at (TIMESTAMP)
+   └── updated_at (TIMESTAMP)
+   
+   ÍNDICES:
+   - idx_reservations_product (product_id)
+   - idx_reservations_session (session_id)
+   - idx_reservations_status (status)
+   - idx_reservations_expires (expires_at, status) WHERE status = 'active'
+
+   FUNCIONES SQL CREADAS:
+   
+   1. reserve_stock(p_product_id, p_quantity, p_session_id, p_user_id) → JSON
+      └─ Reserva stock de forma atómica con FOR UPDATE lock
+      └─ Calcula stock efectivo = stock real - stock reservado
+      └─ Valida disponibilidad antes de reservar
+      └─ TTL automático de 15 minutos
+      └─ Previene race conditions
+      
+   2. confirm_reservation(p_session_id, p_order_id) → JSON
+      └─ Marca reservas como 'completed' tras pago exitoso
+      └─ Se ejecuta desde webhook de Stripe
+      
+   3. cancel_reservation(p_session_id, p_reason) → JSON
+      └─ Cancela reservas (checkout cancelado o timeout)
+      └─ Libera el stock reservado
+      
+   4. cleanup_expired_reservations() → JSON
+      └─ Marca reservas expiradas (expires_at < NOW())
+      └─ Debe ejecutarse periódicamente vía CRON
+      
+   5. get_effective_stock(p_product_id) → INTEGER
+      └─ Calcula stock disponible real
+      └─ Formula: stock_real - SUM(reservas_activas)
+
+   VISTA CREADA:
+   
+   active_reservations_summary
+   └─ Resumen de reservas activas por producto
+   └─ Muestra: stock real, stock reservado, stock efectivo
+   └─ Útil para monitoreo en admin panel
+
+B) Configuración de CRON:
+
+   setup-cron-reservations.sql
+   └─ Script para configurar pg_cron en Supabase
+   └─ Job: cleanup-expired-stock-reservations
+   └─ Frecuencia: Cada 5 minutos (*/5 * * * *)
+   └─ Alternativa: Endpoint API + servicio externo (Vercel Cron, GitHub Actions)
+   
+   src/pages/api/cron/cleanup-reservations.ts
+   └─ Endpoint HTTP para limpieza de reservas
+   └─ Requiere Bearer token (CRON_SECRET en .env)
+   └─ Puede ser llamado desde servicios externos
+   └─ Retorna métricas: reservas expiradas, reservas activas, duración
+
+DOCUMENTACIÓN:
+   SISTEMA_RESERVA_STOCK.md
+   └─ Guía completa de implementación
+   └─ Arquitectura del sistema
+   └─ Integración con Stripe Checkout
+   └─ Configuración de CRON jobs
+   └─ Troubleshooting
+
+FLUJO RESULTANTE:
+1. Usuario inicia checkout
+   → reserve_stock() bloquea fila con FOR UPDATE
+   → Crea reserva con expires_at = NOW() + 15min
+   
+2. Usuario completa pago en Stripe (< 15 min)
+   → Webhook recibe checkout.session.completed
+   → confirm_reservation() marca como 'completed'
+   → Stock se decrementa en la tabla products
+   
+3. Usuario abandona checkout
+   → Tras 15 minutos: cleanup_expired_reservations()
+   → Reserva se marca como 'expired'
+   → Stock vuelve a estar disponible
+   
+4. get_effective_stock() siempre retorna stock disponible real
+
+
+================================================================================
+4. SISTEMA DE FACTURAS AUTOMÁTICAS
+================================================================================
+
+PROBLEMA IDENTIFICADO:
+- No había sistema de facturación
+- Necesidad de enviar facturas por email tras compras exitosas
+- Cumplimiento legal de emitir facturas
+
+SOLUCIÓN IMPLEMENTADA:
+
+A) Librería de generación de PDF:
+
+   src/lib/invoice-pdf.ts
+   └─ Usa jsPDF para generar PDFs profesionales
+   └─ Función: generateInvoicePDF(data: InvoiceData) → string (base64)
+   └─ Diseño: Logo, datos del cliente, tabla de productos, totales
+   └─ Formato: A4, fuentes profesionales, colores corporativos
+
+B) Cliente de email (Brevo/Sendinblue):
+
+   src/lib/brevo.ts
+   └─ Integración con API de Brevo
+   └─ Función: sendEmail() para emails genéricos
+   └─ Función: sendInvoiceEmail() para facturas con PDF adjunto
+   └─ Template HTML responsive para emails
+   └─ Información del pedido incluida en el cuerpo
+
+C) Endpoints API:
+
+   src/pages/api/orders/[id]/invoice.ts
+   └─ GET /api/orders/{id}/invoice
+   └─ Genera y descarga factura en PDF
+   └─ Obtiene datos del pedido + items
+   └─ Usa generateInvoicePDF()
+   └─ Retorna PDF como archivo descargable
+   
+   src/pages/api/send-invoice.ts
+   └─ POST /api/send-invoice
+   └─ Envía factura por email manualmente
+   └─ Para testing o reenvíos
+
+D) Integración con Webhook de Stripe:
+
+   Modificado: src/pages/api/webhooks/stripe.ts
+   └─ Evento: checkout.session.completed
+   └─ Tras crear el pedido en BD:
+      1. Obtiene datos del pedido completo
+      2. Genera PDF con generateInvoicePDF()
+      3. Envía email con sendInvoiceEmail()
+   └─ Proceso completamente automático
+
+E) Página de gestión de pedidos:
+
+   src/pages/perfil/mis-pedidos.astro
+   └─ Lista todos los pedidos del usuario
+   └─ Badges de estado: Pendiente, Confirmado, Enviado, Entregado, etc.
+   └─ Botones de acción:
+      • Ver detalles del pedido
+      • Descargar factura (llama a /api/orders/{id}/invoice)
+      • Cancelar pedido (si está en estado cancelable)
+   └─ Información de seguimiento si existe
+   └─ Dirección de envío completa
+   └─ Resumen de precios: subtotal, envío, IVA, total
+
+F) Endpoint de cancelación:
+
+   src/pages/api/orders/[id]/cancel.ts
+   └─ POST /api/orders/{id}/cancel
+   └─ Cambia estado del pedido a 'cancelled'
+   └─ Solo permite cancelar pedidos en estado: confirmed, processing, pending
+   └─ TODO: Restaurar stock de productos
+   └─ TODO: Procesar reembolso en Stripe
+
+G) Scripts de testing:
+
+   test-brevo-config.js
+   └─ Verifica configuración de Brevo
+   └─ Envía email de prueba
+   └─ Valida API_KEY y EMAIL_FROM
+   
+   test-webhook-complete.js
+   └─ Crea checkout session de prueba en Stripe
+   └─ Simula flujo completo de compra
+   └─ Genera URL de pago de prueba
+   └─ Instrucciones para testing con tarjeta de prueba
+
+VARIABLES DE ENTORNO REQUERIDAS:
+   BREVO_API_KEY=xkeysib-xxxxx (de Brevo dashboard)
+   EMAIL_FROM=tu-email@dominio.com (verificado en Brevo)
+
+FLUJO RESULTANTE:
+1. Usuario completa pago → Stripe webhook activado
+2. Webhook crea pedido en BD → obtiene order_id
+3. Sistema genera PDF de factura → base64
+4. Sistema envía email con Brevo → factura adjunta
+5. Usuario recibe email → con PDF descargable
+6. Usuario puede descargar desde /perfil/mis-pedidos
+
+
+================================================================================
+5. GESTIÓN DE PEDIDOS
+================================================================================
+
+NUEVAS FUNCIONALIDADES:
+
+A) Página de pedidos del usuario:
+   src/pages/perfil/mis-pedidos.astro
+   
+   CARACTERÍSTICAS:
+   - Lista cronológica de todos los pedidos
+   - Protegida: requiere autenticación
+   - Redirect a login si no autenticado
+   - Query compleja con JOIN: orders + order_items
+   - Ordenada por fecha descendente (más recientes primero)
+   
+   INFORMACIÓN MOSTRADA POR PEDIDO:
+   - Número de pedido
+   - Fecha de realización
+   - Estado con badge de color (según status)
+   - Total del pedido
+   - Lista de productos con imágenes
+   - Dirección de envío completa
+   - Desglose de precios (subtotal, envío, IVA, total)
+   - Número de seguimiento (si existe)
+   
+   ACCIONES DISPONIBLES:
+   - Ver detalles completos
+   - Descargar factura en PDF
+   - Cancelar pedido (si está en estado permitido)
+   
+   ESTADOS DE PEDIDO CON COLORES:
+   - pending: amarillo
+   - confirmed: azul
+   - processing: morado
+   - shipped: índigo
+   - delivered: verde
+   - cancelled: rojo
+   - refunded: gris
+
+B) Funcionalidad de cancelación:
+   
+   Validaciones:
+   - Solo pedidos en estado: confirmed, processing, pending
+   - Pedidos enviados (shipped) o entregados (delivered) NO se pueden cancelar
+   - Confirmación del usuario requerida
+   
+   Proceso:
+   1. Usuario hace clic en "Cancelar pedido"
+   2. Confirmación con alert JavaScript
+   3. POST a /api/orders/{id}/cancel
+   4. Cambio de status en BD a 'cancelled'
+   5. Recarga de página para mostrar nuevo estado
+   
+   Pendiente por implementar:
+   - Restaurar stock de productos cancelados
+   - Procesar reembolso automático en Stripe
+
+C) Funcionalidad de descarga de facturas:
+   
+   Proceso:
+   1. Usuario hace clic en "Descargar factura"
+   2. Botón muestra spinner "Descargando..."
+   3. Fetch a /api/orders/{id}/invoice
+   4. Conversión de blob a URL temporal
+   5. Descarga automática con nombre: Factura-{orderNumber}.pdf
+   6. Limpieza de URL temporal
+
+
+================================================================================
+6. SINCRONIZACIÓN DE SESIÓN
+================================================================================
+
+PROBLEMA IDENTIFICADO:
+- Estado de autenticación desincronizado entre componentes
+- Carrito no se actualizaba correctamente al cambiar de usuario
+- Race conditions en inicialización de stores
+
+SOLUCIÓN IMPLEMENTADA:
+
+A) SessionStore centralizado:
+
+   src/stores/session.ts
+   
+   STORES CREADOS:
+   - sessionState: Estado completo { user, session, isLoading, error }
+   - currentUser: Store derivado → solo el usuario
+   - isAuthenticated: Store derivado → booleano si hay sesión
+   - currentUserId: Store derivado → ID del usuario o null
+   
+   FUNCIONES:
+   - initializeSession(): Inicializa y sincroniza con Supabase
+   - refreshSession(): Re-inicializa la sesión
+   - getSessionSnapshot(): Retorna estado actual para debugging
+   
+   CARACTERÍSTICAS:
+   - Una única fuente de verdad para autenticación
+   - Listener de cambios: supabase.auth.onAuthStateChange()
+   - Limpieza automática de localStorage al hacer logout
+   - Manejo de eventos: SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, etc.
+
+B) Script de inicialización:
+
+   src/lib/auth-sync.ts
+   
+   PROPÓSITO:
+   - Se ejecuta ANTES de la hidratación de componentes
+   - Inicializa SessionStore primero
+   - Luego inicializa CartStore
+   - Garantiza orden correcto de carga
+   
+   TIMING CRÍTICO:
+   1. auth-sync.ts se ejecuta
+   2. SessionStore se inicializa
+   3. Espera 50ms (permite registro de suscripciones)
+   4. CartStore se inicializa
+   5. Componentes React se hidratan
+   
+   IMPORTADO EN:
+   src/layouts/PublicLayout.astro
+   └─ <script src="@lib/auth-sync.ts"></script>
+
+C) Cliente de login mejorado:
+
+   src/scripts/login-client.ts
+   
+   MEJORAS:
+   - Lógica de login separada en script empaquetado
+   - Listener de auth state changes
+   - Copia de tokens a cookies para SSR
+   - Verificación de claves en localStorage
+   - Logging detallado para debugging
+
+D) Script de diagnóstico:
+
+   diagnose-auth.js
+   └─ Verifica usuarios en auth.users o profiles
+   └─ Lista usuarios registrados con ID y email
+   └─ Instrucciones para verificar tokens en navegador
+
+
+================================================================================
+7. SCRIPTS DE TESTING Y DIAGNÓSTICO
+================================================================================
+
+A) Categorías:
+   check-categories.js
+   └─ Lista todas las categorías con level, parent_id, gender
+   └─ Útil para verificar jerarquía después de migración
+
+B) Carrito:
+   debug-cart.js
+   └─ Para ejecutar en consola del navegador
+   └─ Verifica estado de localStorage y sesión
+   
+   test-cart-isolation.js
+   └─ Script Node.js
+   └─ Verifica aislamiento entre carritos de usuarios
+   └─ Lista todos los carritos en BD
+   └─ Comprueba funciones RPC
+
+C) Autenticación:
+   diagnose-auth.js
+   └─ Verifica usuarios registrados
+   └─ Muestra IDs y emails
+   └─ Instrucciones para debugging de tokens
+
+D) Webhooks y facturas:
+   test-brevo-config.js
+   └─ Prueba configuración de Brevo
+   └─ Envía email de prueba
+   └─ Valida API_KEY y EMAIL_FROM
+   
+   test-webhook-complete.js
+   └─ Crea checkout session de prueba en Stripe
+   └─ Genera URL de pago de prueba
+   └─ Simula flujo completo de compra
+   └─ Instrucciones para testing con Stripe CLI
+
+
+================================================================================
+8. ARCHIVOS MODIFICADOS Y NUEVOS
+================================================================================
+
+NUEVOS ARCHIVOS (27):
+  ✅ CARRITO_PERSISTENTE.md
+  ✅ SISTEMA_RESERVA_STOCK.md
+  ✅ check-categories.js
+  ✅ debug-cart.js
+  ✅ diagnose-auth.js
+  ✅ fix-cart-functions.sql
+  ✅ fix-categories-hierarchy.sql
+  ✅ fix-categories-reorganize-clean.sql
+  ✅ fix-categories-sin-delete.sql
+  ✅ migrations/002_stock_reservations.sql
+  ✅ migrations/003_persistent_cart.sql
+  ✅ reasignar-productos-categorias.sql
+  ✅ setup-cron-reservations.sql
+  ✅ src/components/islands/CartDebugPanel.tsx
+  ✅ src/lib/auth-sync.ts
+  ✅ src/lib/brevo.ts
+  ✅ src/lib/invoice-pdf.ts
+  ✅ src/pages/api/cron/cleanup-reservations.ts
+  ✅ src/pages/api/orders/[id]/cancel.ts
+  ✅ src/pages/api/orders/[id]/invoice.ts
+  ✅ src/pages/api/send-invoice.ts
+  ✅ src/pages/perfil/mis-pedidos.astro
+  ✅ src/scripts/login-client.ts
+  ✅ src/stores/session.ts
+  ✅ test-brevo-config.js
+  ✅ test-cart-isolation.js
+  ✅ test-webhook-complete.js
+
+ARCHIVOS MODIFICADOS (20+):
+  - src/components/navigation/CategoryNav.tsx
+  - src/pages/[gender]/[category]/index.astro
+  - src/pages/[gender]/[category]/[subcategory]/index.astro
+  - src/pages/productos/index.astro
+  - src/pages/api/webhooks/stripe.ts
+  - src/layouts/PublicLayout.astro
+  - src/stores/cart.ts
+  - src/pages/auth/login.astro
+  - Y otros archivos relacionados con autenticación y carrito
+
+
+================================================================================
+INSTRUCCIONES DE IMPLEMENTACIÓN
+================================================================================
+
+1. CONFIGURACIÓN DE BASE DE DATOS (SUPABASE):
+   
+   a) Ejecutar migraciones en orden:
+      1. migrations/002_stock_reservations.sql
+      2. migrations/003_persistent_cart.sql
+      3. fix-cart-functions.sql (si hay problemas de permisos)
+   
+   b) Ejecutar reorganización de categorías:
+      1. fix-categories-sin-delete.sql
+      2. reasignar-productos-categorias.sql ⚠️ CRÍTICO
+   
+   c) Configurar CRON para reservas:
+      - Opción 1: setup-cron-reservations.sql (si tienes pg_cron)
+      - Opción 2: Configurar servicio externo (Vercel Cron, etc.)
+
+2. VARIABLES DE ENTORNO (.env):
+   
+   # Brevo (email transaccional)
+   BREVO_API_KEY=xkeysib-xxxxxxxxxxxxx
+   EMAIL_FROM=tu-email@dominio.com
+   
+   # CRON (opcional, para endpoint HTTP)
+   CRON_SECRET=token-aleatorio-seguro-64-caracteres
+
+3. INSTALACIÓN DE DEPENDENCIAS:
+   
+   npm install @getbrevo/brevo jspdf
+
+4. TESTING:
+   
+   # Verificar Brevo
+   node test-brevo-config.js
+   
+   # Verificar carrito
+   node test-cart-isolation.js
+   
+   # Verificar categorías
+   node check-categories.js
+   
+   # Testing de webhook completo
+   node test-webhook-complete.js
+
+5. STRIPE WEBHOOK (DESARROLLO):
+   
+   stripe listen --forward-to localhost:4321/api/webhooks/stripe
+   
+   Actualizar STRIPE_WEBHOOK_SECRET en .env con el webhook secret mostrado
+
+6. VERIFICACIÓN POST-IMPLEMENTACIÓN:
+   
+   ☑ Categorías se muestran correctamente en menú lateral
+   ☑ Productos aparecen en páginas de categorías
+   ☑ Carrito se mantiene al cambiar de usuario
+   ☑ Reservas de stock funcionan durante checkout
+   ☑ Facturas se envían automáticamente por email
+   ☑ Página "Mis Pedidos" muestra pedidos correctamente
+
+
+================================================================================
+PRÓXIMOS PASOS RECOMENDADOS
+================================================================================
+
+1. ⚠️ CRÍTICO: Ejecutar reasignar-productos-categorias.sql en Supabase
+   → Sin esto, las categorías estarán vacías
+
+2. Configurar Brevo:
+   → Crear cuenta en brevo.com
+   → Verificar dominio de email
+   → Obtener API key
+   → Añadir a .env
+
+3. Testing completo:
+   → Probar flujo de compra end-to-end
+   → Verificar recepción de facturas
+   → Comprobar aislamiento de carritos
+   → Validar reservas de stock
+
+4. Configurar CRON:
+   → Para limpieza de reservas expiradas
+   → Cada 5 minutos
+
+5. Monitoreo:
+   → Usar active_reservations_summary para ver stock reservado
+   → Revisar logs de webhooks de Stripe
+   → Verificar entregas de email en Brevo dashboard
+
+6. Mejoras futuras:
+   → Implementar restauración de stock en cancelaciones
+   → Añadir reembolsos automáticos con Stripe
+   → Panel de admin para gestionar reservas
+   → Notificaciones de envío por email
+   → Tracking de paquetes
+
+
+================================================================================
+CONTACTO Y SOPORTE
+================================================================================
+
+Documentación adicional:
+- CARRITO_PERSISTENTE.md
+- SISTEMA_RESERVA_STOCK.md
+- VERIFICAR-STOCK.md
+- STRIPE_RESUMEN.md
+
+Scripts de debugging disponibles en raíz del proyecto.
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================

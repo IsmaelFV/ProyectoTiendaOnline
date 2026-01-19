@@ -2,8 +2,9 @@ export function formatPrice(price: number | string): string {
   // Convertir a número si es string
   const numPrice = typeof price === 'string' ? parseFloat(price) : price;
   
-  // Si el número es muy grande (>1000), probablemente está en centavos
-  const euros = numPrice > 1000 ? numPrice / 100 : numPrice;
+  // Siempre dividir por 100 para convertir de centavos a euros
+  // (asumimos que todos los precios vienen en centavos)
+  const euros = numPrice / 100;
   
   return new Intl.NumberFormat('es-ES', {
     style: 'currency',

@@ -1,0 +1,234 @@
+/**
+ * Componente para aplicar códigos de descuento en el carrito
+ * Valida el código contra la API y actualiza el total
+ */
+
+<div class="bg-gray-50 rounded-lg p-4 mt-4">
+  <h3 class="text-sm font-semibold text-gray-900 mb-3">¿Tienes un código de descuento?</h3>
+  
+  <div class="flex gap-2">
+    <input
+      type="text"
+      id="discount-code-input"
+      placeholder="Ingresa tu código"
+      class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent uppercase"
+      maxlength="50"
+    />
+    <button
+      id="apply-discount-btn"
+      type="button"
+      class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium transition-colors"
+    >
+      Aplicar
+    </button>
+  </div>
+
+  <!-- Mensaje de resultado -->
+  <div id="discount-message" class="hidden mt-3"></div>
+
+  <!-- Descuento aplicado -->
+  <div id="discount-applied" class="hidden mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center">
+        <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+          <p class="text-sm font-medium text-green-900" id="discount-code-display"></p>
+          <p class="text-xs text-green-700" id="discount-description"></p>
+        </div>
+      </div>
+      <button
+        id="remove-discount-btn"
+        type="button"
+        class="text-red-600 hover:text-red-800 text-sm font-medium"
+      >
+        Quitar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { createClient } from '@supabase/supabase-js';
+
+  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+  let appliedDiscount: any = null;
+
+  const input = document.getElementById('discount-code-input') as HTMLInputElement;
+  const applyBtn = document.getElementById('apply-discount-btn') as HTMLButtonElement;
+  const removeBtn = document.getElementById('remove-discount-btn') as HTMLButtonElement;
+  const message = document.getElementById('discount-message') as HTMLDivElement;
+  const appliedBox = document.getElementById('discount-applied') as HTMLDivElement;
+  const codeDisplay = document.getElementById('discount-code-display') as HTMLParagraphElement;
+  const descDisplay = document.getElementById('discount-description') as HTMLParagraphElement;
+
+  // Función para mostrar mensaje
+  function showMessage(text: string, type: 'success' | 'error') {
+    message.textContent = text;
+    message.className = `mt-3 p-2 rounded-md text-sm ${
+      type === 'success' 
+        ? 'bg-green-50 text-green-800 border border-green-200' 
+        : 'bg-red-50 text-red-800 border border-red-200'
+    }`;
+    message.classList.remove('hidden');
+    
+    setTimeout(() => {
+      message.classList.add('hidden');
+    }, 5000);
+  }
+
+  // Aplicar descuento
+  applyBtn.addEventListener('click', async () => {
+    const code = input.value.trim().toUpperCase();
+    
+    if (!code) {
+      showMessage('Por favor ingresa un código', 'error');
+      return;
+    }
+
+    applyBtn.disabled = true;
+    applyBtn.textContent = 'Validando...';
+
+    try {
+      // Obtener total del carrito (desde el store o DOM)
+      const cartTotalElement = document.getElementById('cart-subtotal');
+      const cartTotal = cartTotalElement 
+        ? parseFloat(cartTotalElement.textContent?.replace('€', '').replace(',', '.') || '0')
+        : 0;
+
+      if (cartTotal === 0) {
+        showMessage('El carrito está vacío', 'error');
+        applyBtn.disabled = false;
+        applyBtn.textContent = 'Aplicar';
+        return;
+      }
+
+      // Validar código con Supabase
+      const { data, error } = await supabase.rpc('validate_discount_code', {
+        p_code: code,
+        p_cart_total: cartTotal
+      });
+
+      if (error) {
+        console.error('Error validating discount:', error);
+        showMessage('Error al validar el código', 'error');
+        applyBtn.disabled = false;
+        applyBtn.textContent = 'Aplicar';
+        return;
+      }
+
+      const result = data as { valid: boolean; message: string; [key: string]: any };
+
+      if (!result.valid) {
+        showMessage(result.message, 'error');
+        applyBtn.disabled = false;
+        applyBtn.textContent = 'Aplicar';
+        return;
+      }
+
+      // Guardar descuento aplicado
+      appliedDiscount = result;
+      
+      // Mostrar descuento aplicado
+      codeDisplay.textContent = `Código: ${result.code}`;
+      descDisplay.textContent = result.message;
+      appliedBox.classList.remove('hidden');
+      
+      // Limpiar input
+      input.value = '';
+      input.disabled = true;
+      applyBtn.disabled = true;
+
+      // Actualizar total en el DOM
+      updateCartTotal(result.final_total, result.discount_amount);
+
+      // Guardar en sessionStorage para usar en checkout
+      sessionStorage.setItem('appliedDiscount', JSON.stringify(result));
+
+      // Disparar evento personalizado
+      window.dispatchEvent(new CustomEvent('discountApplied', { detail: result }));
+
+    } catch (err) {
+      console.error('Error:', err);
+      showMessage('Error inesperado', 'error');
+    } finally {
+      applyBtn.disabled = false;
+      applyBtn.textContent = 'Aplicar';
+    }
+  });
+
+  // Quitar descuento
+  removeBtn.addEventListener('click', () => {
+    appliedDiscount = null;
+    appliedBox.classList.add('hidden');
+    input.disabled = false;
+    applyBtn.disabled = false;
+    
+    // Restaurar total original
+    const cartTotalElement = document.getElementById('cart-subtotal');
+    const originalTotal = cartTotalElement 
+      ? parseFloat(cartTotalElement.textContent?.replace('€', '').replace(',', '.') || '0')
+      : 0;
+    
+    updateCartTotal(originalTotal, 0);
+
+    // Limpiar sessionStorage
+    sessionStorage.removeItem('appliedDiscount');
+
+    // Disparar evento
+    window.dispatchEvent(new CustomEvent('discountRemoved'));
+
+    showMessage('Descuento eliminado', 'success');
+  });
+
+  // Actualizar total en el DOM
+  function updateCartTotal(finalTotal: number, discountAmount: number) {
+    const totalElement = document.getElementById('cart-total');
+    const discountRowElement = document.getElementById('discount-row');
+    
+    if (totalElement) {
+      totalElement.textContent = `${finalTotal.toFixed(2)}€`;
+    }
+
+    // Mostrar/ocultar fila de descuento
+    if (discountRowElement) {
+      if (discountAmount > 0) {
+        discountRowElement.classList.remove('hidden');
+        const discountAmountElement = document.getElementById('discount-amount');
+        if (discountAmountElement) {
+          discountAmountElement.textContent = `-${discountAmount.toFixed(2)}€`;
+        }
+      } else {
+        discountRowElement.classList.add('hidden');
+      }
+    }
+  }
+
+  // Recuperar descuento de sessionStorage al cargar
+  window.addEventListener('DOMContentLoaded', () => {
+    const saved = sessionStorage.getItem('appliedDiscount');
+    if (saved) {
+      try {
+        const result = JSON.parse(saved);
+        appliedDiscount = result;
+        codeDisplay.textContent = `Código: ${result.code}`;
+        descDisplay.textContent = result.message;
+        appliedBox.classList.remove('hidden');
+        input.disabled = true;
+        applyBtn.disabled = true;
+        updateCartTotal(result.final_total, result.discount_amount);
+      } catch (e) {
+        sessionStorage.removeItem('appliedDiscount');
+      }
+    }
+  });
+
+  // Enviar código al checkout
+  export function getAppliedDiscount() {
+    return appliedDiscount;
+  }
+</script>
