@@ -33,6 +33,7 @@ const { data: products, error } = await supabase
     category:categories!products_category_id_fkey(name, slug)
   `)
   .eq('gender_id', gender.id)
+  // .eq('is_active', true) // TEMPORALMENTE DESACTIVADO PARA DEBUG
   .order('featured', { ascending: false })
   .order('is_new', { ascending: false })
   .order('created_at', { ascending: false })

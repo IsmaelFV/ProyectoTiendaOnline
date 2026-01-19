@@ -13,9 +13,8 @@ if (currentPath.startsWith('/mujer')) {
   currentGender = 'hombre';
 }
 
-// Verificar si el usuario está autenticado
-const accessToken = Astro.cookies.get('sb-access-token')?.value;
-const isAuthenticated = !!accessToken;
+// IMPORTANTE: el estado de auth real vive en localStorage (Supabase cliente).
+// No dependas de cookies sb-* porque en dev y en el cliente no siempre se setean.
 ---
 
 <header class="bg-white border-b border-brand-slate/20 sticky top-0 z-50 shadow-sm">
@@ -34,40 +33,39 @@ const isAuthenticated = !!accessToken;
 
       {/* Carrito + Usuario + Menú mobile */}
       <div class="flex items-center space-x-4">
-        {/* Usuario */}
-        {isAuthenticated ? (
-          <div class="relative">
-            <button 
-              id="user-menu-btn"
-              class="flex items-center space-x-2 text-brand-charcoal hover:text-brand-navy transition-colors"
-              aria-label="Menú de usuario"
-            >
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </button>
-            
-            {/* Menú desplegable */}
-            <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-              <a href="/perfil" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                Mi Perfil
-              </a>
-              <a href="/perfil#pedidos" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                Mis Pedidos
-              </a>
-              <hr class="my-1" />
-              <button id="logout-btn-header" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
-                Cerrar Sesión
-              </button>
-            </div>
-          </div>
-        ) : (
-          <a href="/auth/login" class="flex items-center space-x-2 text-brand-charcoal hover:text-brand-navy transition-colors">
+        {/* Usuario (guest) */}
+        <a id="user-guest" href="/auth/login" class="flex items-center space-x-2 text-brand-charcoal hover:text-brand-navy transition-colors">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </a>
+
+        {/* Usuario (auth) */}
+        <div id="user-auth" class="hidden relative">
+          <button 
+            id="user-menu-btn"
+            class="flex items-center space-x-2 text-brand-charcoal hover:text-brand-navy transition-colors"
+            aria-label="Menú de usuario"
+          >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-          </a>
-        )}
+          </button>
+          
+          {/* Menú desplegable */}
+          <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+            <a href="/perfil" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+              Mi Perfil
+            </a>
+            <a href="/perfil/mis-pedidos" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+              Mis Pedidos
+            </a>
+            <hr class="my-1" />
+            <button id="logout-btn-header" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
         
         <CartIcon client:load />
         
@@ -144,9 +142,15 @@ const isAuthenticated = !!accessToken;
     userMenu?.classList.toggle('hidden');
   });
 
-  // Cerrar menú al hacer clic fuera
+  // Cerrar menú al hacer clic fuera (pero NO en los enlaces internos)
   document.addEventListener('click', (e) => {
-    if (userMenu && !userMenu.contains(e.target as Node) && !userMenuBtn?.contains(e.target as Node)) {
+    const target = e.target as HTMLElement;
+    // Si se hace clic en un enlace dentro del menú, dejar que navegue
+    if (target.tagName === 'A' && userMenu?.contains(target)) {
+      return;
+    }
+    // Si se hace clic fuera del menú y del botón, cerrar
+    if (userMenu && !userMenu.contains(target) && !userMenuBtn?.contains(target)) {
       userMenu.classList.add('hidden');
     }
   });
@@ -159,17 +163,78 @@ const isAuthenticated = !!accessToken;
   });
 
   // Cerrar sesión desde el header
-  document.getElementById('logout-btn-header')?.addEventListener('click', async () => {
+  (async () => {
     try {
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
+      const { supabase } = await import('/src/lib/supabase');
+      const guestEl = document.getElementById('user-guest');
+      const authEl = document.getElementById('user-auth');
+
+      const toggle = (hasUser: boolean) => {
+        if (!guestEl || !authEl) return;
+        if (hasUser) {
+          guestEl.classList.add('hidden');
+          authEl.classList.remove('hidden');
+        } else {
+          authEl.classList.add('hidden');
+          guestEl.classList.remove('hidden');
+        }
+      };
+
+      const clearAuthArtifacts = () => {
+        try {
+          // Borrar cookies manuales
+          const expire = 'Expires=Thu, 01 Jan 1970 00:00:01 GMT; Path=/; SameSite=Lax';
+          document.cookie = `sb-access-token=; ${expire}`;
+          document.cookie = `sb-refresh-token=; ${expire}`;
+          // Borrar claves sb-* en localStorage (incluyendo custom sb-user-*)
+          const toRemove: string[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('sb-')) toRemove.push(key);
+          }
+          toRemove.forEach((k) => localStorage.removeItem(k));
+        } catch (e) {
+          console.warn('No se pudieron limpiar claves/cookies sb-*', e);
+        }
+      };
+
+      // Logout button
+      document.getElementById('logout-btn-header')?.addEventListener('click', async () => {
+        console.log('🔓 [HEADER] Logout iniciado...');
+        try {
+          // Limpiar PRIMERO antes de signOut para evitar race conditions
+          clearAuthArtifacts();
+          console.log('🔓 [HEADER] Artefactos limpios, llamando signOut...');
+          
+          // Llamar signOut DESPUÉS de limpiar
+          await supabase.auth.signOut();
+          console.log('🔓 [HEADER] signOut completado');
+        } catch (e) {
+          console.warn('🔓 [HEADER] supabase.signOut falló (es ok, limpieza igual fue ejecutada):', e);
+        } finally {
+          // Esperar 200ms para que los eventos se procesen
+          await new Promise((r) => setTimeout(r, 200));
+          console.log('🔓 [HEADER] Redirigiendo a /');
+          window.location.href = '/';
+        }
       });
 
-      if (response.ok) {
-        window.location.href = '/';
-      }
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
+      // Estado inicial
+      const { data } = await supabase.auth.getSession();
+      toggle(!!data.session?.user);
+
+      // Escuchar cambios
+      supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          toggle(!!session?.user);
+        }
+        if (event === 'SIGNED_OUT') {
+          clearAuthArtifacts();
+          toggle(false);
+        }
+      });
+    } catch (err) {
+      console.error('Error toggling user menu:', err);
     }
-  });
+  })();
 </script>

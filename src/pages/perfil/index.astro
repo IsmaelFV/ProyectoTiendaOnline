@@ -6,13 +6,13 @@ import { supabase } from '@lib/supabase';
 const accessToken = Astro.cookies.get('sb-access-token')?.value;
 
 if (!accessToken) {
-  return Astro.redirect('/login');
+  return Astro.redirect('/auth/login');
 }
 
 const { data: { user }, error } = await supabase.auth.getUser(accessToken);
 
 if (error || !user) {
-  return Astro.redirect('/login');
+  return Astro.redirect('/auth/login');
 }
 
 // Obtener pedidos del usuario

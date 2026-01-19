@@ -62,24 +62,23 @@ if (category.level === 1) {
   subcategories = (data || []) as Category[];
 }
 
-// Obtener productos de esta categoría (usando product_categories para soporte múltiple)
-const { data: productCategoryRelations } = await supabase
-  .from('product_categories')
-  .select('product_id')
-  .eq('category_id', category.id);
+// Obtener productos de esta categoría Y sus subcategorías
+let categoryIds = [category.id];
+if (subcategories.length > 0) {
+  categoryIds = [...categoryIds, ...subcategories.map(sub => sub.id)];
+}
 
-const productIds = (productCategoryRelations || []).map(rel => rel.product_id);
-
-const { data: products } = productIds.length > 0 ? await supabase
+const { data: products } = await supabase
   .from('products')
   .select(`
     *,
     category:categories!products_category_id_fkey(name, slug)
   `)
-  .in('id', productIds)
+  .in('category_id', categoryIds)
+  .eq('gender_id', genderData.id)
   .order('featured', { ascending: false })
   .order('created_at', { ascending: false })
-  .limit(48) : { data: [] };
+  .limit(48);
 
 const productsArray = (products || []) as Product[];
 

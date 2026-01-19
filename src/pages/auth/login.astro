@@ -32,8 +32,8 @@ const errorMessage = Astro.url.searchParams.get('error');
         </div>
       )}
 
-      {/* Formulario de login */}
-      <form class="mt-8 space-y-6" action="/api/auth/login" method="POST">
+      {/* Formulario de login (cliente) */}
+      <form id="login-form" class="mt-8 space-y-6">
         <div class="rounded-md shadow-sm space-y-4">
           {/* Email */}
           <div>
@@ -154,4 +154,9 @@ const errorMessage = Astro.url.searchParams.get('error');
       </div>
     </div>
   </div>
+
+  <script type="module">
+    // Carga el script empaquetado (Vite sirve rutas absolutas desde /src)
+    import '/src/scripts/login-client.ts';
+  </script>
 </BaseLayout>

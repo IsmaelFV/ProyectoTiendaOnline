@@ -58,24 +58,18 @@ if (!subcategory) {
   return Astro.redirect('/404');
 }
 
-// Obtener productos de esta subcategoría usando product_categories
-const { data: productCategoryRelations } = await supabase
-  .from('product_categories')
-  .select('product_id')
-  .eq('category_id', subcategory.id);
-
-const productIds = (productCategoryRelations || []).map(rel => rel.product_id);
-
-const { data: products } = productIds.length > 0 ? await supabase
+// Obtener productos de esta subcategoría directamente por category_id
+const { data: products } = await supabase
   .from('products')
   .select(`
     *,
     category:categories!products_category_id_fkey(name, slug)
   `)
-  .in('id', productIds)
+  .eq('category_id', subcategory.id)
+  .eq('gender_id', genderData.id)
   .order('featured', { ascending: false })
   .order('created_at', { ascending: false })
-  .limit(48) : { data: [] };
+  .limit(48);
 
 const productsArray = (products || []) as Product[];
 

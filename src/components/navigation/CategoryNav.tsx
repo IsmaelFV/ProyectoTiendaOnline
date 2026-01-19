@@ -25,6 +25,12 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
+  // Función para limpiar el nombre de la categoría eliminando el sufijo del género
+  const cleanCategoryName = (name: string): string => {
+    const genderSuffix = currentGender === 'mujer' ? ' Mujer' : ' Hombre';
+    return name.replace(new RegExp(genderSuffix + '$', 'i'), '');
+  };
+
   useEffect(() => {
     loadCategories();
   }, [currentGender]);
@@ -32,17 +38,29 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
   const loadCategories = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/categories/${currentGender}`);
+      const response = await fetch(`/api/categories/${currentGender}?t=${Date.now()}`);
       const data = await response.json();
+      
+      console.log('🔍 DATOS DEL API:', data);
+      console.log('🔍 Total categorías recibidas:', data.categories.length);
       
       // Organizar en árbol
       const tree: CategoryTree[] = [];
-      const mainCategories = data.categories.filter((c: Category) => c.level === 1);
+      // Solo categorías principales (sin parent_id)
+      const mainCategories = data.categories.filter((c: Category) => !c.parent_id);
+      
+      console.log('🔍 Categorías PRINCIPALES (sin parent_id):', mainCategories.map((c: Category) => ({
+        name: c.name,
+        slug: c.slug,
+        level: c.level,
+        has_parent: !!c.parent_id
+      })));
       
       mainCategories.forEach((main: Category) => {
         const subcategories = data.categories.filter(
           (c: Category) => c.parent_id === main.id
         );
+        console.log(`🔍 Subcategorías de "${main.name}":`, subcategories.map((s: Category) => s.name));
         tree.push({ main, subcategories });
       });
       
@@ -123,11 +141,11 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
                 }`}
               >
                 <span className={`text-sm uppercase tracking-wide ${
-                  main.category_type === 'main' && main.display_order <= 2
+                  (main.slug.includes('rebajas') || main.slug.includes('novedades'))
                     ? 'font-semibold text-red-600'
                     : ''
                 }`}>
-                  {main.name}
+                  {cleanCategoryName(main.name)}
                 </span>
                 
                 {subcategories.length > 0 && (
@@ -163,7 +181,7 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
                               : 'text-gray-700 hover:text-brand-navy hover:bg-gray-100'
                           }`}
                         >
-                          {sub.name}
+                          {cleanCategoryName(sub.name)}
                         </a>
                       </li>
                     ))}

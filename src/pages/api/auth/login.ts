@@ -50,7 +50,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       return redirect('/auth/login?error=No se pudo crear la sesión');
     }
 
-    // Guardar tokens en cookies
+    // Guardar tokens en cookies (para el servidor)
     cookies.set('sb-access-token', data.session.access_token, {
       path: '/',
       httpOnly: true,
@@ -67,7 +67,25 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       maxAge: 60 * 60 * 24 * 30, // 30 días
     });
 
+    // CRÍTICO: También guardar en cookie NO httpOnly para que el cliente pueda establecer la sesión
+    cookies.set('sb-session-data', JSON.stringify({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      expires_at: data.session.expires_at,
+      user: {
+        id: data.session.user.id,
+        email: data.session.user.email,
+      }
+    }), {
+      path: '/',
+      httpOnly: false, // El navegador DEBE poder leerla
+      secure: import.meta.env.PROD,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
     console.log('[Login] Usuario autenticado:', email);
+    console.log('[Login] Session data guardada para cliente');
 
     // Redirigir a la página principal
     return redirect('/');

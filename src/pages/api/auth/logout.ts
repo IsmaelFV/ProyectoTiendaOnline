@@ -13,8 +13,8 @@ import type { APIRoute } from 'astro';
 import { 
   logAdminAction,
   getRequestMetadata,
-  createPublicSupabaseClient 
 } from '../../../lib/auth';
+import { supabase } from '../../../lib/supabase';
 
 export const POST: APIRoute = async ({ cookies, redirect, locals, request }) => {
   // Registrar logout si hay un admin activo
@@ -33,9 +33,12 @@ export const POST: APIRoute = async ({ cookies, redirect, locals, request }) => 
     console.info(`[Logout] Admin logged out: ${locals.admin.email}`);
   }
 
-  // Cerrar sesión en Supabase
-  const supabase = createPublicSupabaseClient();
-  await supabase.auth.signOut();
+  // Cerrar sesión en Supabase (usa el cliente con la sesión actual)
+  const { error } = await supabase.auth.signOut();
+  
+  if (error) {
+    console.error('[Logout] Error cerrando sesión:', error);
+  }
 
   // Eliminar cookies
   cookies.delete('sb-access-token', { path: '/' });

@@ -42,7 +42,8 @@ if (categorySlug) {
 // Construir query con filtros
 let query = supabase
   .from('products')
-  .select(`*, category:categories(name, slug), gender:genders(name, slug)`);
+  .select('*')
+  .eq('is_active', true); // Solo productos activos
 
 // Aplicar filtro de categoría si existe
 if (productIdsFromCategory !== null) {
@@ -81,7 +82,8 @@ else query = query.order('created_at', { ascending: false });
 // Contar total de productos para paginación
 const countQuery = supabase
   .from('products')
-  .select('id', { count: 'exact', head: true });
+  .select('id', { count: 'exact', head: true })
+  .eq('is_active', true); // Solo productos activos
 
 // Aplicar los mismos filtros al contador
 if (productIdsFromCategory !== null && productIdsFromCategory.length > 0) {
@@ -111,10 +113,33 @@ const totalPages = Math.ceil((totalProducts || 0) / itemsPerPage);
 const { data: products } = await query.range(offset, offset + itemsPerPage - 1);
 const productsArray = (products || []) as Product[];
 
-// Datos para filtros
-const { data: categories } = await supabase.from('categories').select('*').eq('level', 1).order('display_order');
-const { data: genders } = await supabase.from('genders').select('*').order('display_order');
-const { data: colors } = await supabase.from('colors').select('*').eq('is_active', true).order('display_order');
+// Datos para filtros - obtener todas las categorías (nivel 1, 2 y 3)
+const { data: allCategories } = await supabase
+  .from('categories')
+  .select('id, name, slug, level, parent_id, gender_id')
+  .eq('is_active', true)
+  .order('display_order');
+
+const { data: genders } = await supabase
+  .from('genders')
+  .select('*')
+  .eq('is_active', true)
+  .order('display_order');
+
+const { data: colors } = await supabase
+  .from('colors')
+  .select('*')
+  .eq('is_active', true)
+  .order('display_order');
+
+// Filtrar categorías según el género seleccionado
+let categories = allCategories;
+if (genderSlug) {
+  const selectedGender = genders?.find(g => g.slug === genderSlug);
+  if (selectedGender) {
+    categories = allCategories?.filter(c => c.gender_id === selectedGender.id);
+  }
+}
 
 // Tallas estándar
 const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
@@ -126,34 +151,122 @@ const availableMaterials = ['Algodón', 'Poliéster', 'Lana', 'Seda', 'Lino', 'D
 <PublicLayout title="Productos con Filtros - FashionMarket">
   <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <h1 class="text-3xl font-bold text-brand-navy mb-2">Todos los Productos</h1>
-    <p class="text-gray-600 mb-8">{totalProducts || 0} productos encontrados</p>
+    <p class="text-gray-600 mb-4">{totalProducts || 0} productos encontrados</p>
+
+    {/* Filtros activos */}
+    {(genderSlug || categorySlug || minPrice || maxPrice || isOnSale || isNew || colorSlug || size || material) && (
+      <div class="mb-6 flex flex-wrap gap-2 items-center">
+        <span class="text-sm font-medium text-gray-600">Filtros activos:</span>
+        {genderSlug && (
+          <a href={`/productos?${new URLSearchParams({...Object.fromEntries(url.searchParams), genero: ''}).toString().replace('genero=&', '').replace('genero=', '')}`} 
+             class="inline-flex items-center gap-1 px-3 py-1 bg-brand-navy text-white text-sm rounded-full hover:bg-brand-charcoal">
+            Género: {genders?.find(g => g.slug === genderSlug)?.name}
+            <span>×</span>
+          </a>
+        )}
+        {categorySlug && (
+          <a href={`/productos?${new URLSearchParams({...Object.fromEntries(url.searchParams), categoria: ''}).toString().replace('categoria=&', '').replace('categoria=', '')}`}
+             class="inline-flex items-center gap-1 px-3 py-1 bg-brand-navy text-white text-sm rounded-full hover:bg-brand-charcoal">
+            Categoría: {categories?.find(c => c.slug === categorySlug)?.name}
+            <span>×</span>
+          </a>
+        )}
+        {(minPrice || maxPrice) && (
+          <a href={`/productos?${new URLSearchParams(Object.fromEntries(Array.from(url.searchParams).filter(([k]) => k !== 'precio_min' && k !== 'precio_max'))).toString()}`}
+             class="inline-flex items-center gap-1 px-3 py-1 bg-brand-navy text-white text-sm rounded-full hover:bg-brand-charcoal">
+            Precio: {minPrice || '0'}€ - {maxPrice || '∞'}€
+            <span>×</span>
+          </a>
+        )}
+        {isOnSale && (
+          <a href={`/productos?${new URLSearchParams({...Object.fromEntries(url.searchParams), rebaja: ''}).toString().replace('rebaja=&', '').replace('rebaja=', '')}`}
+             class="inline-flex items-center gap-1 px-3 py-1 bg-brand-navy text-white text-sm rounded-full hover:bg-brand-charcoal">
+            En rebaja
+            <span>×</span>
+          </a>
+        )}
+        {isNew && (
+          <a href={`/productos?${new URLSearchParams({...Object.fromEntries(url.searchParams), nuevo: ''}).toString().replace('nuevo=&', '').replace('nuevo=', '')}`}
+             class="inline-flex items-center gap-1 px-3 py-1 bg-brand-navy text-white text-sm rounded-full hover:bg-brand-charcoal">
+            Nuevo
+            <span>×</span>
+          </a>
+        )}
+        <a href="/productos" class="text-sm text-red-600 hover:text-red-700 font-medium ml-2">
+          Limpiar todos
+        </a>
+      </div>
+    )}
 
     <div class="flex flex-col lg:flex-row gap-8">
       <!-- Sidebar Filtros -->
       <aside class="lg:w-64">
         <div class="bg-white border rounded-lg p-6 sticky top-20">
           <h2 class="font-bold mb-4">Filtros</h2>
-          <form method="get">
+          <form method="get" id="filter-form">
             <div class="mb-6">
-              <h3 class="font-semibold text-sm mb-2 uppercase">Género</h3>
+              <h3 class="font-semibold text-sm mb-2 uppercase">1. Selecciona Género</h3>
               {genders?.map(g => (
                 <label class="flex items-center mb-2 cursor-pointer">
-                  <input type="radio" name="genero" value={g.slug} checked={genderSlug === g.slug} class="mr-2" />
+                  <input 
+                    type="radio" 
+                    name="genero" 
+                    value={g.slug} 
+                    checked={genderSlug === g.slug} 
+                    class="mr-2 gender-radio" 
+                    onchange="this.form.submit()"
+                  />
                   {g.name}
                 </label>
               ))}
+              {genderSlug && (
+                <button 
+                  type="button" 
+                  onclick="window.location.href='/productos'" 
+                  class="text-xs text-red-600 hover:text-red-700 mt-1"
+                >
+                  Quitar filtro
+                </button>
+              )}
             </div>
             <hr class="my-4" />
             <div class="mb-6">
-              <h3 class="font-semibold text-sm mb-2 uppercase">Categoría</h3>
-              <div class="max-h-48 overflow-y-auto">
-                {categories?.map(c => (
-                  <label class="flex items-center mb-2 cursor-pointer text-sm">
-                    <input type="radio" name="categoria" value={c.slug} checked={categorySlug === c.slug} class="mr-2" />
-                    {c.name}
-                  </label>
-                ))}
-              </div>
+              <h3 class="font-semibold text-sm mb-3 uppercase">2. Categoría</h3>
+              {!genderSlug ? (
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                  <svg class="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p class="text-sm text-gray-600 font-medium mb-1">Selecciona un género primero</p>
+                  <p class="text-xs text-gray-500">Para ver las categorías disponibles</p>
+                </div>
+              ) : categories && categories.length > 0 ? (
+                <div class="max-h-64 overflow-y-auto space-y-1">
+                  {categories
+                    ?.filter(c => c.level === 1) // Solo categorías principales
+                    .map(c => (
+                      <div>
+                        <label class="flex items-center mb-2 cursor-pointer text-sm font-medium">
+                          <input type="radio" name="categoria" value={c.slug} checked={categorySlug === c.slug} class="mr-2" />
+                          {c.name}
+                        </label>
+                        {/* Subcategorías */}
+                        {categories
+                          ?.filter(sub => sub.parent_id === c.id)
+                          .map(sub => (
+                            <label class="flex items-center mb-1 cursor-pointer text-sm ml-4">
+                              <input type="radio" name="categoria" value={sub.slug} checked={categorySlug === sub.slug} class="mr-2" />
+                              <span class="text-gray-600">{sub.name}</span>
+                            </label>
+                          ))
+                        }
+                      </div>
+                    ))
+                  }
+                </div>
+              ) : (
+                <p class="text-sm text-gray-500 italic">No hay categorías para este género</p>
+              )}
             </div>
             <hr class="my-4" />
             <div class="mb-6">
@@ -163,13 +276,19 @@ const availableMaterials = ['Algodón', 'Poliéster', 'Lana', 'Seda', 'Lino', 'D
             </div>
             <hr class="my-4" />
             <div class="mb-6">
-              <label class="flex items-center mb-2 cursor-pointer">
+              <label class="flex items-center mb-2 cursor-pointer group">
                 <input type="checkbox" name="rebaja" value="true" checked={isOnSale} class="mr-2" />
-                🔥 En rebaja
+                <svg class="w-4 h-4 mr-1 text-red-500 group-hover:text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+                </svg>
+                <span>En rebaja</span>
               </label>
-              <label class="flex items-center cursor-pointer">
+              <label class="flex items-center cursor-pointer group">
                 <input type="checkbox" name="nuevo" value="true" checked={isNew} class="mr-2" />
-                ⭐ Nuevo
+                <svg class="w-4 h-4 mr-1 text-yellow-500 group-hover:text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                </svg>
+                <span>Nuevo</span>
               </label>
             </div>
             <hr class="my-4" />

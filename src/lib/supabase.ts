@@ -22,7 +22,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * Úsalo para lecturas públicas (productos, categorías)
  * NO lo uses para operaciones de escritura de admin
  */
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+  }
+});
 
 /**
  * @deprecated Use createPublicSupabaseClient() o createServerSupabaseClient() from auth.ts instead

@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
 import { supabase } from '../../../lib/supabase';
+import { createServerSupabaseClient } from '../../../lib/auth';
 
 // Inicializar Stripe con la clave secreta (server-side)
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY || '', {
@@ -52,15 +53,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // 4. Crear un mapa de productos para validación
     const productMap = new Map(products.map(p => [p.id, p]));
 
-    // 5. Validar stock y calcular total en el servidor
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
-    const orderItems: any[] = [];
-    let totalAmount = 0;
+    // ⭐ 5. RESERVAR STOCK de forma atómica (NUEVO - Previene overselling)
+    const supabaseAdmin = createServerSupabaseClient();
+    const reservationIds: string[] = [];
+    const tempSessionId = `temp_${Date.now()}_${user?.id || 'guest'}`;
 
     for (const item of items) {
       const product = productMap.get(item.id);
       
       if (!product) {
+        // Si hay error, cancelar reservas previas de este intento
+        if (reservationIds.length > 0) {
+          await supabaseAdmin.rpc('cancel_reservation', {
+            p_session_id: tempSessionId,
+            p_reason: 'product_not_found'
+          });
+        }
+        
         return new Response(JSON.stringify({ 
           error: `Producto no encontrado: ${item.id}` 
         }), {
@@ -69,15 +78,47 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         });
       }
 
-      // Validar stock
-      if (product.stock < item.quantity) {
+      // ⭐ Reservar stock atómicamente (con lock de fila)
+      const { data: reservation, error: reservationError } = await supabaseAdmin.rpc('reserve_stock', {
+        p_product_id: item.id,
+        p_quantity: item.quantity,
+        p_session_id: tempSessionId,
+        p_user_id: user?.id || null
+      }) as { data: any; error: any };
+
+      if (reservationError || !reservation?.success) {
+        // Cancelar reservas previas de este intento
+        if (reservationIds.length > 0) {
+          await supabaseAdmin.rpc('cancel_reservation', {
+            p_session_id: tempSessionId,
+            p_reason: 'reservation_failed'
+          });
+        }
+
+        const errorMessage = reservation?.error === 'insufficient_stock'
+          ? `Stock insuficiente para ${product.name}. Disponible: ${reservation.available}`
+          : `Error al reservar stock para ${product.name}`;
+
         return new Response(JSON.stringify({ 
-          error: `Stock insuficiente para ${product.name}. Disponible: ${product.stock}` 
+          error: errorMessage,
+          available: reservation?.available || 0,
+          requested: item.quantity
         }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' }
         });
       }
+
+      reservationIds.push(reservation.reservation_id);
+    }
+
+    // 6. Validar y calcular total en el servidor
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+    const orderItems: any[] = [];
+    let totalAmount = 0;
+
+    for (const item of items) {
+      const product = productMap.get(item.id)!;
 
       // Usar precio de Supabase (no del cliente)
       const unitPrice = product.price;
@@ -115,7 +156,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    // 6. Crear sesión de Stripe Checkout
+    // 7. Crear sesión de Stripe Checkout
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
@@ -128,16 +169,31 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         user_id: user?.id || 'guest',
         user_email: user?.email || '',
         total_amount: totalAmount.toString(),
+        temp_session_id: tempSessionId, // ⭐ Para actualizar reservas después
+        reservation_ids: JSON.stringify(reservationIds), // ⭐ IDs de reservas
       },
       shipping_address_collection: {
         allowed_countries: ['ES', 'FR', 'DE', 'IT', 'PT', 'US'],
       },
+      expires_at: Math.floor(Date.now() / 1000) + (3 * 60 * 60), // ⭐ 3 horas (Stripe: mín 30 min, máx 24 hrs)
     });
 
-    // 7. Retornar URL de checkout de Stripe
+    // 8. Actualizar reservas con el session_id real de Stripe
+    const { error: updateError } = await supabaseAdmin
+      .from('stock_reservations')
+      .update({ session_id: session.id })
+      .eq('session_id', tempSessionId);
+
+    if (updateError) {
+      console.error('Error actualizando session_id de reservas:', updateError);
+      // No retornar error, la sesión ya está creada
+    }
+
+    // 9. Retornar URL de checkout de Stripe
     return new Response(JSON.stringify({ 
       url: session.url,
-      sessionId: session.id
+      sessionId: session.id,
+      reservations: reservationIds.length // ⭐ Info para debugging
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

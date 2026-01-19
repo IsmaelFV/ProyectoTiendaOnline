@@ -13,6 +13,11 @@ const { title, description } = Astro.props;
 ---
 
 <BaseLayout title={title} description={description}>
+  <!-- CRÍTICO: auth-sync DEBE ejecutarse PRIMERO, antes de cualquier componente -->
+  <script>
+    import '@lib/auth-sync';
+  </script>
+
   <Header />
   <main class="min-h-screen">
     <slot />
