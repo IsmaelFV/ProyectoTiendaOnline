@@ -69,15 +69,15 @@ export const GET: APIRoute = async ({ request }) => {
     // ============================================================================
     // MÉTRICAS ADICIONALES (Opcional)
     // ============================================================================
-    const { data: stats } = await supabaseAdmin
+    const { count: activeCount } = await supabaseAdmin
       .from('stock_reservations')
-      .select('status', { count: 'exact', head: true })
+      .select('*', { count: 'exact', head: true })
       .eq('status', 'active');
 
     return new Response(JSON.stringify({ 
       success: true,
       expired: result.expired,
-      active_reservations: stats?.count || 0,
+      active_reservations: activeCount || 0,
       duration_ms: duration,
       timestamp: new Date().toISOString()
     }), {

@@ -11,37 +11,332 @@ const { product } = Astro.props;
 const mainImage = product.images?.[0] || '/placeholder.jpg';
 // Optimizar imagen para tarjetas de producto (400x500px)
 const optimizedImage = ImagePresets.productCard(mainImage);
+const hasDiscount = product.is_on_sale && product.sale_price && product.sale_price < product.price;
+const discountPercent = hasDiscount ? Math.round((1 - product.sale_price! / product.price) * 100) : 0;
+const displayPrice = hasDiscount ? product.sale_price! : product.price;
 ---
 
-<article class="card group">
+<article class="product-card-premium group">
   <a href={`/productos/${product.slug}`} class="block">
-    <div class="aspect-[3/4] overflow-hidden bg-gray-100">
+    <!-- Image container -->
+    <div class="product-image-container">
       <img
         src={optimizedImage}
         alt={product.name}
-        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        class="product-image"
         loading="lazy"
       />
+      
+      <!-- Badges -->
+      <div class="absolute top-4 left-4 flex flex-col gap-2 z-10">
+        {hasDiscount && (
+          <span class="badge-discount">
+            -{discountPercent}%
+          </span>
+        )}
+        {product.stock <= 3 && product.stock > 0 && (
+          <span class="badge-low-stock">
+            ¡Últimas unidades!
+          </span>
+        )}
+      </div>
+      
+      <!-- Wishlist button -->
+      <button class="wishlist-btn" aria-label="Añadir a favoritos">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        </svg>
+      </button>
+      
+      <!-- Overlay gradient -->
+      <div class="product-overlay"></div>
+      
+      <!-- Quick view -->
+      <div class="quick-view-btn">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+        <span>Ver detalles</span>
+      </div>
     </div>
     
-    <div class="p-6">
-      <h3 class="font-serif text-xl font-semibold text-brand-navy mb-2 group-hover:text-brand-gold transition-colors">
+    <!-- Content -->
+    <div class="product-content">
+      <div class="product-category">
+        {product.category?.name || 'Moda'}
+      </div>
+      
+      <h3 class="product-name">
         {product.name}
       </h3>
       
-      <p class="text-brand-charcoal font-semibold text-lg">
-        {formatPrice(product.price)}
-      </p>
+      <div class="product-price-container">
+        {hasDiscount ? (
+          <>
+            <span class="product-price-current">{formatPrice(displayPrice)}</span>
+            <span class="product-price-original">{formatPrice(product.price)}</span>
+          </>
+        ) : (
+          <span class="product-price-current">{formatPrice(product.price)}</span>
+        )}
+      </div>
       
-      {product.stock > 0 ? (
-        <p class="text-sm text-brand-slate mt-2">
-          {product.stock} unidades disponibles
-        </p>
-      ) : (
-        <p class="text-sm text-red-600 mt-2 font-medium">
-          Agotado
-        </p>
-      )}
+      <!-- Stock indicator -->
+      <div class="product-stock">
+        {product.stock > 0 ? (
+          <div class="stock-available">
+            <span class="stock-dot"></span>
+            <span>Disponible</span>
+          </div>
+        ) : (
+          <div class="stock-unavailable">
+            <span class="stock-dot-red"></span>
+            <span>Agotado</span>
+          </div>
+        )}
+      </div>
     </div>
   </a>
 </article>
+
+<style>
+  .product-card-premium {
+    position: relative;
+    background: linear-gradient(145deg, rgba(20, 26, 23, 0.9) 0%, rgba(14, 18, 16, 0.8) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 1.25rem;
+    overflow: hidden;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  .product-card-premium::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  
+  .product-card-premium:hover {
+    transform: translateY(-8px);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 
+      0 32px 64px rgba(0, 0, 0, 0.4),
+      0 0 80px rgba(212, 175, 55, 0.08);
+  }
+  
+  .product-card-premium:hover::before {
+    opacity: 1;
+  }
+  
+  .product-image-container {
+    position: relative;
+    aspect-ratio: 3/4;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(26, 33, 29, 1) 0%, rgba(20, 26, 23, 1) 100%);
+  }
+  
+  .product-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  .product-card-premium:hover .product-image {
+    transform: scale(1.08);
+  }
+  
+  .product-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, 
+      transparent 0%, 
+      transparent 50%, 
+      rgba(6, 8, 7, 0.8) 100%
+    );
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  
+  .product-card-premium:hover .product-overlay {
+    opacity: 1;
+  }
+  
+  .badge-discount {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #060807;
+    background: linear-gradient(135deg, #d4af37 0%, #e8c96d 100%);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+  }
+  
+  .badge-low-stock {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fef3c7;
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 6px;
+    backdrop-filter: blur(8px);
+  }
+  
+  .wishlist-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6, 8, 7, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    color: #e5e7eb;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: all 0.3s ease;
+    z-index: 10;
+  }
+  
+  .product-card-premium:hover .wishlist-btn {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  .wishlist-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #f87171;
+  }
+  
+  .quick-view-btn {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #060807;
+    background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.9));
+    border-radius: 25px;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 10;
+  }
+  
+  .product-card-premium:hover .quick-view-btn {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  
+  .quick-view-btn:hover {
+    background: linear-gradient(135deg, #d4af37, #e8c96d);
+    box-shadow: 0 8px 24px rgba(212, 175, 55, 0.3);
+  }
+  
+  .product-content {
+    padding: 1.25rem 1.5rem 1.5rem;
+  }
+  
+  .product-category {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #9ca3af;
+    margin-bottom: 8px;
+  }
+  
+  .product-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: #ffffff;
+    line-height: 1.4;
+    margin-bottom: 12px;
+    transition: color 0.3s ease;
+  }
+  
+  .product-card-premium:hover .product-name {
+    color: #d4af37;
+  }
+  
+  .product-price-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  
+  .product-price-current {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+  }
+  
+  .product-price-original {
+    font-size: 0.875rem;
+    color: #6b7280;
+    text-decoration: line-through;
+  }
+  
+  .product-stock {
+    font-size: 13px;
+  }
+  
+  .stock-available {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #9ca3af;
+  }
+  
+  .stock-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  .stock-unavailable {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #f87171;
+  }
+  
+  .stock-dot-red {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ef4444;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+</style>

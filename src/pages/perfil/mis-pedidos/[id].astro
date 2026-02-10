@@ -1,0 +1,638 @@
+---
+/**
+ * ============================================================================
+ * DETALLE DE PEDIDO + TIMELINE DE SEGUIMIENTO
+ * ============================================================================
+ * Ruta: /perfil/mis-pedidos/[id]
+ * - Muestra información completa del pedido
+ * - Timeline visual del estado
+ * - Acciones disponibles (cancelar si aplica)
+ */
+import PublicLayout from '../../../layouts/PublicLayout.astro';
+import { createClient } from '@supabase/supabase-js';
+
+const { id } = Astro.params;
+
+// Crear cliente de Supabase
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+
+// Obtener tokens de las cookies
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+if (!accessToken || !refreshToken) {
+  return Astro.redirect('/auth/login?redirect=/perfil/mis-pedidos/' + id);
+}
+
+// Crear cliente con autorización
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+  global: {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  },
+});
+
+// Verificar usuario
+const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
+
+if (authError || !user) {
+  return Astro.redirect('/auth/login?redirect=/perfil/mis-pedidos/' + id);
+}
+
+// Obtener el pedido con sus items
+const { data: order, error } = await supabase
+  .from('orders')
+  .select(`
+    *,
+    order_items (*)
+  `)
+  .eq('id', id)
+  .eq('user_id', user.id)
+  .single();
+
+// Si no existe o no pertenece al usuario
+if (error || !order) {
+  return Astro.redirect('/perfil/mis-pedidos');
+}
+
+// Función para formatear fecha
+const formatDate = (dateString: string | null) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+// Función para formatear moneda
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(amount);
+};
+
+// Estados del timeline
+const timelineSteps = [
+  { 
+    id: 'pending', 
+    name: 'Pendiente', 
+    description: 'Pedido recibido',
+    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'
+  },
+  { 
+    id: 'confirmed', 
+    name: 'Confirmado', 
+    description: 'Pago verificado',
+    icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+  },
+  { 
+    id: 'processing', 
+    name: 'Procesando', 
+    description: 'Preparando envío',
+    icon: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4'
+  },
+  { 
+    id: 'shipped', 
+    name: 'Enviado', 
+    description: 'En camino',
+    icon: 'M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0'
+  },
+  { 
+    id: 'delivered', 
+    name: 'Entregado', 
+    description: 'Pedido completado',
+    icon: 'M5 13l4 4L19 7'
+  }
+];
+
+// Determinar el paso actual
+const statusOrder = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
+const currentStepIndex = statusOrder.indexOf(order.status);
+const isCancelled = order.status === 'cancelled';
+const isRefunded = order.status === 'refunded';
+
+// Puede cancelar si está en confirmed o processing
+const canCancel = order.status === 'confirmed' || order.status === 'processing';
+
+// Obtener info de estado (colores mejorados para tema oscuro)
+const getStatusInfo = (status: string) => {
+  const info: Record<string, { color: string; text: string; bg: string; icon: string }> = {
+    pending: { color: 'text-amber-300', text: 'Pendiente', bg: 'bg-amber-500/20 border border-amber-400/40', icon: '⏳' },
+    confirmed: { color: 'text-blue-300', text: 'Confirmado', bg: 'bg-blue-500/20 border border-blue-400/40', icon: '✓' },
+    processing: { color: 'text-purple-300', text: 'Procesando', bg: 'bg-purple-500/20 border border-purple-400/40', icon: '⚙️' },
+    shipped: { color: 'text-indigo-300', text: 'Enviado', bg: 'bg-indigo-500/20 border border-indigo-400/40', icon: '🚚' },
+    delivered: { color: 'text-emerald-300', text: 'Entregado', bg: 'bg-emerald-500/20 border border-emerald-400/40', icon: '✅' },
+    cancelled: { color: 'text-red-300', text: 'Cancelado', bg: 'bg-red-500/20 border border-red-400/40', icon: '✕' },
+    refunded: { color: 'text-gray-300', text: 'Reembolsado', bg: 'bg-gray-500/20 border border-gray-400/40', icon: '↩' }
+  };
+  return info[status] || info.pending;
+};
+
+const statusInfo = getStatusInfo(order.status);
+---
+
+<PublicLayout title={`Pedido #${order.order_number}`}>
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Breadcrumb -->
+    <nav class="mb-6">
+      <ol class="flex items-center space-x-2 text-sm text-gray-400">
+        <li><a href="/perfil" class="hover:text-accent-gold transition-colors">Mi Perfil</a></li>
+        <li class="text-gray-600">/</li>
+        <li><a href="/perfil/mis-pedidos" class="hover:text-accent-gold transition-colors">Mis Pedidos</a></li>
+        <li class="text-gray-600">/</li>
+        <li class="text-white font-medium">{order.order_number}</li>
+      </ol>
+    </nav>
+
+    <!-- Header mejorado -->
+    <div class="bg-dark-surface/80 backdrop-blur-sm rounded-2xl border border-white/10 p-6 mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-bold text-white font-serif">
+            {order.order_number}
+          </h1>
+          <p class="text-gray-400 mt-2">
+            Realizado el {formatDate(order.created_at)}
+          </p>
+        </div>
+        <div class="flex items-center gap-4">
+          <span class={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${statusInfo.bg} ${statusInfo.color}`}>
+            <span>{statusInfo.icon}</span>
+            {statusInfo.text}
+          </span>
+          <span class="text-3xl font-bold text-accent-gold">
+            {formatCurrency(order.total)}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline de seguimiento (tema oscuro) -->
+    {!isCancelled && !isRefunded && (
+      <div class="bg-dark-surface/80 backdrop-blur-sm rounded-2xl border border-white/10 p-6 mb-6">
+        <h2 class="text-xl font-semibold text-white mb-6">Seguimiento del Pedido</h2>
+        
+        <div class="relative">
+          <!-- Línea de progreso -->
+          <div class="absolute left-8 top-0 bottom-0 w-0.5 bg-white/10" aria-hidden="true"></div>
+          
+          <!-- Steps -->
+          <ul class="space-y-6">
+            {timelineSteps.map((step, index) => (
+              <li class="relative flex items-start">
+                <!-- Icono del step -->
+                <div class={`
+                  relative z-10 flex items-center justify-center w-16 h-16 rounded-full border-2 transition-all
+                  ${index <= currentStepIndex 
+                    ? 'bg-accent-gold border-accent-gold' 
+                    : 'bg-dark-card border-white/20'}
+                  ${index === currentStepIndex ? 'ring-4 ring-accent-gold/30 scale-110' : ''}
+                `}>
+                  <svg 
+                    class={`w-7 h-7 ${index <= currentStepIndex ? 'text-dark-bg' : 'text-gray-500'}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={step.icon} />
+                  </svg>
+                </div>
+                
+                <!-- Texto del step -->
+                <div class="ml-4 min-w-0 flex-1">
+                  <h3 class={`text-base font-semibold ${index <= currentStepIndex ? 'text-white' : 'text-gray-500'}`}>
+                    {step.name}
+                  </h3>
+                  <p class={`text-sm ${index <= currentStepIndex ? 'text-gray-300' : 'text-gray-600'}`}>
+                    {step.description}
+                  </p>
+                  
+                  {step.id === 'pending' && order.created_at && (
+                    <p class="text-xs text-gray-500 mt-1">{formatDate(order.created_at)}</p>
+                  )}
+                  {step.id === 'shipped' && order.shipped_at && (
+                    <p class="text-xs text-gray-500 mt-1">{formatDate(order.shipped_at)}</p>
+                  )}
+                  {step.id === 'delivered' && order.delivered_at && (
+                    <p class="text-xs text-gray-500 mt-1">{formatDate(order.delivered_at)}</p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+        
+        {/* Tracking number */}
+        {order.tracking_number && (
+          <div class="mt-6 pt-6 border-t border-white/10">
+            <div class="flex items-center justify-between bg-dark-card/50 rounded-xl p-4 border border-white/10">
+              <div>
+                <p class="text-sm font-medium text-gray-400">Número de seguimiento</p>
+                <p class="text-lg font-mono font-bold text-accent-gold">{order.tracking_number}</p>
+              </div>
+              <button 
+                id="copy-tracking"
+                data-tracking={order.tracking_number}
+                class="px-4 py-2 text-sm font-medium text-accent-gold hover:text-dark-bg hover:bg-accent-gold border border-accent-gold rounded-lg transition-all"
+              >
+                Copiar
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+
+    <!-- Estado especial: Cancelado o Reembolsado -->
+    {(isCancelled || isRefunded) && (
+      <div class={`bg-dark-surface/80 backdrop-blur-sm rounded-2xl border p-6 mb-6 ${isCancelled ? 'border-red-500/40' : 'border-white/10'}`}>
+        <div class="flex items-center">
+          <div class={`flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center ${isCancelled ? 'bg-red-500/20' : 'bg-gray-500/20'}`}>
+            <svg class={`w-7 h-7 ${isCancelled ? 'text-red-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isCancelled ? (
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              )}
+            </svg>
+          </div>
+          <div class="ml-5">
+            <h3 class={`text-xl font-semibold ${isCancelled ? 'text-red-300' : 'text-white'}`}>
+              {isCancelled ? 'Pedido Cancelado' : 'Pedido Reembolsado'}
+            </h3>
+            <p class={`text-sm mt-1 ${isCancelled ? 'text-red-300/70' : 'text-gray-400'}`}>
+              {isCancelled 
+                ? 'Este pedido fue cancelado. El stock ha sido restaurado.' 
+                : 'Este pedido ha sido reembolsado.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    )}
+
+    <!-- Productos del pedido -->
+    <div class="bg-dark-surface/80 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden mb-6">
+      <div class="px-6 py-4 border-b border-white/10 bg-white/5">
+        <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+          <svg class="w-5 h-5 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+          </svg>
+          Productos ({order.order_items?.length || 0})
+        </h2>
+      </div>
+      
+      <div class="divide-y divide-white/5">
+        {order.order_items?.map((item: any) => (
+          <div class="p-6 flex items-start gap-4 hover:bg-white/5 transition-colors">
+            {item.product_image ? (
+              <img 
+                src={item.product_image} 
+                alt={item.product_name}
+                class="w-24 h-24 object-cover rounded-xl flex-shrink-0 border border-white/10 shadow-lg"
+              />
+            ) : (
+              <div class="w-24 h-24 bg-dark-card rounded-xl flex items-center justify-center flex-shrink-0 border border-white/10">
+                <svg class="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            )}
+            <div class="flex-1 min-w-0">
+              <h3 class="text-lg font-medium text-white">{item.product_name}</h3>
+              <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                {item.size && (
+                  <span class="px-2 py-1 bg-white/5 rounded-md text-gray-300 border border-white/10">
+                    Talla: <strong class="text-white">{item.size}</strong>
+                  </span>
+                )}
+                {item.color && (
+                  <span class="px-2 py-1 bg-white/5 rounded-md text-gray-300 border border-white/10">
+                    Color: <strong class="text-white">{item.color}</strong>
+                  </span>
+                )}
+                <span class="px-2 py-1 bg-white/5 rounded-md text-gray-300 border border-white/10">
+                  Cantidad: <strong class="text-white">{item.quantity}</strong>
+                </span>
+              </div>
+              <p class="mt-2 text-sm text-gray-400">
+                {formatCurrency(item.price)} × {item.quantity}
+              </p>
+            </div>
+            <div class="text-right">
+              <p class="text-xl font-bold text-accent-gold">
+                {formatCurrency(item.subtotal)}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Resumen y Dirección -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <!-- Dirección de envío -->
+      <div class="bg-dark-surface/80 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+        <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Dirección de Envío
+        </h2>
+        <div class="text-gray-400 space-y-2 bg-dark-card/50 rounded-xl p-4 border border-white/5">
+          <p class="font-semibold text-lg text-white">{order.shipping_full_name}</p>
+          <p class="text-gray-300">{order.shipping_address_line1}</p>
+          {order.shipping_address_line2 && <p class="text-gray-300">{order.shipping_address_line2}</p>}
+          <p class="text-gray-300">{order.shipping_city}, {order.shipping_state} {order.shipping_postal_code}</p>
+          <p class="text-gray-300">{order.shipping_country}</p>
+          {order.shipping_phone && (
+            <p class="mt-3 pt-3 border-t border-white/10 flex items-center gap-2">
+              <svg class="w-4 h-4 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+              </svg>
+              <span class="text-white">{order.shipping_phone}</span>
+            </p>
+          )}
+        </div>
+      </div>
+
+      <!-- Resumen del pedido -->
+      <div class="bg-dark-surface/80 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+        <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+          Resumen
+        </h2>
+        <div class="space-y-3 bg-dark-card/50 rounded-xl p-4 border border-white/5">
+          <div class="flex justify-between text-gray-400">
+            <span>Subtotal</span>
+            <span class="text-white font-medium">{formatCurrency(order.subtotal)}</span>
+          </div>
+          <div class="flex justify-between text-gray-400">
+            <span>Envío</span>
+            <span class="text-white font-medium">{formatCurrency(order.shipping_cost)}</span>
+          </div>
+          {order.discount > 0 && (
+            <div class="flex justify-between text-emerald-400">
+              <span>Descuento</span>
+              <span class="font-medium">-{formatCurrency(order.discount)}</span>
+            </div>
+          )}
+          <div class="flex justify-between text-gray-400">
+            <span>IVA (21%)</span>
+            <span class="text-white font-medium">{formatCurrency(order.tax)}</span>
+          </div>
+          <div class="flex justify-between text-xl font-bold pt-4 mt-2 border-t border-white/10">
+            <span class="text-white">Total</span>
+            <span class="text-accent-gold">{formatCurrency(order.total)}</span>
+          </div>
+        </div>
+        
+        <div class="mt-4 flex items-center gap-2 text-sm bg-white/5 rounded-lg px-4 py-3 border border-white/10">
+          <svg class="w-5 h-5 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+          </svg>
+          <span class="text-gray-400">Método de pago:</span>
+          <span class="text-white font-medium">{order.payment_method}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="bg-dark-surface/80 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+      <div class="flex flex-wrap gap-4">
+        <a 
+          href="/perfil/mis-pedidos"
+          class="inline-flex items-center px-5 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium text-white transition-all hover:scale-105"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Volver a mis pedidos
+        </a>
+        
+        <button 
+          id="download-invoice"
+          data-order-id={order.id}
+          data-order-number={order.order_number}
+          class="inline-flex items-center px-5 py-3 bg-accent-gold hover:bg-accent-gold/90 rounded-xl text-sm font-semibold text-dark-bg transition-all hover:scale-105"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+          </svg>
+          Descargar Factura
+        </button>
+
+        {canCancel && (
+          <button 
+            id="cancel-order"
+            data-order-id={order.id}
+            class="inline-flex items-center px-4 py-2 border border-red-500/30 rounded-lg text-sm font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-colors"
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Cancelar Pedido
+          </button>
+        )}
+
+        {order.status === 'delivered' && (
+          <button 
+            id="request-return"
+            data-order-id={order.id}
+            data-order-number={order.order_number}
+            class="inline-flex items-center px-4 py-2 border border-blue-500/30 rounded-lg text-sm font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+            Solicitar Devolución
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de cancelación -->
+  <div id="cancel-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+      <div class="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity" id="modal-overlay"></div>
+      <div class="relative glass-panel shadow-glow max-w-md w-full p-6">
+        <div class="flex items-start">
+          <div class="flex-shrink-0 w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+            <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div class="ml-4">
+            <h3 class="text-lg font-semibold text-white">¿Cancelar pedido?</h3>
+            <p class="mt-2 text-sm text-gray-400">
+              ¿Estás seguro de que deseas cancelar este pedido? Esta acción no se puede deshacer y el stock será restaurado automáticamente.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+          <button 
+            id="modal-close"
+            class="btn-secondary px-4 py-2 text-sm"
+          >
+            No, mantener
+          </button>
+          <button 
+            id="modal-confirm"
+            class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Sí, cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="hidden fixed bottom-4 right-4 z-50">
+    <div class="bg-dark-surface/95 backdrop-blur-xl rounded-lg shadow-glow border-l-4 p-4 max-w-md border border-white/10" id="toast-container">
+      <div class="flex items-center">
+        <svg id="toast-icon" class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p id="toast-message" class="text-white font-medium"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Toast helper
+    function showToast(message: string, type: 'success' | 'error') {
+      const toast = document.getElementById('toast');
+      const toastContainer = document.getElementById('toast-container');
+      const toastMessage = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+      
+      if (toast && toastContainer && toastMessage && toastIcon) {
+        toastMessage.textContent = message;
+        
+        if (type === 'success') {
+          toastContainer.classList.remove('border-red-500');
+          toastContainer.classList.add('border-accent-glow');
+          toastIcon.classList.remove('text-red-400');
+          toastIcon.classList.add('text-accent-glow');
+        } else {
+          toastContainer.classList.remove('border-accent-glow');
+          toastContainer.classList.add('border-red-500');
+          toastIcon.classList.remove('text-accent-glow');
+          toastIcon.classList.add('text-red-400');
+        }
+        
+        toast.classList.remove('hidden');
+        setTimeout(() => toast.classList.add('hidden'), 4000);
+      }
+    }
+
+    // Copiar tracking
+    document.getElementById('copy-tracking')?.addEventListener('click', function() {
+      const tracking = this.getAttribute('data-tracking');
+      if (tracking) {
+        navigator.clipboard.writeText(tracking);
+        showToast('Número de seguimiento copiado', 'success');
+      }
+    });
+
+    // Descargar factura
+    document.getElementById('download-invoice')?.addEventListener('click', async function() {
+      const orderId = this.getAttribute('data-order-id');
+      const orderNumber = this.getAttribute('data-order-number');
+      
+      try {
+        const response = await fetch(`/api/orders/${orderId}/invoice`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Factura-${orderNumber}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          a.remove();
+          showToast('Factura descargada', 'success');
+        } else {
+          showToast('Error al descargar la factura', 'error');
+        }
+      } catch (error) {
+        showToast('Error al descargar la factura', 'error');
+      }
+    });
+
+    // Cancelar pedido
+    const cancelBtn = document.getElementById('cancel-order');
+    const cancelModal = document.getElementById('cancel-modal');
+    const modalClose = document.getElementById('modal-close');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalConfirm = document.getElementById('modal-confirm');
+
+    cancelBtn?.addEventListener('click', () => {
+      cancelModal?.classList.remove('hidden');
+    });
+
+    modalClose?.addEventListener('click', () => {
+      cancelModal?.classList.add('hidden');
+    });
+
+    modalOverlay?.addEventListener('click', () => {
+      cancelModal?.classList.add('hidden');
+    });
+
+    modalConfirm?.addEventListener('click', async () => {
+      const orderId = cancelBtn?.getAttribute('data-order-id');
+      if (!orderId) return;
+
+      modalConfirm.textContent = 'Cancelando...';
+      modalConfirm.setAttribute('disabled', 'true');
+
+      try {
+        const response = await fetch('/api/orders/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showToast('Pedido cancelado correctamente', 'success');
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          showToast(result.message || 'Error al cancelar el pedido', 'error');
+          modalConfirm.textContent = 'Sí, cancelar';
+          modalConfirm.removeAttribute('disabled');
+        }
+      } catch (error) {
+        showToast('Error al cancelar el pedido', 'error');
+        modalConfirm.textContent = 'Sí, cancelar';
+        modalConfirm.removeAttribute('disabled');
+      }
+
+      cancelModal?.classList.add('hidden');
+    });
+
+    // Solicitar devolución
+    document.getElementById('request-return')?.addEventListener('click', function() {
+      const orderId = this.getAttribute('data-order-id');
+      // Redirigir a la página de devoluciones o abrir modal
+      window.location.href = `/perfil/mis-pedidos?return=${orderId}`;
+    });
+  </script>
+</PublicLayout>

@@ -1,137 +1,470 @@
 ---
 import CartIcon from '../islands/CartIcon';
 import SearchBar from '../search/SearchBar';
-import GenderSelector from '../navigation/GenderSelector';
 
-// Detectar género actual desde la URL
+// Detectar página actual desde la URL para resaltar enlace activo
 const currentPath = Astro.url.pathname;
-let currentGender: 'mujer' | 'hombre' | undefined;
-
-if (currentPath.startsWith('/mujer')) {
-  currentGender = 'mujer';
-} else if (currentPath.startsWith('/hombre')) {
-  currentGender = 'hombre';
-}
-
-// IMPORTANTE: el estado de auth real vive en localStorage (Supabase cliente).
-// No dependas de cookies sb-* porque en dev y en el cliente no siempre se setean.
 ---
 
-<header class="bg-white border-b border-brand-slate/20 sticky top-0 z-50 shadow-sm">
-  <nav class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
-    {/* Fila superior: Logo + Búsqueda + Carrito */}
-    <div class="flex justify-between items-center py-4 gap-4">
-      {/* Logo */}
-      <a href="/" class="font-serif text-2xl font-bold text-brand-navy tracking-tight whitespace-nowrap">
-        FashionMarket
-      </a>
-
-      {/* Barra de búsqueda (desktop) */}
-      <div class="hidden lg:block flex-1 max-w-2xl mx-8">
-        <SearchBar client:load />
-      </div>
-
-      {/* Carrito + Usuario + Menú mobile */}
-      <div class="flex items-center space-x-4">
-        {/* Usuario (guest) */}
-        <a id="user-guest" href="/auth/login" class="flex items-center space-x-2 text-brand-charcoal hover:text-brand-navy transition-colors">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-        </a>
-
-        {/* Usuario (auth) */}
-        <div id="user-auth" class="hidden relative">
-          <button 
-            id="user-menu-btn"
-            class="flex items-center space-x-2 text-brand-charcoal hover:text-brand-navy transition-colors"
-            aria-label="Menú de usuario"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+<header class="header-premium sticky top-0 z-50">
+  <!-- Barra superior decorativa -->
+  <div class="header-top-bar">
+    <div class="max-w-7xl mx-auto px-4 flex justify-center items-center">
+      <span class="flex items-center gap-2 text-xs">
+        <svg class="w-4 h-4 text-gold-500" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+        </svg>
+        <span class="text-gold-400">Envío gratis</span>
+        <span class="text-gray-500">en pedidos +50€</span>
+        <span class="mx-3 text-gray-700">|</span>
+        <span class="text-emerald-400">Devoluciones gratuitas</span>
+      </span>
+    </div>
+  </div>
+  
+  <!-- Header principal -->
+  <div class="header-main">
+    <div class="header-glow"></div>
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+      <!-- Fila principal: Logo + Búsqueda + Acciones -->
+      <div class="flex justify-between items-center py-4 gap-6">
+        <!-- Logo -->
+        <a href="/" class="group flex items-center gap-3 flex-shrink-0">
+          <div class="logo-icon">
+            <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" class="stroke-gold-500"/>
+              <path d="M2 17l10 5 10-5" class="stroke-gold-400 opacity-60"/>
+              <path d="M2 12l10 5 10-5" class="stroke-gold-300 opacity-40"/>
             </svg>
-          </button>
-          
-          {/* Menú desplegable */}
-          <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-            <a href="/perfil" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-              Mi Perfil
-            </a>
-            <a href="/perfil/mis-pedidos" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-              Mis Pedidos
-            </a>
-            <hr class="my-1" />
-            <button id="logout-btn-header" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
-              Cerrar Sesión
-            </button>
           </div>
-        </div>
-        
-        <CartIcon client:load />
-        
-        <button 
-          id="mobile-menu-btn"
-          class="lg:hidden text-brand-charcoal hover:text-brand-navy p-2"
-          aria-label="Abrir menú"
-        >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    {/* Fila inferior: Navegación principal */}
-    <div class="hidden lg:flex items-center justify-center space-x-8 pb-4 border-t border-gray-100 pt-4">
-      <GenderSelector currentGender={currentGender} client:load />
-      
-      <div class="h-6 w-px bg-gray-300"></div>
-      
-      <a href="/novedades" class="text-brand-charcoal hover:text-brand-navy transition-colors text-sm uppercase tracking-wider">
-        Novedades
-      </a>
-      <a href="/ofertas" class="text-red-600 hover:text-red-700 transition-colors text-sm uppercase tracking-wider font-semibold">
-        Rebajas
-      </a>
-      <a href="/sostenibilidad" class="text-brand-charcoal hover:text-brand-navy transition-colors text-sm uppercase tracking-wider">
-        Sostenibilidad
-      </a>
-    </div>
-
-    {/* Búsqueda mobile */}
-    <div class="lg:hidden pb-4">
-      <SearchBar client:load />
-    </div>
-
-    {/* Menú mobile */}
-    <div id="mobile-menu" class="lg:hidden hidden pb-4 border-t border-gray-200 mt-4 pt-4">
-      <div class="flex flex-col space-y-3">
-        <a href="/mujer" class="text-brand-charcoal hover:text-brand-navy transition-colors font-medium py-2">
-          Mujer
+          <div class="flex flex-col">
+            <span class="font-serif text-xl font-bold text-white tracking-tight whitespace-nowrap group-hover:text-gold-500 transition-colors duration-500">
+              FashionMarket
+            </span>
+            <span class="text-[10px] text-gray-500 tracking-widest uppercase">Premium Fashion</span>
+          </div>
         </a>
-        <a href="/hombre" class="text-brand-charcoal hover:text-brand-navy transition-colors font-medium py-2">
+
+        <!-- Barra de búsqueda (desktop) -->
+        <div class="hidden lg:block flex-1 max-w-lg mx-8">
+          <SearchBar client:load />
+        </div>
+
+        <!-- Acciones: Usuario + Carrito -->
+        <div class="flex items-center gap-3">
+          <!-- Usuario Guest (solo visible sin sesión) -->
+          <a id="user-guest" href="/auth/login" class="header-icon-btn flex" aria-label="Iniciar sesión">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </a>
+
+          <!-- Usuario Autenticado (solo visible con sesión) -->
+          <div id="user-auth" class="relative" style="display: none;">
+            <button id="user-menu-btn" class="header-icon-btn" aria-label="Menú de usuario">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </button>
+            
+            <!-- Menú desplegable -->
+            <div id="user-menu" class="hidden absolute right-0 mt-3 w-56 user-dropdown animate-scale-in">
+              <div class="py-2">
+                <a href="/perfil" class="dropdown-item">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Mi Perfil
+                </a>
+                <a href="/perfil/mis-pedidos" class="dropdown-item">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                  Mis Pedidos
+                </a>
+                <div class="my-2 mx-3 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                <button id="logout-btn-header" class="dropdown-item text-red-400 hover:bg-red-500/10 w-full">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Cerrar Sesión
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <CartIcon client:load />
+        </div>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Navegación secundaria (Desktop) -->
+  <div class="nav-bar hidden lg:block">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-center gap-1">
+        <a href="/productos" class={`nav-item ${currentPath === '/productos' || currentPath.startsWith('/productos') ? 'nav-item-active' : ''}`}>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+          Todos
+        </a>
+        
+        <span class="nav-divider"></span>
+        
+        <a href="/hombre" class={`nav-item ${currentPath.startsWith('/hombre') ? 'nav-item-active' : ''}`}>
           Hombre
         </a>
-        <a href="/novedades" class="text-brand-charcoal hover:text-brand-navy transition-colors font-medium py-2">
+        
+        <a href="/mujer" class={`nav-item ${currentPath.startsWith('/mujer') ? 'nav-item-active' : ''}`}>
+          Mujer
+        </a>
+        
+        <span class="nav-divider"></span>
+        
+        <a href="/novedades" class={`nav-item nav-item-new ${currentPath.startsWith('/novedades') ? 'nav-item-active' : ''}`}>
+          <span class="nav-badge">New</span>
           Novedades
         </a>
-        <a href="/ofertas" class="text-red-600 hover:text-red-700 transition-colors font-semibold py-2">
-          Ofertas
+        
+        <a href="/ofertas" class={`nav-item nav-item-sale ${currentPath.startsWith('/ofertas') ? 'nav-item-active' : ''}`}>
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+          </svg>
+          Rebajas
+        </a>
+        
+        <a href="/sostenibilidad" class={`nav-item ${currentPath.startsWith('/sostenibilidad') ? 'nav-item-active' : ''}`}>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Eco
         </a>
       </div>
+    </nav>
+  </div>
+
+  <!-- Navegación mobile -->
+  <div class="lg:hidden border-t border-white/5">
+    <div class="flex items-center justify-center gap-1 py-2 px-2 overflow-x-auto">
+      <a href="/productos" class={`nav-item-mobile ${currentPath.startsWith('/productos') ? 'nav-item-active' : ''}`}>
+        Todos
+      </a>
+      <a href="/hombre" class={`nav-item-mobile ${currentPath.startsWith('/hombre') ? 'nav-item-active' : ''}`}>
+        Hombre
+      </a>
+      <a href="/mujer" class={`nav-item-mobile ${currentPath.startsWith('/mujer') ? 'nav-item-active' : ''}`}>
+        Mujer
+      </a>
+      <a href="/novedades" class={`nav-item-mobile nav-item-new ${currentPath.startsWith('/novedades') ? 'nav-item-active' : ''}`}>
+        <span class="nav-badge-sm">New</span>
+        Nuevo
+      </a>
+      <a href="/ofertas" class={`nav-item-mobile nav-item-sale ${currentPath.startsWith('/ofertas') ? 'nav-item-active' : ''}`}>
+        Ofertas
+      </a>
     </div>
-  </nav>
+    
+    <!-- Búsqueda mobile -->
+    <div class="px-4 pb-3">
+      <SearchBar client:load />
+    </div>
+  </div>
 </header>
 
-<script>
-  // Toggle mobile menu
-  const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-  const mobileMenu = document.getElementById('mobile-menu');
-  
-  mobileMenuBtn?.addEventListener('click', () => {
-    mobileMenu?.classList.toggle('hidden');
-  });
+<style>
+  /* === Barra superior === */
+  .header-top-bar {
+    background: linear-gradient(90deg, 
+      #0a0a0a 0%, 
+      #171717 50%,
+      #0a0a0a 100%
+    );
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 8px 0;
+    box-shadow: 0 1px 0 rgba(212, 175, 55, 0.06);
+  }
 
+  /* === Header principal === */
+  .header-premium {
+    background: linear-gradient(180deg, 
+      rgba(23, 23, 23, 0.98) 0%, 
+      rgba(10, 10, 10, 0.96) 100%
+    );
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    box-shadow: 
+      0 4px 24px rgba(0, 0, 0, 0.6),
+      0 1px 0 rgba(255, 255, 255, 0.08) inset,
+      0 -1px 0 rgba(212, 175, 55, 0.12) inset;
+  }
+
+  .header-main {
+    position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  
+  .header-glow {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 2px;
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(212, 175, 55, 0.4) 25%,
+      rgba(232, 201, 109, 0.6) 50%, 
+      rgba(212, 175, 55, 0.4) 75%,
+      transparent 100%
+    );
+    opacity: 0.7;
+    filter: blur(1px);
+    animation: glow-pulse 4s ease-in-out infinite;
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 0.5; filter: blur(1px); }
+    50% { opacity: 0.9; filter: blur(0.5px); }
+  }
+  
+  .logo-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.04) 100%);
+    border-radius: 12px;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    box-shadow: 
+      0 0 16px rgba(212, 175, 55, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .group:hover .logo-icon {
+    border-color: rgba(212, 175, 55, 0.4);
+    box-shadow: 
+      0 0 24px rgba(212, 175, 55, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transform: scale(1.05);
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.18) 0%, rgba(212, 175, 55, 0.06) 100%);
+  }
+
+  /* === Barra de navegación === */
+  .nav-bar {
+    background: linear-gradient(180deg, 
+      rgba(10, 10, 10, 0.92) 0%, 
+      rgba(23, 23, 23, 0.96) 100%
+    );
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+    padding: 12px 0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .nav-item {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #a3a3a3;
+    padding: 10px 18px;
+    border-radius: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .nav-item:hover {
+    color: #f5f5f5;
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .nav-item-active {
+    color: #d4af37 !important;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.06) 100%);
+    box-shadow: 0 2px 12px rgba(212, 175, 55, 0.15);
+  }
+
+  .nav-item-active::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40%;
+    height: 2px;
+    background: linear-gradient(90deg, #d4af37, #e8c96d);
+    border-radius: 2px;
+  }
+
+  .nav-divider {
+    width: 1px;
+    height: 24px;
+    background: linear-gradient(180deg, 
+      transparent 0%,
+      rgba(255, 255, 255, 0.15) 50%,
+      transparent 100%
+    );
+    margin: 0 8px;
+  }
+
+  /* === Estilos especiales para Novedades y Rebajas === */
+  .nav-item-new {
+    color: #10b981;
+  }
+
+  .nav-item-new:hover {
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  .nav-item-sale {
+    color: #ef4444;
+  }
+
+  .nav-item-sale:hover {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .nav-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    animation: badge-pulse 2s ease-in-out infinite;
+  }
+
+  .nav-badge-sm {
+    font-size: 8px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+  }
+
+  @keyframes badge-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+
+  /* === Iconos del header === */
+  .header-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    color: #a3a3a3;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .header-icon-btn:hover {
+    color: #d4af37;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(212, 175, 55, 0.08) 100%);
+    border-color: rgba(212, 175, 55, 0.35);
+    transform: translateY(-2px);
+    box-shadow: 
+      0 8px 24px rgba(212, 175, 55, 0.2),
+      0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  
+  /* === Dropdown usuario === */
+  .user-dropdown {
+    background: linear-gradient(135deg, rgba(38, 38, 38, 0.96) 0%, rgba(23, 23, 23, 0.98) 100%);
+    backdrop-filter: blur(32px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    box-shadow: 
+      0 24px 48px rgba(0, 0, 0, 0.7),
+      0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+      0 1px 0 rgba(212, 175, 55, 0.08);
+    z-index: 50;
+  }
+  
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+    color: #d4d4d4;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .dropdown-item:hover {
+    color: #d4af37;
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.15);
+  }
+
+  /* === Navegación mobile === */
+  .nav-item-mobile {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: #9ca3af;
+    padding: 8px 12px;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+  
+  .nav-item-mobile:hover {
+    color: #d4af37;
+    background: rgba(212, 175, 55, 0.1);
+  }
+  
+  .nav-item-mobile.nav-item-active {
+    color: #d4af37;
+    background: rgba(212, 175, 55, 0.15);
+  }
+
+  .nav-item-mobile.nav-item-new {
+    color: #10b981;
+  }
+
+  .nav-item-mobile.nav-item-sale {
+    color: #ef4444;
+  }
+
+  /* === Animaciones === */
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+</style>
+
+<script>
   // Toggle user menu
   const userMenuBtn = document.getElementById('user-menu-btn');
   const userMenu = document.getElementById('user-menu');
@@ -165,18 +498,32 @@ if (currentPath.startsWith('/mujer')) {
   // Cerrar sesión desde el header
   (async () => {
     try {
-      const { supabase } = await import('/src/lib/supabase');
+      const { supabase } = await import('../../lib/supabase');
       const guestEl = document.getElementById('user-guest');
       const authEl = document.getElementById('user-auth');
 
+      console.log('🔐 [HEADER] Elementos encontrados:', { guestEl: !!guestEl, authEl: !!authEl });
+
       const toggle = (hasUser: boolean) => {
-        if (!guestEl || !authEl) return;
+        console.log('🔐 [HEADER] Toggle llamado con hasUser:', hasUser);
+        if (!guestEl || !authEl) {
+          console.error('🔐 [HEADER] ERROR: Elementos no encontrados');
+          return;
+        }
         if (hasUser) {
+          // Usuario autenticado: ocultar guest, mostrar auth
+          guestEl.style.display = 'none';
           guestEl.classList.add('hidden');
+          authEl.style.display = 'block';
           authEl.classList.remove('hidden');
+          console.log('🔐 [HEADER] Usuario autenticado - ocultando guest, mostrando auth');
         } else {
-          authEl.classList.add('hidden');
+          // Usuario no autenticado: mostrar guest, ocultar auth
+          guestEl.style.display = 'flex';
           guestEl.classList.remove('hidden');
+          authEl.style.display = 'none';
+          authEl.classList.add('hidden');
+          console.log('🔐 [HEADER] Sin usuario - mostrando guest, ocultando auth');
         }
       };
 
@@ -219,12 +566,14 @@ if (currentPath.startsWith('/mujer')) {
         }
       });
 
-      // Estado inicial
-      const { data } = await supabase.auth.getSession();
+      // Estado inicial - verificar sesión inmediatamente
+      const { data, error } = await supabase.auth.getSession();
+      console.log('🔐 [HEADER] Estado inicial - session:', !!data.session, 'error:', error);
       toggle(!!data.session?.user);
 
-      // Escuchar cambios
-      supabase.auth.onAuthStateChange((event, session) => {
+      // Escuchar cambios de autenticación
+      supabase.auth.onAuthStateChange((event: any, session: any) => {
+        console.log('🔐 [HEADER] Auth state change:', event, 'hasSession:', !!session);
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           toggle(!!session?.user);
         }

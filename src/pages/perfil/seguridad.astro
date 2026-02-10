@@ -1,0 +1,409 @@
+---
+/**
+ * ============================================================================
+ * PÁGINA DE SEGURIDAD - CAMBIO DE CONTRASEÑA
+ * ============================================================================
+ * Ruta: /perfil/seguridad
+ * - Formulario seguro para cambiar contraseña
+ * - Usa supabase.auth.updateUser() 
+ * - NO almacena contraseñas en BD
+ */
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { createClient } from '@supabase/supabase-js';
+
+// Crear cliente de Supabase
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+
+// Obtener tokens de las cookies
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+if (!accessToken || !refreshToken) {
+  return Astro.redirect('/auth/login?redirect=/perfil/seguridad');
+}
+
+// Crear cliente con autorización
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+  global: {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  },
+});
+
+// Verificar usuario
+const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
+
+if (authError || !user) {
+  return Astro.redirect('/auth/login?redirect=/perfil/seguridad');
+}
+---
+
+<PublicLayout title="Seguridad">
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Breadcrumb -->
+    <nav class="mb-6">
+      <ol class="flex items-center space-x-2 text-sm text-gray-500">
+        <li><a href="/perfil" class="hover:text-accent-gold transition-colors">Mi Perfil</a></li>
+        <li class="text-gray-600">/</li>
+        <li class="text-white font-medium">Seguridad</li>
+      </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-white font-serif">Seguridad</h1>
+      <p class="mt-2 text-gray-400">Gestiona la seguridad de tu cuenta</p>
+    </div>
+
+    <!-- Cambio de contraseña -->
+    <div class="glass-panel overflow-hidden">
+      <div class="px-6 py-4 border-b border-white/10 bg-dark-card/50">
+        <div class="flex items-center">
+          <svg class="w-6 h-6 text-accent-gold mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+          </svg>
+          <h2 class="text-lg font-semibold text-white">Cambiar Contraseña</h2>
+        </div>
+      </div>
+      
+      <form id="password-form" class="p-6 space-y-6">
+        <!-- Contraseña actual -->
+        <div>
+          <label for="current-password" class="block text-sm font-medium text-gray-300 mb-2">
+            Contraseña actual <span class="text-red-400">*</span>
+          </label>
+          <div class="relative">
+            <input
+              type="password"
+              id="current-password"
+              name="currentPassword"
+              required
+              autocomplete="current-password"
+              class="input-field pr-12"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              class="toggle-password absolute inset-y-0 right-0 px-4 flex items-center text-gray-500 hover:text-gray-300 transition-colors"
+              data-target="current-password"
+            >
+              <svg class="w-5 h-5 eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <svg class="w-5 h-5 eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Nueva contraseña -->
+        <div>
+          <label for="new-password" class="block text-sm font-medium text-gray-300 mb-2">
+            Nueva contraseña <span class="text-red-400">*</span>
+          </label>
+          <div class="relative">
+            <input
+              type="password"
+              id="new-password"
+              name="newPassword"
+              required
+              minlength="6"
+              autocomplete="new-password"
+              class="input-field pr-12"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              class="toggle-password absolute inset-y-0 right-0 px-4 flex items-center text-gray-500 hover:text-gray-300 transition-colors"
+              data-target="new-password"
+            >
+              <svg class="w-5 h-5 eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <svg class="w-5 h-5 eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+              </svg>
+            </button>
+          </div>
+          <p class="mt-1 text-xs text-gray-500">Mínimo 6 caracteres</p>
+          
+          <!-- Indicador de fortaleza -->
+          <div class="mt-2">
+            <div class="flex gap-1">
+              <div id="strength-1" class="h-1 flex-1 rounded-full bg-dark-card"></div>
+              <div id="strength-2" class="h-1 flex-1 rounded-full bg-dark-card"></div>
+              <div id="strength-3" class="h-1 flex-1 rounded-full bg-dark-card"></div>
+              <div id="strength-4" class="h-1 flex-1 rounded-full bg-dark-card"></div>
+            </div>
+            <p id="strength-text" class="mt-1 text-xs text-gray-500"></p>
+          </div>
+        </div>
+
+        <!-- Confirmar contraseña -->
+        <div>
+          <label for="confirm-password" class="block text-sm font-medium text-gray-300 mb-2">
+            Confirmar nueva contraseña <span class="text-red-400">*</span>
+          </label>
+          <div class="relative">
+            <input
+              type="password"
+              id="confirm-password"
+              name="confirmPassword"
+              required
+              minlength="6"
+              autocomplete="new-password"
+              class="input-field pr-12"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              class="toggle-password absolute inset-y-0 right-0 px-4 flex items-center text-gray-500 hover:text-gray-300 transition-colors"
+              data-target="confirm-password"
+            >
+              <svg class="w-5 h-5 eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <svg class="w-5 h-5 eye-closed hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+              </svg>
+            </button>
+          </div>
+          <p id="match-error" class="mt-1 text-xs text-red-400 hidden">Las contraseñas no coinciden</p>
+        </div>
+
+        <!-- Mensaje de feedback -->
+        <div id="form-message" class="hidden rounded-lg p-4">
+          <div class="flex items-center">
+            <svg id="message-icon" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
+            <p id="message-text" class="text-sm font-medium"></p>
+          </div>
+        </div>
+
+        <!-- Botones -->
+        <div class="flex items-center justify-between pt-4 border-t border-white/10">
+          <a 
+            href="/perfil" 
+            class="text-gray-400 hover:text-accent-gold text-sm font-medium transition-colors flex items-center gap-2"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Volver al perfil
+          </a>
+          <button
+            type="submit"
+            id="submit-btn"
+            class="btn-primary inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            Cambiar Contraseña
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Información adicional de seguridad -->
+    <div class="mt-6 glass-panel p-4 border-accent-teal/30">
+      <div class="flex">
+        <svg class="w-5 h-5 text-accent-gold mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+          <h3 class="text-sm font-medium text-white">Consejos de seguridad</h3>
+          <ul class="mt-2 text-sm text-gray-400 space-y-1">
+            <li>• Usa una combinación de letras, números y símbolos</li>
+            <li>• Evita usar información personal como fechas de nacimiento</li>
+            <li>• No reutilices contraseñas de otros sitios web</li>
+            <li>• Cambia tu contraseña regularmente</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Toggle password visibility
+    document.querySelectorAll('.toggle-password').forEach(button => {
+      button.addEventListener('click', function(this: HTMLElement) {
+        const targetId = this.getAttribute('data-target');
+        const input = document.getElementById(targetId!) as HTMLInputElement;
+        const eyeOpen = this.querySelector('.eye-open');
+        const eyeClosed = this.querySelector('.eye-closed');
+        
+        if (input.type === 'password') {
+          input.type = 'text';
+          eyeOpen?.classList.add('hidden');
+          eyeClosed?.classList.remove('hidden');
+        } else {
+          input.type = 'password';
+          eyeOpen?.classList.remove('hidden');
+          eyeClosed?.classList.add('hidden');
+        }
+      });
+    });
+
+    // Password strength checker
+    const newPasswordInput = document.getElementById('new-password') as HTMLInputElement;
+    const strengthBars = [
+      document.getElementById('strength-1'),
+      document.getElementById('strength-2'),
+      document.getElementById('strength-3'),
+      document.getElementById('strength-4')
+    ];
+    const strengthText = document.getElementById('strength-text');
+
+    function checkPasswordStrength(password: string) {
+      let strength = 0;
+      
+      if (password.length >= 6) strength++;
+      if (password.length >= 8) strength++;
+      if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength++;
+      if (/[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)) strength++;
+      
+      const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500'];
+      const texts = ['Muy débil', 'Débil', 'Aceptable', 'Fuerte'];
+      
+      strengthBars.forEach((bar, index) => {
+        if (bar) {
+          bar.className = 'h-1 flex-1 rounded-full';
+          if (index < strength) {
+            bar.classList.add(colors[strength - 1]);
+          } else {
+            bar.classList.add('bg-gray-200');
+          }
+        }
+      });
+      
+      if (strengthText && password.length > 0) {
+        strengthText.textContent = `Fortaleza: ${texts[strength - 1] || 'Muy débil'}`;
+        strengthText.className = 'mt-1 text-xs';
+        strengthText.classList.add(
+          strength <= 1 ? 'text-red-500' : 
+          strength === 2 ? 'text-orange-500' : 
+          strength === 3 ? 'text-yellow-600' : 
+          'text-green-500'
+        );
+      }
+    }
+
+    newPasswordInput?.addEventListener('input', function() {
+      checkPasswordStrength(this.value);
+    });
+
+    // Check password match
+    const confirmPasswordInput = document.getElementById('confirm-password') as HTMLInputElement;
+    const matchError = document.getElementById('match-error');
+
+    confirmPasswordInput?.addEventListener('input', function() {
+      if (this.value && newPasswordInput.value !== this.value) {
+        matchError?.classList.remove('hidden');
+        this.classList.add('border-red-300');
+      } else {
+        matchError?.classList.add('hidden');
+        this.classList.remove('border-red-300');
+      }
+    });
+
+    // Form submission
+    const form = document.getElementById('password-form') as HTMLFormElement;
+    const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+    const formMessage = document.getElementById('form-message');
+    const messageIcon = document.getElementById('message-icon');
+    const messageText = document.getElementById('message-text');
+
+    function showMessage(message: string, type: 'success' | 'error') {
+      if (formMessage && messageIcon && messageText) {
+        formMessage.classList.remove('hidden', 'bg-green-50', 'bg-red-50');
+        formMessage.classList.add(type === 'success' ? 'bg-green-50' : 'bg-red-50');
+        
+        messageIcon.innerHTML = type === 'success'
+          ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />'
+          : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />';
+        messageIcon.classList.remove('text-green-500', 'text-red-500');
+        messageIcon.classList.add(type === 'success' ? 'text-green-500' : 'text-red-500');
+        
+        messageText.textContent = message;
+        messageText.classList.remove('text-green-800', 'text-red-800');
+        messageText.classList.add(type === 'success' ? 'text-green-800' : 'text-red-800');
+      }
+    }
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = new FormData(form);
+      const currentPassword = formData.get('currentPassword') as string;
+      const newPassword = formData.get('newPassword') as string;
+      const confirmPassword = formData.get('confirmPassword') as string;
+      
+      // Validaciones
+      if (newPassword !== confirmPassword) {
+        showMessage('Las contraseñas no coinciden', 'error');
+        return;
+      }
+      
+      if (newPassword.length < 6) {
+        showMessage('La contraseña debe tener al menos 6 caracteres', 'error');
+        return;
+      }
+      
+      // Deshabilitar botón
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `
+        <svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Cambiando...
+      `;
+      
+      try {
+        const response = await fetch('/api/auth/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentPassword, newPassword })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showMessage('¡Contraseña actualizada correctamente!', 'success');
+          form.reset();
+          
+          // Reset strength indicator
+          strengthBars.forEach(bar => {
+            if (bar) {
+              bar.className = 'h-1 flex-1 rounded-full bg-gray-200';
+            }
+          });
+          if (strengthText) strengthText.textContent = '';
+          
+        } else {
+          showMessage(result.error || 'Error al cambiar la contraseña', 'error');
+        }
+      } catch (error) {
+        showMessage('Error de conexión. Inténtalo de nuevo.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          Cambiar Contraseña
+        `;
+      }
+    });
+  </script>
+</PublicLayout>

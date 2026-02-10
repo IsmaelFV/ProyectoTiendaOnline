@@ -58,57 +58,62 @@ const productsArray = (products || []) as Product[];
     </aside>
 
     <!-- Contenido principal -->
-    <main class="flex-1 bg-gray-50">
+    <main class="flex-1 bg-dark-bg">
       {/* Hero Banner */}
-      <section class="bg-gradient-to-r from-gray-800 to-brand-navy text-white py-16 px-6">
-        <div class="max-w-4xl mx-auto text-center">
-          <h1 class="text-5xl font-light mb-4 uppercase tracking-wider">Hombre</h1>
-          <p class="text-xl font-light text-gray-200">
+      <section class="relative py-20 px-6 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-dark-surface via-dark-bg to-dark-surface"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(212,175,55,0.1),transparent_60%)]"></div>
+        <div class="relative max-w-4xl mx-auto text-center">
+          <span class="inline-block px-4 py-2 bg-white/5 border border-white/10 rounded-full text-accent-gold text-sm font-medium mb-6 backdrop-blur-sm">
+            Colección Masculina
+          </span>
+          <h1 class="text-5xl md:text-6xl font-light mb-4 uppercase tracking-[0.2em] text-white">Hombre</h1>
+          <p class="text-xl font-light text-gray-400">
             Descubre la última moda masculina
           </p>
         </div>
       </section>
 
       {/* Destacados */}
-      <section class="py-8 px-6 bg-white border-b border-gray-200">
+      <section class="py-8 px-6 bg-dark-surface border-b border-white/5">
         <div class="max-w-7xl mx-auto">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <a 
               href="/hombre/novedades-hombre" 
-              class="group relative h-48 bg-cover bg-center rounded-lg overflow-hidden"
+              class="group relative h-48 bg-cover bg-center rounded-xl overflow-hidden border border-white/10"
               style="background-image: url('https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?w=400&h=300&fit=crop')"
             >
-              <div class="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+              <div class="absolute inset-0 bg-black/50 group-hover:bg-black/40 transition-all flex items-center justify-center">
                 <span class="text-white text-xl font-light uppercase tracking-wider">Novedades</span>
               </div>
             </a>
 
             <a 
               href="/hombre/rebajas-hombre" 
-              class="group relative h-48 bg-cover bg-center rounded-lg overflow-hidden"
+              class="group relative h-48 bg-cover bg-center rounded-xl overflow-hidden border border-white/10"
               style="background-image: url('https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=400&h=300&fit=crop')"
             >
-              <div class="absolute inset-0 bg-red-600/60 group-hover:bg-red-600/70 transition-colors flex items-center justify-center">
+              <div class="absolute inset-0 bg-gradient-to-br from-accent-gold/60 to-amber-600/60 group-hover:from-accent-gold/70 group-hover:to-amber-600/70 transition-all flex items-center justify-center">
                 <span class="text-white text-xl font-semibold uppercase tracking-wider">Rebajas</span>
               </div>
             </a>
 
             <a 
               href="/hombre/ropa-hombre" 
-              class="group relative h-48 bg-cover bg-center rounded-lg overflow-hidden"
+              class="group relative h-48 bg-cover bg-center rounded-xl overflow-hidden border border-white/10"
               style="background-image: url('https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?w=400&h=300&fit=crop')"
             >
-              <div class="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+              <div class="absolute inset-0 bg-black/50 group-hover:bg-black/40 transition-all flex items-center justify-center">
                 <span class="text-white text-xl font-light uppercase tracking-wider">Ropa</span>
               </div>
             </a>
 
             <a 
               href="/hombre/zapatos-hombre" 
-              class="group relative h-48 bg-cover bg-center rounded-lg overflow-hidden"
+              class="group relative h-48 bg-cover bg-center rounded-xl overflow-hidden border border-white/10"
               style="background-image: url('https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=300&fit=crop')"
             >
-              <div class="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+              <div class="absolute inset-0 bg-black/50 group-hover:bg-black/40 transition-all flex items-center justify-center">
                 <span class="text-white text-xl font-light uppercase tracking-wider">Zapatos</span>
               </div>
             </a>
@@ -119,7 +124,7 @@ const productsArray = (products || []) as Product[];
       {/* Productos */}
       <section class="py-12 px-6">
         <div class="max-w-7xl mx-auto">
-          <h2 class="text-3xl font-light mb-8 text-gray-900 uppercase tracking-wider">
+          <h2 class="text-3xl font-light mb-8 text-white uppercase tracking-wider">
             Todos los productos
           </h2>
 
@@ -131,8 +136,8 @@ const productsArray = (products || []) as Product[];
             </div>
           ) : (
             <div class="text-center py-16">
-              <p class="text-gray-500 text-lg">No hay productos disponibles en esta sección.</p>
-              <a href="/" class="text-brand-navy hover:underline mt-4 inline-block">
+              <p class="text-gray-400 text-lg">No hay productos disponibles en esta sección.</p>
+              <a href="/" class="text-accent-gold hover:text-accent-gold/80 mt-4 inline-block transition-colors">
                 Volver al inicio
               </a>
             </div>
@@ -140,7 +145,7 @@ const productsArray = (products || []) as Product[];
 
           {productsArray.length >= 24 && (
             <div class="text-center mt-12">
-              <button class="px-8 py-3 border border-gray-300 text-gray-900 hover:bg-gray-100 transition-colors uppercase tracking-wider text-sm">
+              <button class="px-8 py-3 border border-white/20 text-white hover:bg-white/5 transition-all uppercase tracking-wider text-sm rounded-lg">
                 Cargar más productos
               </button>
             </div>

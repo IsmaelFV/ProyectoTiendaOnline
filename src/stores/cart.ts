@@ -1,4 +1,4 @@
-import { atom, computed } from 'nanostores';
+import { atom, computed, type MapStore } from 'nanostores';
 import { persistentMap, persistentAtom } from '@nanostores/persistent';
 import { supabase } from '@lib/supabase';
 import { currentUserId, isAuthenticated } from './session';
@@ -67,11 +67,11 @@ if (typeof window !== 'undefined') {
 
 // LocalStorage cart: Cada sesión de invitado tiene su PROPIO carrito
 // Pero persiste aunque cierre el navegador (LA MISMA SESIÓN)
-let localCart: ReturnType<typeof persistentMap<Record<string, CartItem>>>;
+let localCart: MapStore<Record<string, CartItem>>;
 
-function createLocalCart(id: string) {
+function createLocalCart(id: string): MapStore<Record<string, CartItem>> {
   const cartKey = `cart:guest:${id}`;
-  let cartData = {};
+  let cartData: Record<string, CartItem> = {};
   try {
     const storedCart = typeof window !== 'undefined' ? localStorage.getItem(cartKey) : null;
     if (storedCart) {
@@ -551,12 +551,12 @@ export function closeCart() {
 // ============================================================================
 export function clearGuestSession() {
   console.log('🛒 [CART] Limpiando sesión de invitado actual');
-  const currentGuestId = guestSessionId.get();
-  localStorage.removeItem(`cart:${currentGuestId}`);
+  const currentClientId = clientCartId.get();
+  localStorage.removeItem(`cart:guest:${currentClientId}`);
   
-  const newGuestId = generateGuestSessionId();
-  guestSessionId.set(newGuestId);
-  console.log('🛒 [CART] Nueva sesión de invitado creada:', newGuestId);
+  const newClientId = generateClientCartId();
+  clientCartId.set(newClientId);
+  console.log('🛒 [CART] Nueva sesión de invitado creada:', newClientId);
   
   cartItems.set({});
 }

@@ -1,0 +1,874 @@
+================================================================================
+NUEVOS CAMBIOS - SISTEMA POST-VENTA Y DESCUENTOS
+================================================================================
+Fecha: 19 de enero de 2026
+Commit: 3e16e0f - Sistema completo cancelación pedidos, códigos descuento y devoluciones
+Fase: POST-VENTA (Fases 1-3 completadas)
+
+================================================================================
+ÍNDICE
+================================================================================
+1. Sistema de Cancelación de Pedidos (FASE 1 y 2)
+2. Sistema de Códigos de Descuento (FASE 3)
+3. Modal de Devoluciones (UI)
+4. Scripts de Diagnóstico y Testing
+5. Documentación y Guías
+6. Próximos Pasos
+
+
+================================================================================
+1. SISTEMA DE CANCELACIÓN DE PEDIDOS
+================================================================================
+
+PROBLEMA IDENTIFICADO:
+- Los usuarios no podían ver sus propios pedidos en /perfil/mis-pedidos
+- No existía forma de cancelar pedidos desde el frontend
+- El stock no se restauraba al cancelar pedidos
+- Inconsistencia en estados: webhook usa 'confirmed' pero no estaba permitido en schema
+
+SOLUCIÓN IMPLEMENTADA:
+
+A) Migración 003: Políticas RLS
+   Archivo: migrations/003_user_orders_policies.sql
+   
+   Políticas creadas:
+   - "Users can view their own orders"
+     → Permite SELECT de pedidos donde user_id = auth.uid()
+   
+   - "Users can update their own orders"
+     → Permite UPDATE para cancelación
+   
+   - "Users can view items of their orders"
+     → Permite ver order_items con JOIN
+   
+   ⚠️ CRÍTICO: Esta migración debe aplicarse PRIMERO
+   Sin ella, los usuarios no ven sus pedidos aunque existan en BD
+
+B) Migración 004: Arreglar Estados
+   Archivo: migrations/004_fix_order_states.sql
+   
+   Cambio en CHECK constraint:
+   - Antes: 'pending', 'processing', 'paid', 'shipped', 'delivered', 'cancelled', 'refunded'
+   - Ahora: + 'confirmed' (usado por webhook de Stripe)
+   
+   Verificación incluida:
+   - Cuenta pedidos con estados inválidos
+   - Muestra warning si hay datos huérfanos
+
+C) Migración 005: Función de Cancelación Atómica
+   Archivo: migrations/005_cancel_order_function.sql
+   
+   Función: cancel_order_and_restore_stock(p_order_id, p_user_id)
+   
+   Validaciones implementadas:
+   1. Pedido existe
+   2. Pedido pertenece al usuario (user_id = p_user_id)
+   3. Estado es 'confirmed' o 'processing'
+   4. NO permite cancelar si: shipped, delivered, refunded
+   
+   Proceso atómico (transacción implícita):
+   1. Validar condiciones
+   2. Iterar sobre order_items
+   3. Llamar increment_stock() por cada producto
+   4. Actualizar orders.status = 'cancelled'
+   5. Si algo falla, se revierte TODO automáticamente
+   
+   Retorna JSON:
+   {
+     "success": true|false,
+     "message": "Texto descriptivo",
+     "restored_items": 3  // Número de productos restaurados
+   }
+
+D) API Endpoint
+   Archivo: src/pages/api/orders/cancel.ts
+   
+   POST /api/orders/cancel
+   
+   Headers requeridos:
+   - Authorization: Bearer {token}
+   
+   Body:
+   {
+     "orderId": "uuid-del-pedido"
+   }
+   
+   Flujo de validación:
+   1. Verificar header Authorization existe
+   2. Extraer token y validar con supabase.auth.getUser()
+   3. Verificar orderId en body
+   4. Llamar función SQL cancel_order_and_restore_stock()
+   5. Retornar resultado
+
+E) Cambios en UI
+   Archivo: src/pages/perfil/mis-pedidos.astro
+   
+   Mejoras implementadas:
+   
+   1. Método de autenticación corregido:
+      - Antes: createServerSupabaseClient() (fallaba con RLS)
+      - Ahora: Crear cliente con tokens de cookies manualmente
+      - Lee sb-access-token y sb-refresh-token de cookies
+      - Establece sesión con supabase.auth.getUser()
+   
+   2. Modal de confirmación de cancelación:
+      HTML:
+      - Overlay semi-transparente
+      - Modal centrado con advertencia
+      - Botones: "Sí, cancelar pedido" y "No, mantener pedido"
+      
+      JavaScript:
+      - Variable currentOrderId para tracking
+      - Funciones: openModal(), closeModal()
+      - Click en "Cancelar pedido" → abre modal
+      - Click en "Confirmar" → llama API
+   
+   3. Sistema de Toast (notificaciones):
+      function showToast(message, type)
+      - Tipos: 'success' (verde) o 'error' (rojo)
+      - Se muestra 3 segundos y desaparece
+      - Posición: fixed bottom-right
+   
+   4. Proceso de cancelación:
+      ```javascript
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(...);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('/api/orders/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ orderId })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        showToast(result.message);
+        window.location.reload();
+      }
+      ```
+   
+   5. Botón "Cancelar pedido" solo visible si:
+      - order.status === 'confirmed' || order.status === 'processing'
+
+F) Modal de Devoluciones (Nuevo)
+   También en src/pages/perfil/mis-pedidos.astro
+   
+   Trigger:
+   - Botón "Solicitar devolución" visible si order.status === 'delivered'
+   
+   Contenido del modal:
+   - Número de pedido (copiable)
+   - Condiciones de devolución:
+     • 30 días desde recepción
+     • Productos sin usar con etiquetas
+     • Comprobante de compra incluido
+     • Productos en oferta no reembolsables
+     • Gastos de devolución a cargo del cliente
+   
+   - Información de contacto:
+     • Email: devoluciones@tienda.com (link mailto con asunto prellenado)
+     • Teléfono: +34 900 123 456
+   
+   - Botones:
+     • "Copiar nº de pedido" → navigator.clipboard.writeText()
+     • "Enviar email" → abre cliente de correo con template
+   
+   ⚠️ IMPORTANTE: Este modal es solo informativo
+   No crea registro en BD ni gestiona devoluciones automáticamente
+
+
+================================================================================
+2. SISTEMA DE CÓDIGOS DE DESCUENTO
+================================================================================
+
+PROBLEMA IDENTIFICADO:
+- No existía sistema de promociones
+- No había forma de aplicar descuentos en el checkout
+- Necesidad de códigos limitados por tiempo y usos
+
+SOLUCIÓN IMPLEMENTADA:
+
+A) Migración 006: Tabla y Funciones
+   Archivo: migrations/006_discount_codes.sql
+   
+   Tabla: discount_codes
+   ┌─────────────────────┬──────────────┬─────────────────────────────┐
+   │ Campo               │ Tipo         │ Descripción                 │
+   ├─────────────────────┼──────────────┼─────────────────────────────┤
+   │ id                  │ UUID         │ Primary key                 │
+   │ code                │ TEXT UNIQUE  │ Código (case-insensitive)   │
+   │ description         │ TEXT         │ Descripción interna         │
+   │ discount_type       │ TEXT         │ 'percentage' o 'fixed'      │
+   │ discount_value      │ DECIMAL      │ 10 (%) o 5 (€)              │
+   │ valid_from          │ TIMESTAMPTZ  │ Fecha inicio validez        │
+   │ valid_until         │ TIMESTAMPTZ  │ Fecha fin (NULL = ilimitado)│
+   │ max_uses            │ INTEGER      │ Límite usos (NULL = ∞)      │
+   │ uses_count          │ INTEGER      │ Contador actual de usos     │
+   │ min_purchase_amount │ DECIMAL      │ Compra mínima requerida     │
+   │ is_active           │ BOOLEAN      │ Activar/desactivar          │
+   │ created_at          │ TIMESTAMPTZ  │ Fecha creación              │
+   │ updated_at          │ TIMESTAMPTZ  │ Auto-actualizado            │
+   └─────────────────────┴──────────────┴─────────────────────────────┘
+   
+   Índices creados:
+   - idx_discount_codes_code (búsqueda rápida por código)
+   - idx_discount_codes_active (filtrado de códigos activos)
+   
+   Función 1: validate_discount_code(p_code, p_cart_total, p_user_id)
+   
+   Validaciones que realiza:
+   1. ¿El código existe y está activo?
+   2. ¿Está dentro del periodo de validez? (valid_from <= NOW() <= valid_until)
+   3. ¿No ha excedido el límite de usos? (uses_count < max_uses)
+   4. ¿El total del carrito cumple el mínimo? (p_cart_total >= min_purchase_amount)
+   
+   Cálculo de descuento:
+   - Si discount_type = 'percentage':
+     discount_amount = ROUND(p_cart_total * discount_value / 100, 2)
+   
+   - Si discount_type = 'fixed':
+     discount_amount = discount_value
+   
+   - Si discount_amount > p_cart_total:
+     discount_amount = p_cart_total  (evita totales negativos)
+   
+   Retorna JSON:
+   {
+     "valid": true|false,
+     "code": "BIENVENIDA10",
+     "discount_type": "percentage",
+     "discount_value": 10,
+     "discount_amount": 5.00,
+     "original_total": 50.00,
+     "final_total": 45.00,
+     "message": "Código aplicado: -5.00€"
+   }
+   
+   ⚠️ IMPORTANTE: Esta función NO incrementa uses_count
+   Solo valida y calcula el descuento
+   
+   Función 2: increment_discount_usage(p_code)
+   
+   Propósito:
+   - Incrementar uses_count tras pago confirmado
+   - Llamada desde webhook de Stripe
+   - SECURITY DEFINER (solo service_role puede ejecutar)
+   
+   UPDATE discount_codes
+   SET uses_count = uses_count + 1
+   WHERE UPPER(code) = UPPER(p_code) AND is_active = true;
+   
+   Políticas RLS:
+   - Anyone can view active discount codes (SELECT)
+     → Permite validación desde frontend
+   
+   - Service role can manage discount codes (ALL)
+     → Solo admins pueden crear/editar/eliminar
+   
+   Códigos de ejemplo insertados:
+   1. BIENVENIDA10
+      - 10% descuento
+      - Compra mínima: 20€
+      - Máximo 100 usos
+   
+   2. PRIMERACOMPRA
+      - 5€ descuento fijo
+      - Compra mínima: 30€
+      - Usos ilimitados
+   
+   3. VERANO2026
+      - 15% descuento
+      - Compra mínima: 50€
+      - Máximo 500 usos
+
+B) Componentes UI
+   
+   Opción 1: DiscountCodeInput.tsx (React Island)
+   Archivo: src/components/islands/DiscountCodeInput.tsx
+   
+   Props:
+   - cartTotal: number (en centavos)
+   - onDiscountApplied: (data) => void (callback)
+   
+   Estado:
+   - code: string (código ingresado)
+   - isValidating: boolean (loading state)
+   - appliedDiscount: object | null (descuento aplicado)
+   - error: string (mensaje de error)
+   
+   Funcionalidades:
+   - Input uppercase automático
+   - Validación en tiempo real con Supabase RPC
+   - Recálculo automático si cambia cartTotal
+   - Guardado en sessionStorage
+   - Box verde con código aplicado
+   - Botón "Quitar" para remover descuento
+   
+   Conversión de unidades:
+   - Frontend trabaja en centavos (5000 = 50€)
+   - SQL trabaja en euros (50.00)
+   - Componente convierte: cartTotal / 100 al validar
+   - Componente convierte: result * 100 al guardar
+   
+   Opción 2: DiscountCodeInput.astro (Astro Component)
+   Archivo: src/components/ui/DiscountCodeInput.astro
+   
+   Similar al componente React pero en Astro puro
+   - Script inline con client:load
+   - Misma lógica de validación
+   - Mismo diseño UI
+   
+   ⚠️ ELEGIR UNA OPCIÓN: Usar React o Astro, no ambas
+
+C) Integración con Checkout (PENDIENTE)
+   
+   Archivos a modificar:
+   1. src/pages/api/checkout/create-session.ts
+   2. src/pages/api/webhooks/stripe.ts
+   
+   Flujo propuesto:
+   
+   En create-session.ts:
+   ```typescript
+   const { items, discountCode } = await request.json();
+   
+   let discount = null;
+   if (discountCode) {
+     const { data } = await supabase.rpc('validate_discount_code', {
+       p_code: discountCode,
+       p_cart_total: cartTotal / 100
+     });
+     
+     if (data.valid) {
+       discount = data;
+     } else {
+       // Cancelar reservas y retornar error
+       return new Response(JSON.stringify({
+         error: data.message
+       }), { status: 400 });
+     }
+   }
+   
+   // Crear cupón dinámico en Stripe
+   let coupon = null;
+   if (discount) {
+     const couponData = await stripe.coupons.create({
+       amount_off: Math.round(discount.discount_amount * 100), // centavos
+       currency: 'eur',
+       name: discount.code
+     });
+     coupon = couponData.id;
+   }
+   
+   const session = await stripe.checkout.sessions.create({
+     line_items: [...],
+     discounts: coupon ? [{ coupon }] : [],
+     metadata: {
+       discount_code: discountCode || null,
+       discount_amount: discount?.discount_amount || 0
+     }
+   });
+   ```
+   
+   En webhook stripe.ts:
+   ```typescript
+   if (event.type === 'checkout.session.completed') {
+     const session = event.data.object;
+     const discountCode = session.metadata.discount_code;
+     
+     // Crear orden con descuento
+     const { data: order } = await supabase.from('orders').insert({
+       ...orderData,
+       discount: session.total_details.amount_discount / 100,
+       customer_notes: discountCode 
+         ? `Código descuento aplicado: ${discountCode}`
+         : null
+     });
+     
+     // Incrementar contador de usos
+     if (discountCode) {
+       await supabase.rpc('increment_discount_usage', {
+         p_code: discountCode
+       });
+     }
+   }
+   ```
+
+
+================================================================================
+3. SCRIPTS DE DIAGNÓSTICO Y TESTING
+================================================================================
+
+A) Script PowerShell Automático
+   Archivo: aplicar-migraciones-pedidos.ps1
+   
+   Propósito:
+   - Aplicar migraciones 003, 004, 005 automáticamente
+   - Usar API REST de Supabase
+   - Requiere .env con SUPABASE_URL y SERVICE_ROLE_KEY
+   
+   Uso:
+   ```powershell
+   .\aplicar-migraciones-pedidos.ps1
+   ```
+   
+   Orden de ejecución:
+   1. CRÍTICO: 003_user_orders_policies.sql
+   2. REQUERIDO: 004_fix_order_states.sql
+   3. REQUERIDO: 005_cancel_order_function.sql
+   
+   Si falla alguna:
+   - Muestra error y continúa con las siguientes
+   - Al final muestra resumen y instrucciones manuales
+
+B) SQL de Diagnóstico
+   
+   diagnostico-pedidos.sql
+   - 7 pasos de verificación
+   - Queries paso a paso con preguntas
+   - Detecta si hay pedidos, user_id NULL, problemas RLS
+   - Incluye instrucciones en comentarios
+   
+   verificar-pedidos-rapido.sql
+   - Quick check de 4 queries
+   - Cuenta total pedidos
+   - Lista últimos 5 con indicador INVITADO/UUID
+   - Verifica políticas RLS activas
+   
+   verificar-cuenta-email.sql
+   - Busca user_id por email específico
+   - Lista pedidos de esa cuenta
+   - Útil para troubleshooting de cuentas específicas
+
+C) Página de Testing
+   Archivo: src/pages/test-session.astro
+   
+   URL: http://localhost:4321/test-session
+   
+   Muestra:
+   - Estado de sesión actual (user_id, email)
+   - Pedidos encontrados con el user_id actual
+   - Comparación con user_id esperado
+   - Lista de todos los pedidos en BD
+   - Instrucciones de solución
+   
+   Diseño:
+   - Estilo terminal (fondo oscuro, texto verde)
+   - Secciones numeradas
+   - Colores: verde (success), rojo (error), amarillo (warning)
+
+
+================================================================================
+4. DOCUMENTACIÓN Y GUÍAS
+================================================================================
+
+A) PLAN_IMPLEMENTACION.md
+   
+   Contenido:
+   - Estado actual verificado del proyecto
+   - Inconsistencia detectada (estado 'confirmed')
+   - Plan de 5 fases detallado:
+     • Fase 1: Arreglar estados
+     • Fase 2: Cancelación atómica
+     • Fase 3: Códigos de descuento
+     • Fase 4: Modal devoluciones
+     • Fase 5: Popup promocional (pendiente)
+   - Reglas de seguridad (qué NO hacer)
+   - Orden de implementación
+
+B) FASE_1_2_COMPLETADA.md
+   
+   Contenido:
+   - Lista de archivos creados/modificados
+   - Descripción detallada de cada migración
+   - Verificaciones de seguridad
+   - Instrucciones de testing paso a paso
+   - Verificación de stock restaurado
+   - Notas importantes
+
+C) FASE_3_COMPLETADA.md
+   
+   Contenido:
+   - Sistema de descuentos implementado
+   - Archivos creados (migración + componentes)
+   - Instrucciones de integración en carrito
+   - Códigos de ejemplo para probar
+   - Validaciones implementadas
+   - Flujo completo del sistema
+   - Próximos pasos (gestión admin)
+
+D) FIX_PEDIDOS_NO_VISIBLES.md
+   
+   Contenido:
+   - Problema: Pedidos no aparecen en /perfil/mis-pedidos
+   - Causa: Políticas RLS bloqueando acceso
+   - Solución rápida (script automático)
+   - Solución manual en Supabase
+   - Verificación de que funciona
+   - Troubleshooting adicional
+
+
+================================================================================
+5. PRÓXIMOS PASOS Y PENDIENTES
+================================================================================
+
+IMPLEMENTADO ✅:
+- [x] Políticas RLS para pedidos (Fase 1)
+- [x] Arreglar estados del schema (Fase 1)
+- [x] Función de cancelación atómica (Fase 2)
+- [x] API endpoint de cancelación (Fase 2)
+- [x] UI con modal de confirmación (Fase 2)
+- [x] Tabla de códigos de descuento (Fase 3)
+- [x] Funciones SQL de validación (Fase 3)
+- [x] Componentes UI para descuentos (Fase 3)
+- [x] Modal de devoluciones informativo (Fase 4)
+- [x] Scripts de diagnóstico SQL
+- [x] Script PowerShell automatizado
+- [x] Documentación completa
+
+PENDIENTE ⏳:
+
+1. Integración de Descuentos en Checkout (FASE 3 - Backend)
+   Archivos a modificar:
+   - src/pages/api/checkout/create-session.ts
+     → Recibir discountCode en body
+     → Validar con validate_discount_code()
+     → Crear cupón dinámico en Stripe
+     → Guardar en metadata
+   
+   - src/pages/api/webhooks/stripe.ts
+     → Leer discount_code de metadata
+     → Guardar descuento en orders.discount
+     → Llamar increment_discount_usage()
+   
+   - src/pages/carrito.astro o similar
+     → Integrar componente DiscountCodeInput
+     → Enviar código al crear checkout session
+
+2. Sistema de Devoluciones Completo (FASE 4 - Backend)
+   Tareas:
+   - Crear tabla returns en BD
+   - Función SQL create_return_request()
+   - API endpoint POST /api/returns/create
+   - Integrar con modal existente
+   - Sistema de notificaciones a admins
+   - Tracking de estado de devolución
+
+3. Panel de Administración (FASE 5)
+   Funcionalidades:
+   - CRUD de códigos de descuento
+   - Estadísticas de uso de códigos
+   - Gestión de devoluciones
+   - Ver todas las reservas de stock activas
+   - Historial de cancelaciones
+
+4. Popup Promocional (FASE 5)
+   Características:
+   - Mostrar una vez por sesión (localStorage)
+   - Formulario de email
+   - Generar código automático único
+   - Enviar por email con Brevo
+   - Diseño atractivo con animación
+
+5. Notificaciones por Email
+   Eventos a cubrir:
+   - Pedido confirmado
+   - Pedido cancelado (confirmación al usuario)
+   - Devolución solicitada (confirmación al usuario)
+   - Devolución aprobada
+   - Códigos de descuento generados
+
+6. Mejoras en Cancelación
+   Tareas:
+   - Implementar reembolso automático con Stripe
+   - Notificar por email al usuario
+   - Registro de motivo de cancelación (opcional)
+   - Estadísticas de cancelaciones para analytics
+
+
+================================================================================
+6. INSTRUCCIONES DE IMPLEMENTACIÓN
+================================================================================
+
+ORDEN DE APLICACIÓN (CRÍTICO):
+
+1️⃣ Aplicar Migraciones SQL (EN ORDEN)
+   
+   Opción A: Script Automático
+   ```powershell
+   .\aplicar-migraciones-pedidos.ps1
+   ```
+   
+   Opción B: Manual en Supabase SQL Editor
+   a) migrations/003_user_orders_policies.sql  (CRÍTICO)
+   b) migrations/004_fix_order_states.sql
+   c) migrations/005_cancel_order_function.sql
+   d) migrations/006_discount_codes.sql
+
+2️⃣ Verificar que Funcionan
+   
+   a) Página de test:
+      - Ve a http://localhost:4321/test-session
+      - Inicia sesión
+      - Verifica que veas tus pedidos
+   
+   b) SQL directo:
+      ```sql
+      -- En Supabase SQL Editor:
+      SELECT policyname FROM pg_policies WHERE tablename = 'orders';
+      -- Debe mostrar: "Users can view their own orders"
+      ```
+
+3️⃣ Probar Cancelación
+   
+   a) Ve a /perfil/mis-pedidos
+   b) Busca un pedido con estado "Confirmado"
+   c) Click en "Cancelar pedido"
+   d) Confirma en el modal
+   e) Verifica mensaje de éxito
+   f) Verifica que el stock se restauró:
+      ```sql
+      SELECT id, name, stock FROM products WHERE id = 'PRODUCT_ID';
+      ```
+
+4️⃣ Probar Códigos de Descuento
+   
+   a) Integrar componente en carrito (elegir uno):
+      ```astro
+      <!-- En src/pages/carrito.astro -->
+      import DiscountCodeInput from '@components/islands/DiscountCodeInput';
+      <!-- O -->
+      import DiscountCodeInput from '@components/ui/DiscountCodeInput.astro';
+      
+      <DiscountCodeInput />
+      ```
+   
+   b) Probar códigos:
+      - BIENVENIDA10 (10% desc, mín 20€)
+      - PRIMERACOMPRA (5€ desc, mín 30€)
+      - VERANO2026 (15% desc, mín 50€)
+   
+   c) Verificar que se guarda en sessionStorage
+   
+   d) Integrar en checkout (ver sección "Integración con Checkout")
+
+5️⃣ Probar Modal de Devoluciones
+   
+   a) Crear un pedido de prueba
+   b) En Supabase, actualizar manualmente:
+      ```sql
+      UPDATE orders SET status = 'delivered' WHERE id = 'ORDER_ID';
+      ```
+   c) Recarga /perfil/mis-pedidos
+   d) Click en "Solicitar devolución"
+   e) Verificar contenido del modal
+   f) Probar botón "Copiar nº pedido"
+   g) Probar botón "Enviar email"
+
+
+================================================================================
+7. VARIABLES DE ENTORNO REQUERIDAS
+================================================================================
+
+.env existentes (ya configuradas):
+  PUBLIC_SUPABASE_URL=...
+  PUBLIC_SUPABASE_ANON_KEY=...
+  SUPABASE_SERVICE_ROLE_KEY=...
+  STRIPE_SECRET_KEY=...
+  STRIPE_WEBHOOK_SECRET=...
+  BREVO_API_KEY=...
+  EMAIL_FROM=...
+
+Nuevas variables (opcional):
+  # Para script PowerShell automatizado
+  # (ya están en .env, solo asegurarse que existan)
+
+No se requieren nuevas variables para las funcionalidades implementadas.
+
+
+================================================================================
+8. TROUBLESHOOTING
+================================================================================
+
+PROBLEMA: Los pedidos no aparecen en /perfil/mis-pedidos
+
+SOLUCIÓN:
+1. Verifica que ejecutaste migrations/003_user_orders_policies.sql
+2. Ve a /test-session para diagnóstico automático
+3. Ejecuta diagnostico-pedidos.sql paso a paso
+4. Si los pedidos tienen user_id = NULL, fueron hechos como invitado
+   → No se pueden recuperar en el perfil
+   → El webhook debe guardar user_id correctamente
+
+PROBLEMA: Error al cancelar pedido
+
+SOLUCIÓN:
+1. Verifica que ejecutaste migrations/005_cancel_order_function.sql
+2. Verifica que el estado del pedido sea 'confirmed' o 'processing'
+3. Revisa la consola del navegador (F12) para ver el error exacto
+4. Verifica logs del backend:
+   ```sql
+   -- En Supabase SQL Editor:
+   SELECT * FROM pg_stat_statements WHERE query LIKE '%cancel_order%';
+   ```
+
+PROBLEMA: Código de descuento no se valida
+
+SOLUCIÓN:
+1. Verifica que ejecutaste migrations/006_discount_codes.sql
+2. Verifica que el código existe y está activo:
+   ```sql
+   SELECT * FROM discount_codes WHERE code = 'BIENVENIDA10';
+   ```
+3. Revisa la consola del navegador para ver el error de la RPC
+4. Verifica permisos:
+   ```sql
+   SELECT has_function_privilege('validate_discount_code', 'execute');
+   ```
+
+PROBLEMA: Script PowerShell falla
+
+SOLUCIÓN:
+1. Verifica que .env tiene PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY
+2. Aplica las migraciones manualmente en Supabase SQL Editor
+3. Sigue las instrucciones en FIX_PEDIDOS_NO_VISIBLES.md
+
+
+================================================================================
+9. RESUMEN DE ARCHIVOS CREADOS
+================================================================================
+
+Migraciones SQL (4):
+  ✅ migrations/003_user_orders_policies.sql      (88 líneas)
+  ✅ migrations/004_fix_order_states.sql          (53 líneas)
+  ✅ migrations/005_cancel_order_function.sql     (128 líneas)
+  ✅ migrations/006_discount_codes.sql            (208 líneas)
+
+API Endpoints (1):
+  ✅ src/pages/api/orders/cancel.ts               (108 líneas)
+
+Componentes UI (2):
+  ✅ src/components/islands/DiscountCodeInput.tsx (181 líneas)
+  ✅ src/components/ui/DiscountCodeInput.astro    (234 líneas)
+
+Páginas de Testing (1):
+  ✅ src/pages/test-session.astro                 (131 líneas)
+
+Scripts de Diagnóstico (3):
+  ✅ diagnostico-pedidos.sql                      (156 líneas)
+  ✅ verificar-pedidos-rapido.sql                 (34 líneas)
+  ✅ verificar-cuenta-email.sql                   (27 líneas)
+
+Scripts PowerShell (1):
+  ✅ aplicar-migraciones-pedidos.ps1              (156 líneas)
+
+Documentación (4):
+  ✅ PLAN_IMPLEMENTACION.md                       (162 líneas)
+  ✅ FASE_1_2_COMPLETADA.md                       (124 líneas)
+  ✅ FASE_3_COMPLETADA.md                         (129 líneas)
+  ✅ FIX_PEDIDOS_NO_VISIBLES.md                   (122 líneas)
+
+Archivos Modificados (1):
+  ✅ src/pages/perfil/mis-pedidos.astro           (+300 líneas aprox)
+     - Modal de confirmación cancelación
+     - Toast de notificaciones
+     - Modal de devoluciones
+     - Sistema de autenticación corregido
+     - Botones y lógica mejorada
+
+TOTAL:
+  📄 16 archivos nuevos
+  📝 1 archivo modificado significativamente
+  📊 ~2,240 líneas de código nuevo
+  📚 537 líneas de documentación
+
+
+================================================================================
+10. CHECKLIST DE IMPLEMENTACIÓN
+================================================================================
+
+Backend - Migraciones SQL:
+  ☐ Ejecutar migrations/003_user_orders_policies.sql
+  ☐ Ejecutar migrations/004_fix_order_states.sql
+  ☐ Ejecutar migrations/005_cancel_order_function.sql
+  ☐ Ejecutar migrations/006_discount_codes.sql
+  ☐ Verificar políticas RLS activas
+  ☐ Verificar funciones SQL creadas
+
+Backend - Integración Checkout:
+  ☐ Modificar src/pages/api/checkout/create-session.ts
+  ☐ Modificar src/pages/api/webhooks/stripe.ts
+  ☐ Probar flujo completo con código de descuento
+  ☐ Verificar uses_count se incrementa tras pago
+
+Frontend - Componentes:
+  ☐ Elegir entre DiscountCodeInput.tsx o .astro
+  ☐ Integrar en página de carrito
+  ☐ Verificar validación en tiempo real
+  ☐ Verificar guardado en sessionStorage
+  ☐ Probar quitar descuento
+
+Testing:
+  ☐ Probar cancelación de pedido confirmado
+  ☐ Probar cancelación de pedido en proceso
+  ☐ Verificar stock se restaura correctamente
+  ☐ Intentar cancelar pedido enviado (debe fallar)
+  ☐ Probar códigos de descuento con diferentes condiciones
+  ☐ Probar modal de devoluciones
+  ☐ Probar botón copiar número de pedido
+  ☐ Verificar emails de facturas siguen funcionando
+
+Documentación:
+  ☐ Leer PLAN_IMPLEMENTACION.md
+  ☐ Leer FASE_1_2_COMPLETADA.md
+  ☐ Leer FASE_3_COMPLETADA.md
+  ☐ Guardar FIX_PEDIDOS_NO_VISIBLES.md como referencia
+
+
+================================================================================
+11. NOTAS FINALES
+================================================================================
+
+SEGURIDAD:
+- Todas las operaciones SQL usan SECURITY DEFINER con validaciones
+- RLS activo en todas las tablas relevantes
+- API endpoints verifican autenticación con Bearer token
+- Funciones de descuento permiten lectura pública pero solo service_role modifica
+
+ATOMICIDAD:
+- cancel_order_and_restore_stock() es completamente atómico
+- Si falla cualquier paso, se revierte TODO automáticamente
+- No hay riesgo de stock inconsistente
+
+ESCALABILIDAD:
+- Sistema de códigos soporta millones de usos
+- Índices optimizados para búsquedas rápidas
+- Políticas RLS eficientes con auth.uid()
+
+MANTENIBILIDAD:
+- Código modular y bien documentado
+- Scripts de diagnóstico para troubleshooting
+- Documentación completa por fase
+- Comentarios explicativos en SQL y TypeScript
+
+PRÓXIMAS MEJORAS RECOMENDADAS:
+1. Panel de admin para gestión de códigos
+2. Sistema completo de devoluciones con BD
+3. Reembolsos automáticos con Stripe
+4. Notificaciones por email para todos los eventos
+5. Analytics de cancelaciones y descuentos
+6. Popup promocional con generación automática de códigos
+
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================
+Fecha: 19 de enero de 2026
+Estado: ✅ FASES 1-3 COMPLETAS
+Pendiente: Integración checkout (descuentos) + Backend devoluciones
+Próximo: Panel de admin o popup promocional
+================================================================================

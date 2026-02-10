@@ -2,39 +2,291 @@
 const currentYear = new Date().getFullYear();
 ---
 
-<footer class="bg-brand-navy text-white mt-24">
-  <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-      <div class="col-span-1 md:col-span-2">
-        <h3 class="font-serif text-2xl font-bold mb-4">FashionMarket</h3>
-        <p class="text-brand-cream/80 max-w-md">
-          Moda masculina premium. Diseños atemporales que combinan elegancia y comodidad.
+<footer class="footer-premium relative mt-24 overflow-hidden">
+  <!-- Decorative elements -->
+  <div class="footer-glow-top"></div>
+  <div class="absolute top-0 left-1/4 w-96 h-96 bg-primary-500/5 rounded-full blur-[100px] -translate-y-1/2 pointer-events-none"></div>
+  <div class="absolute bottom-0 right-1/4 w-64 h-64 bg-gold-500/5 rounded-full blur-[80px] translate-y-1/2 pointer-events-none"></div>
+  
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-12">
+      <!-- Brand Section -->
+      <div class="md:col-span-5">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="footer-logo-icon">
+            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" class="stroke-gold-500"/>
+              <path d="M2 17l10 5 10-5" class="stroke-gold-400 opacity-60"/>
+              <path d="M2 12l10 5 10-5" class="stroke-gold-300 opacity-40"/>
+            </svg>
+          </div>
+          <span class="font-serif text-2xl font-bold text-white">FashionMarket</span>
+        </div>
+        <p class="text-gray-400 max-w-md leading-relaxed mb-8">
+          Moda premium con estilo atemporal. Diseños exclusivos que combinan elegancia y confort para quienes buscan lo mejor.
         </p>
+        
+        <!-- Newsletter -->
+        <div class="mb-8">
+          <h5 class="text-sm font-semibold text-white mb-3">Suscríbete a nuestra newsletter</h5>
+          <div class="flex gap-2">
+            <input 
+              type="email" 
+              placeholder="tu@email.com" 
+              class="footer-input flex-1"
+            />
+            <button class="footer-subscribe-btn">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Social Icons -->
+        <div class="flex gap-3">
+          <a href="#" class="social-icon-btn" aria-label="Twitter">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>
+          </a>
+          <a href="#" class="social-icon-btn" aria-label="Instagram">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+          </a>
+          <a href="#" class="social-icon-btn" aria-label="YouTube">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+          </a>
+          <a href="#" class="social-icon-btn" aria-label="Pinterest">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.607 0 11.985-5.365 11.985-11.987C23.97 5.39 18.592.026 11.985.026L12.017 0z"/></svg>
+          </a>
+        </div>
       </div>
       
-      <div>
-        <h4 class="font-semibold mb-4">Navegación</h4>
-        <ul class="space-y-2 text-brand-cream/80">
-          <li><a href="/productos" class="hover:text-brand-gold transition-colors">Productos</a></li>
-          <li><a href="/categoria/camisas" class="hover:text-brand-gold transition-colors">Camisas</a></li>
-          <li><a href="/categoria/pantalones" class="hover:text-brand-gold transition-colors">Pantalones</a></li>
-          <li><a href="/categoria/trajes" class="hover:text-brand-gold transition-colors">Trajes</a></li>
+      <!-- Navigation -->
+      <div class="md:col-span-2">
+        <h4 class="footer-heading">Tienda</h4>
+        <ul class="space-y-3">
+          <li><a href="/productos" class="footer-link">Todos los Productos</a></li>
+          <li><a href="/novedades" class="footer-link">Novedades</a></li>
+          <li><a href="/ofertas" class="footer-link">Ofertas</a></li>
+          <li><a href="/mujer" class="footer-link">Mujer</a></li>
+          <li><a href="/hombre" class="footer-link">Hombre</a></li>
         </ul>
       </div>
       
-      <div>
-        <h4 class="font-semibold mb-4">Información</h4>
-        <ul class="space-y-2 text-brand-cream/80">
-          <li><a href="/sobre-nosotros" class="hover:text-brand-gold transition-colors">Sobre Nosotros</a></li>
-          <li><a href="/contacto" class="hover:text-brand-gold transition-colors">Contacto</a></li>
-          <li><a href="/envios" class="hover:text-brand-gold transition-colors">Envíos</a></li>
-          <li><a href="/devoluciones" class="hover:text-brand-gold transition-colors">Devoluciones</a></li>
+      <!-- Categories -->
+      <div class="md:col-span-2">
+        <h4 class="footer-heading">Categorías</h4>
+        <ul class="space-y-3">
+          <li><a href="/categoria/camisas" class="footer-link">Camisas</a></li>
+          <li><a href="/categoria/pantalones" class="footer-link">Pantalones</a></li>
+          <li><a href="/categoria/vestidos" class="footer-link">Vestidos</a></li>
+          <li><a href="/categoria/accesorios" class="footer-link">Accesorios</a></li>
+          <li><a href="/categoria/calzado" class="footer-link">Calzado</a></li>
         </ul>
+      </div>
+      
+      <!-- Information -->
+      <div class="md:col-span-3">
+        <h4 class="footer-heading">Ayuda</h4>
+        <ul class="space-y-3">
+          <li><a href="/sobre-nosotros" class="footer-link">Sobre Nosotros</a></li>
+          <li><a href="/contacto" class="footer-link">Contacto</a></li>
+          <li><a href="/envios" class="footer-link">Envíos y Entregas</a></li>
+          <li><a href="/devoluciones" class="footer-link">Devoluciones</a></li>
+          <li><a href="/sostenibilidad" class="footer-link">Sostenibilidad</a></li>
+        </ul>
+        
+        <!-- Trust badges -->
+        <div class="mt-8 flex gap-3">
+          <div class="trust-badge">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
+          <div class="trust-badge">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+          </div>
+          <div class="trust-badge">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
+          </div>
+        </div>
       </div>
     </div>
     
-    <div class="border-t border-white/10 mt-8 pt-8 text-center text-brand-cream/60 text-sm">
-      <p>&copy; {currentYear} FashionMarket. Todos los derechos reservados.</p>
+    <!-- Bottom bar -->
+    <div class="footer-bottom mt-16 pt-8">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="text-gray-500 text-sm">
+          © {currentYear} FashionMarket. Todos los derechos reservados.
+        </p>
+        <div class="flex gap-6 text-sm">
+          <a href="/privacidad" class="text-gray-500 hover:text-gold-500 transition-colors duration-300">Privacidad</a>
+          <a href="/terminos" class="text-gray-500 hover:text-gold-500 transition-colors duration-300">Términos</a>
+          <a href="/cookies" class="text-gray-500 hover:text-gold-500 transition-colors duration-300">Cookies</a>
+        </div>
+      </div>
     </div>
   </div>
 </footer>
+
+<style>
+  .footer-premium {
+    background: linear-gradient(180deg, 
+      rgba(14, 18, 16, 0.95) 0%, 
+      rgba(6, 8, 7, 1) 100%
+    );
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  .footer-glow-top {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 1px;
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(212, 175, 55, 0.3) 50%, 
+      transparent 100%
+    );
+  }
+  
+  .footer-logo-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, transparent 100%);
+    border-radius: 12px;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+  }
+  
+  .footer-heading {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #ffffff;
+    margin-bottom: 1.25rem;
+    position: relative;
+    padding-bottom: 0.75rem;
+  }
+  
+  .footer-heading::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 24px;
+    height: 2px;
+    background: linear-gradient(90deg, #d4af37, transparent);
+    border-radius: 1px;
+  }
+  
+  .footer-link {
+    display: inline-block;
+    color: #9ca3af;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  
+  .footer-link:hover {
+    color: #d4af37;
+    transform: translateX(4px);
+  }
+  
+  .footer-input {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: #ffffff;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.3s ease;
+  }
+  
+  .footer-input:focus {
+    border-color: rgba(212, 175, 55, 0.5);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+  }
+  
+  .footer-input::placeholder {
+    color: #6b7280;
+  }
+  
+  .footer-subscribe-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #d4af37 0%, #e8c96d 100%);
+    border-radius: 10px;
+    color: #060807;
+    transition: all 0.3s ease;
+  }
+  
+  .footer-subscribe-btn:hover {
+    transform: translateX(4px);
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+  }
+  
+  .social-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #9ca3af;
+    transition: all 0.3s ease;
+  }
+  
+  .social-icon-btn:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: rgba(212, 175, 55, 0.3);
+    color: #d4af37;
+    transform: translateY(-3px);
+  }
+  
+  .trust-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    color: #10b981;
+  }
+  
+  .footer-bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+  }
+  
+  .footer-bottom::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 1px;
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(255, 255, 255, 0.1) 50%, 
+      transparent 100%
+    );
+  }
+</style>

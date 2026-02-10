@@ -65,180 +65,80 @@ const formatDate = (dateString: string) => {
   });
 };
 
-// Función para obtener el color del badge según el estado
+// Función para obtener el color del badge según el estado (dark theme - MEJORADO)
 const getStatusBadge = (status: string) => {
-  const badges: Record<string, { color: string; text: string }> = {
-    pending: { color: 'bg-yellow-100 text-yellow-800', text: 'Pendiente' },
-    confirmed: { color: 'bg-blue-100 text-blue-800', text: 'Confirmado' },
-    processing: { color: 'bg-purple-100 text-purple-800', text: 'Procesando' },
-    shipped: { color: 'bg-indigo-100 text-indigo-800', text: 'Enviado' },
-    delivered: { color: 'bg-green-100 text-green-800', text: 'Entregado' },
-    cancelled: { color: 'bg-red-100 text-red-800', text: 'Cancelado' },
-    refunded: { color: 'bg-gray-100 text-gray-800', text: 'Reembolsado' }
+  const badges: Record<string, { color: string; text: string; icon: string }> = {
+    pending: { color: 'bg-amber-500/20 text-amber-300 border border-amber-400/40', text: 'Pendiente', icon: '⏳' },
+    confirmed: { color: 'bg-blue-500/20 text-blue-300 border border-blue-400/40', text: 'Confirmado', icon: '✓' },
+    processing: { color: 'bg-purple-500/20 text-purple-300 border border-purple-400/40', text: 'Procesando', icon: '⚙️' },
+    shipped: { color: 'bg-indigo-500/20 text-indigo-300 border border-indigo-400/40', text: 'Enviado', icon: '🚚' },
+    delivered: { color: 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40', text: 'Entregado', icon: '✅' },
+    cancelled: { color: 'bg-red-500/20 text-red-300 border border-red-400/40', text: 'Cancelado', icon: '✕' },
+    refunded: { color: 'bg-gray-500/20 text-gray-300 border border-gray-400/40', text: 'Reembolsado', icon: '↩' }
   };
   return badges[status] || badges.pending;
 };
 ---
 
 <PublicLayout title="Mis Pedidos">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900">Mis Pedidos</h1>
-      <p class="mt-2 text-gray-600">Revisa el estado de tus pedidos y descarga tus facturas</p>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Header mejorado -->
+    <div class="mb-10">
+      <h1 class="text-4xl font-bold text-white font-serif tracking-wide">Mis Pedidos</h1>
+      <p class="mt-3 text-gray-400 text-lg">Revisa el estado de tus pedidos y descarga tus facturas</p>
     </div>
 
     {orders && orders.length > 0 ? (
-      <div class="space-y-6">
+      <div class="space-y-5">
         {orders.map((order) => {
           const statusBadge = getStatusBadge(order.status);
           return (
-            <div class="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow">
-              {/* Header del pedido */}
-              <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <h3 class="text-lg font-semibold text-gray-900">
-                      Pedido #{order.order_number}
+            <div class="bg-dark-surface/80 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden hover:border-white/20 transition-all duration-300 group">
+              {/* Contenido principal del pedido */}
+              <div class="p-6">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  {/* Info del pedido */}
+                  <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-2">
+                      <span class={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ${statusBadge.color}`}>
+                        <span>{statusBadge.icon}</span>
+                        {statusBadge.text}
+                      </span>
+                      <span class="text-2xl font-bold text-accent-gold">
+                        {order.total.toFixed(2)}€
+                      </span>
+                    </div>
+                    
+                    <h3 class="text-xl font-semibold text-white mb-1">
+                      {order.order_number}
                     </h3>
-                    <p class="text-sm text-gray-500 mt-1">
-                      Realizado el {formatDate(order.created_at)}
+                    
+                    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                      <span class="text-gray-300">
+                        <span class="text-gray-500">Fecha:</span> {formatDate(order.created_at)}
+                      </span>
+                      <span class="text-gray-300">
+                        <span class="text-gray-500">Método de pago:</span> {order.payment_method || 'card'}
+                      </span>
+                    </div>
+                    
+                    <p class="text-gray-400 text-sm mt-2">
+                      <span class="text-gray-500">Envío a:</span> {order.shipping_full_name}, {order.shipping_city}
                     </p>
                   </div>
-                  <div class="flex items-center gap-3">
-                    <span class={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusBadge.color}`}>
-                      {statusBadge.text}
-                    </span>
-                    <span class="text-lg font-bold text-gray-900">
-                      {order.total.toFixed(2)}€
-                    </span>
-                  </div>
-                </div>
-              </div>
 
-              {/* Detalles del pedido */}
-              <div class="px-6 py-4">
-                {/* Productos */}
-                <div class="space-y-3 mb-4">
-                  {order.order_items?.map((item: any) => (
-                    <div class="flex items-center gap-4">
-                      {item.product_image ? (
-                        <img 
-                          src={item.product_image} 
-                          alt={item.product_name}
-                          class="w-16 h-16 object-cover rounded-md"
-                        />
-                      ) : (
-                        <div class="w-16 h-16 bg-gray-200 rounded-md flex items-center justify-center">
-                          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                          </svg>
-                        </div>
-                      )}
-                      <div class="flex-1">
-                        <h4 class="text-sm font-medium text-gray-900">{item.product_name}</h4>
-                        <p class="text-sm text-gray-500">
-                          Cantidad: {item.quantity} × {item.price.toFixed(2)}€
-                        </p>
-                      </div>
-                      <div class="text-sm font-medium text-gray-900">
-                        {item.subtotal.toFixed(2)}€
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Dirección de envío */}
-                <div class="border-t border-gray-200 pt-4 mt-4">
-                  <h4 class="text-sm font-semibold text-gray-900 mb-2">Dirección de envío</h4>
-                  <p class="text-sm text-gray-600">
-                    {order.shipping_full_name}<br />
-                    {order.shipping_address_line1}<br />
-                    {order.shipping_address_line2 && <>{order.shipping_address_line2}<br /></>}
-                    {order.shipping_city}, {order.shipping_state} {order.shipping_postal_code}<br />
-                    {order.shipping_country}
-                  </p>
-                </div>
-
-                {/* Resumen de precios */}
-                <div class="border-t border-gray-200 pt-4 mt-4">
-                  <div class="space-y-2">
-                    <div class="flex justify-between text-sm">
-                      <span class="text-gray-600">Subtotal:</span>
-                      <span class="text-gray-900">{order.subtotal.toFixed(2)}€</span>
-                    </div>
-                    <div class="flex justify-between text-sm">
-                      <span class="text-gray-600">Envío:</span>
-                      <span class="text-gray-900">{order.shipping_cost.toFixed(2)}€</span>
-                    </div>
-                    <div class="flex justify-between text-sm">
-                      <span class="text-gray-600">IVA (21%):</span>
-                      <span class="text-gray-900">{order.tax.toFixed(2)}€</span>
-                    </div>
-                    <div class="flex justify-between text-base font-semibold border-t border-gray-200 pt-2">
-                      <span class="text-gray-900">Total:</span>
-                      <span class="text-gray-900">{order.total.toFixed(2)}€</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tracking info si existe */}
-                {order.tracking_number && (
-                  <div class="border-t border-gray-200 pt-4 mt-4">
-                    <h4 class="text-sm font-semibold text-gray-900 mb-2">Seguimiento</h4>
-                    <p class="text-sm text-gray-600">
-                      Número de seguimiento: <span class="font-mono font-semibold">{order.tracking_number}</span>
-                    </p>
-                  </div>
-                )}
-
-                {/* Botones de acción */}
-                <div class="border-t border-gray-200 pt-4 mt-4 flex flex-wrap gap-3">
-                  <a 
-                    href={`/perfil/mis-pedidos/${order.id}`}
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                    </svg>
-                    Ver detalles
-                  </a>
-                  
-                  <button 
-                    data-order-id={order.id}
-                    data-order-number={order.order_number}
-                    class="download-invoice inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
-                    </svg>
-                    Descargar factura
-                  </button>
-
-                  {order.status === 'confirmed' || order.status === 'processing' ? (
-                    <button 
-                      data-order-id={order.id}
-                      class="cancel-order inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  {/* Botón Ver detalles mejorado */}
+                  <div class="flex items-center">
+                    <a 
+                      href={`/perfil/mis-pedidos/${order.id}`}
+                      class="inline-flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-accent-gold hover:text-dark-bg border border-white/20 hover:border-accent-gold rounded-xl text-white font-medium transition-all duration-300 group-hover:translate-x-1"
                     >
-                      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                      <span>Ver detalles</span>
+                      <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
                       </svg>
-                      Cancelar pedido
-                    </button>
-                  ) : null}
-
-                  {order.status === 'delivered' ? (
-                    <button 
-                      data-order-id={order.id}
-                      data-order-number={order.order_number}
-                      class="request-return inline-flex items-center px-4 py-2 border border-blue-300 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
-                      </svg>
-                      Solicitar devolución
-                    </button>
-                  ) : null}
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -246,32 +146,35 @@ const getStatusBadge = (status: string) => {
         })}
       </div>
     ) : (
-      <div class="bg-white shadow-md rounded-lg p-12 text-center">
-        <svg class="mx-auto h-24 w-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
-        </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900">No tienes pedidos aún</h3>
-        <p class="mt-2 text-sm text-gray-500">Cuando realices una compra, aparecerá aquí.</p>
-        <div class="mt-6">
-          <a 
-            href="/productos" 
-            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-          >
-            Ir a comprar
-          </a>
+      <div class="bg-dark-surface/80 backdrop-blur-sm rounded-2xl border border-white/10 p-16 text-center">
+        <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center">
+          <svg class="w-12 h-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+          </svg>
         </div>
+        <h3 class="text-2xl font-semibold text-white mb-2">No tienes pedidos aún</h3>
+        <p class="text-gray-400 mb-8 max-w-md mx-auto">Cuando realices una compra, aparecerá aquí para que puedas seguir su estado.</p>
+        <a 
+          href="/productos" 
+          class="inline-flex items-center gap-2 px-8 py-4 bg-accent-gold text-dark-bg rounded-xl font-semibold hover:bg-accent-gold/90 transition-all"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+          </svg>
+          Explorar productos
+        </a>
       </div>
     )}
   </div>
 
   <!-- Toast de notificación -->
   <div id="toast" class="hidden fixed bottom-4 right-4 z-50 transform transition-all duration-300">
-    <div class="bg-white rounded-lg shadow-lg border-l-4 border-green-500 p-4 max-w-md">
+    <div class="bg-dark-surface/95 backdrop-blur-xl rounded-lg shadow-glow border-l-4 border-accent-glow p-4 max-w-md border border-white/10">
       <div class="flex items-center">
-        <svg id="toast-icon" class="h-6 w-6 text-green-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg id="toast-icon" class="h-6 w-6 text-accent-glow mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <p id="toast-message" class="text-gray-800 font-medium"></p>
+        <p id="toast-message" class="text-white font-medium"></p>
       </div>
     </div>
   </div>
@@ -280,24 +183,24 @@ const getStatusBadge = (status: string) => {
   <div id="cancel-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
       <!-- Overlay -->
-      <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" id="modal-overlay"></div>
+      <div class="fixed inset-0 transition-opacity bg-black/80 backdrop-blur-sm" id="modal-overlay"></div>
 
       <!-- Modal centrado -->
       <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
 
-      <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+      <div class="inline-block align-bottom glass-panel px-4 pt-5 pb-4 text-left overflow-hidden transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
         <div class="sm:flex sm:items-start">
-          <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-            <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-500/20 sm:mx-0 sm:h-10 sm:w-10">
+            <svg class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
           <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+            <h3 class="text-lg leading-6 font-medium text-white" id="modal-title">
               ¿Cancelar pedido?
             </h3>
             <div class="mt-2">
-              <p class="text-sm text-gray-500">
+              <p class="text-sm text-gray-400">
                 ¿Estás seguro de que quieres cancelar este pedido? El stock se restaurará automáticamente.
               </p>
             </div>
@@ -307,14 +210,14 @@ const getStatusBadge = (status: string) => {
           <button
             type="button"
             id="confirm-cancel"
-            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors"
+            class="w-full inline-flex justify-center rounded-lg border border-transparent px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors"
           >
             Sí, cancelar pedido
           </button>
           <button
             type="button"
             id="close-modal"
-            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm transition-colors"
+            class="mt-3 w-full inline-flex justify-center rounded-lg border border-white/20 px-4 py-2 bg-dark-card text-base font-medium text-gray-300 hover:bg-dark-surface focus:outline-none focus:ring-2 focus:ring-white/20 sm:mt-0 sm:w-auto sm:text-sm transition-colors"
           >
             No, mantener pedido
           </button>
@@ -327,14 +230,14 @@ const getStatusBadge = (status: string) => {
   <div id="return-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
       <!-- Overlay -->
-      <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" id="return-modal-overlay"></div>
+      <div class="fixed inset-0 transition-opacity bg-black/80 backdrop-blur-sm" id="return-modal-overlay"></div>
 
       <!-- Modal centrado -->
       <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
 
-      <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
+      <div class="inline-block align-bottom glass-panel px-4 pt-5 pb-4 text-left overflow-hidden transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
         <div class="absolute top-4 right-4">
-          <button id="close-return-modal" class="text-gray-400 hover:text-gray-500">
+          <button id="close-return-modal" class="text-gray-400 hover:text-white transition-colors">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -342,48 +245,48 @@ const getStatusBadge = (status: string) => {
         </div>
 
         <div class="sm:flex sm:items-start">
-          <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-            <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-500/20 sm:mx-0 sm:h-10 sm:w-10">
+            <svg class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
             </svg>
           </div>
           <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">
+            <h3 class="text-lg leading-6 font-medium text-white">
               Política de Devoluciones
             </h3>
-            <div class="mt-4 text-sm text-gray-600 space-y-4">
-              <div class="bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
-                <p class="font-medium text-blue-800">Pedido: <span id="return-order-number" class="font-mono"></span></p>
+            <div class="mt-4 text-sm text-gray-300 space-y-4">
+              <div class="bg-blue-500/10 border-l-4 border-blue-400 p-3 rounded">
+                <p class="font-medium text-blue-300">Pedido: <span id="return-order-number" class="font-mono"></span></p>
               </div>
 
               <div>
-                <h4 class="font-semibold text-gray-900 mb-2">📦 Condiciones de devolución:</h4>
-                <ul class="list-disc list-inside space-y-1 ml-2">
-                  <li>Tienes <strong>30 días</strong> desde la recepción del pedido</li>
-                  <li>Los productos deben estar <strong>sin usar y con etiquetas</strong></li>
-                  <li>Incluye el <strong>comprobante de compra</strong> original</li>
+                <h4 class="font-semibold text-white mb-2">📦 Condiciones de devolución:</h4>
+                <ul class="list-disc list-inside space-y-1 ml-2 text-gray-400">
+                  <li>Tienes <strong class="text-white">30 días</strong> desde la recepción del pedido</li>
+                  <li>Los productos deben estar <strong class="text-white">sin usar y con etiquetas</strong></li>
+                  <li>Incluye el <strong class="text-white">comprobante de compra</strong> original</li>
                   <li>Los productos en oferta no son reembolsables</li>
                   <li>Los gastos de envío de devolución corren a tu cargo</li>
                 </ul>
               </div>
 
               <div>
-                <h4 class="font-semibold text-gray-900 mb-2">📞 ¿Cómo solicitar la devolución?</h4>
-                <p>Contáctanos a través de cualquiera de estos canales:</p>
+                <h4 class="font-semibold text-white mb-2">📞 ¿Cómo solicitar la devolución?</h4>
+                <p class="text-gray-400">Contáctanos a través de cualquiera de estos canales:</p>
                 <div class="mt-2 space-y-2">
                   <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
-                    <a href="mailto:devoluciones@tienda.com?subject=Solicitud de devolución - Pedido #" class="text-blue-600 hover:text-blue-800 hover:underline">
+                    <a href="mailto:devoluciones@tienda.com?subject=Solicitud de devolución - Pedido #" class="text-accent-glow hover:text-accent-gold transition-colors">
                       devoluciones@tienda.com
                     </a>
                   </div>
                   <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
-                    <a href="tel:+34900123456" class="text-blue-600 hover:text-blue-800 hover:underline">
+                    <a href="tel:+34900123456" class="text-accent-glow hover:text-accent-gold transition-colors">
                       +34 900 123 456
                     </a>
                   </div>
@@ -391,18 +294,18 @@ const getStatusBadge = (status: string) => {
               </div>
 
               <div>
-                <h4 class="font-semibold text-gray-900 mb-2">💡 Información útil:</h4>
-                <ul class="list-disc list-inside space-y-1 ml-2">
-                  <li>Procesamos devoluciones en <strong>5-7 días hábiles</strong></li>
+                <h4 class="font-semibold text-white mb-2">💡 Información útil:</h4>
+                <ul class="list-disc list-inside space-y-1 ml-2 text-gray-400">
+                  <li>Procesamos devoluciones en <strong class="text-white">5-7 días hábiles</strong></li>
                   <li>El reembolso se realizará por el mismo método de pago</li>
                   <li>Guarda el número de seguimiento del envío de devolución</li>
                   <li>Empaqueta bien el producto para evitar daños en el transporte</li>
                 </ul>
               </div>
 
-              <div class="bg-amber-50 border-l-4 border-amber-400 p-3 rounded">
-                <p class="text-sm text-amber-800">
-                  <strong>Tip:</strong> Copia el número de pedido para incluirlo en tu solicitud
+              <div class="bg-amber-500/10 border-l-4 border-amber-400 p-3 rounded">
+                <p class="text-sm text-amber-300">
+                  <strong class="text-amber-200">Tip:</strong> Copia el número de pedido para incluirlo en tu solicitud
                 </p>
               </div>
             </div>
@@ -413,7 +316,7 @@ const getStatusBadge = (status: string) => {
           <button
             type="button"
             id="copy-order-number"
-            class="flex-1 inline-flex justify-center items-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            class="btn-secondary flex-1 inline-flex justify-center items-center px-4 py-2"
           >
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -423,7 +326,7 @@ const getStatusBadge = (status: string) => {
           <a
             href="mailto:devoluciones@tienda.com?subject=Solicitud de devolución"
             id="email-return-link"
-            class="flex-1 inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            class="btn-primary flex-1 inline-flex justify-center items-center px-4 py-2"
           >
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -449,16 +352,16 @@ const getStatusBadge = (status: string) => {
       // Cambiar colores según el tipo
       const toastDiv = toast.querySelector('div');
       if (type === 'error') {
-        toastDiv?.classList.remove('border-green-500');
+        toastDiv?.classList.remove('border-accent-glow');
         toastDiv?.classList.add('border-red-500');
-        toastIcon.classList.remove('text-green-500');
-        toastIcon.classList.add('text-red-500');
+        toastIcon.classList.remove('text-accent-glow');
+        toastIcon.classList.add('text-red-400');
         toastIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />';
       } else {
         toastDiv?.classList.remove('border-red-500');
-        toastDiv?.classList.add('border-green-500');
-        toastIcon.classList.remove('text-red-500');
-        toastIcon.classList.add('text-green-500');
+        toastDiv?.classList.add('border-accent-glow');
+        toastIcon.classList.remove('text-red-400');
+        toastIcon.classList.add('text-accent-glow');
         toastIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />';
       }
       

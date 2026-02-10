@@ -59,18 +59,18 @@ function formatDate(date: string) {
   });
 }
 
-// Función para obtener el color del estado
+// Función para obtener el color del estado (dark theme)
 function getStatusColor(status: string) {
   const colors: { [key: string]: string } = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    confirmed: 'bg-blue-100 text-blue-800',
-    processing: 'bg-indigo-100 text-indigo-800',
-    shipped: 'bg-purple-100 text-purple-800',
-    delivered: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800',
-    refunded: 'bg-gray-100 text-gray-800'
+    pending: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
+    confirmed: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+    processing: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30',
+    shipped: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+    delivered: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+    cancelled: 'bg-red-500/20 text-red-400 border border-red-500/30',
+    refunded: 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
   };
-  return colors[status] || 'bg-gray-100 text-gray-800';
+  return colors[status] || 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
 }
 
 // Función para traducir estados
@@ -92,20 +92,20 @@ function translateStatus(status: string) {
   <div class="container mx-auto px-4 py-8 max-w-6xl">
     {/* Header */}
     <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900">Mi Perfil</h1>
-      <p class="text-gray-600 mt-2">Gestiona tu información y revisa tus pedidos</p>
+      <h1 class="text-3xl font-bold text-white font-serif">Mi Perfil</h1>
+      <p class="text-gray-400 mt-2">Gestiona tu información y revisa tus pedidos</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       {/* Columna izquierda - Información del usuario */}
       <div class="lg:col-span-1 space-y-6">
         {/* Información personal */}
-        <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="glass-panel p-6">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-semibold text-gray-900">Información Personal</h2>
+            <h2 class="text-xl font-semibold text-white">Información Personal</h2>
             <button
               id="edit-profile-btn"
-              class="text-brand-gold hover:text-yellow-600 text-sm font-medium transition-colors"
+              class="text-accent-gold hover:text-accent-gold-soft text-sm font-medium transition-colors"
             >
               Editar
             </button>
@@ -114,40 +114,40 @@ function translateStatus(status: string) {
           <div class="space-y-4">
             <div>
               <label class="text-xs text-gray-500 uppercase tracking-wide">Email</label>
-              <p class="text-gray-900 font-medium">{user.email}</p>
+              <p class="text-white font-medium">{user.email}</p>
             </div>
 
             {user.user_metadata?.full_name && (
               <div>
                 <label class="text-xs text-gray-500 uppercase tracking-wide">Nombre</label>
-                <p class="text-gray-900 font-medium">{user.user_metadata.full_name}</p>
+                <p class="text-white font-medium">{user.user_metadata.full_name}</p>
               </div>
             )}
 
             <div>
               <label class="text-xs text-gray-500 uppercase tracking-wide">Miembro desde</label>
-              <p class="text-gray-900 font-medium">{formatDate(user.created_at)}</p>
+              <p class="text-white font-medium">{formatDate(user.created_at)}</p>
             </div>
           </div>
         </div>
 
         {/* Estadísticas */}
-        <div class="bg-white rounded-lg shadow-md p-6">
-          <h2 class="text-xl font-semibold text-gray-900 mb-4">Estadísticas</h2>
+        <div class="glass-panel p-6">
+          <h2 class="text-xl font-semibold text-white mb-4">Estadísticas</h2>
           <div class="space-y-3">
             <div class="flex justify-between items-center">
-              <span class="text-gray-600">Total de pedidos</span>
-              <span class="text-2xl font-bold text-brand-gold">{orders?.length || 0}</span>
+              <span class="text-gray-400">Total de pedidos</span>
+              <span class="text-2xl font-bold text-accent-gold">{orders?.length || 0}</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-gray-600">Pedidos entregados</span>
-              <span class="text-2xl font-bold text-green-600">
+              <span class="text-gray-400">Pedidos entregados</span>
+              <span class="text-2xl font-bold text-emerald-400">
                 {orders?.filter(o => o.status === 'delivered').length || 0}
               </span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-gray-600">En tránsito</span>
-              <span class="text-2xl font-bold text-purple-600">
+              <span class="text-gray-400">En tránsito</span>
+              <span class="text-2xl font-bold text-purple-400">
                 {orders?.filter(o => o.status === 'shipped').length || 0}
               </span>
             </div>
@@ -155,21 +155,30 @@ function translateStatus(status: string) {
         </div>
 
         {/* Acciones */}
-        <div class="bg-white rounded-lg shadow-md p-6">
-          <h2 class="text-xl font-semibold text-gray-900 mb-4">Acciones</h2>
+        <div class="glass-panel p-6">
+          <h2 class="text-xl font-semibold text-white mb-4">Acciones</h2>
           <div class="space-y-3">
-            <button
-              id="change-password-btn"
-              class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-between"
+            <a
+              href="/perfil/seguridad"
+              class="w-full text-left px-4 py-3 text-gray-300 hover:bg-white/5 hover:text-accent-gold rounded-xl transition-colors flex items-center justify-between border border-transparent hover:border-white/10"
             >
               <span>Cambiar contraseña</span>
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
-            </button>
+            </a>
+            <a
+              href="/perfil/mis-pedidos"
+              class="w-full text-left px-4 py-3 text-gray-300 hover:bg-white/5 hover:text-accent-gold rounded-xl transition-colors flex items-center justify-between border border-transparent hover:border-white/10"
+            >
+              <span>Ver todos mis pedidos</span>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
             <button
               id="logout-btn"
-              class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-between"
+              class="w-full text-left px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors flex items-center justify-between border border-transparent hover:border-red-500/20"
             >
               <span>Cerrar sesión</span>
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -182,28 +191,28 @@ function translateStatus(status: string) {
 
       {/* Columna derecha - Historial de pedidos */}
       <div class="lg:col-span-2">
-        <div class="bg-white rounded-lg shadow-md">
-          <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-xl font-semibold text-gray-900">Mis Pedidos</h2>
+        <div class="glass-panel overflow-hidden">
+          <div class="px-6 py-4 border-b border-white/10">
+            <h2 class="text-xl font-semibold text-white">Mis Pedidos</h2>
           </div>
 
           {!orders || orders.length === 0 ? (
             <div class="p-12 text-center">
-              <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg class="mx-auto h-12 w-12 text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
-              <p class="text-gray-500 text-lg">No tienes pedidos aún</p>
+              <p class="text-gray-400 text-lg">No tienes pedidos aún</p>
               <a
                 href="/productos"
-                class="mt-4 inline-block bg-brand-gold text-white px-6 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
+                class="btn-primary mt-4 inline-block"
               >
                 Explorar productos
               </a>
             </div>
           ) : (
-            <div class="divide-y divide-gray-200">
+            <div class="divide-y divide-white/10">
               {orders.map((order) => (
-                <div class="p-6 hover:bg-gray-50 transition-colors">
+                <div class="p-6 hover:bg-white/5 transition-colors">
                   <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center space-x-3">
                       <span class="text-sm font-medium text-gray-900">
@@ -286,12 +295,6 @@ function translateStatus(status: string) {
     document.getElementById('edit-profile-btn')?.addEventListener('click', () => {
       alert('Funcionalidad de editar perfil en desarrollo');
       // TODO: Implementar modal o página de edición de perfil
-    });
-
-    // Cambiar contraseña
-    document.getElementById('change-password-btn')?.addEventListener('click', () => {
-      alert('Funcionalidad de cambiar contraseña en desarrollo');
-      // TODO: Implementar cambio de contraseña
     });
   </script>
 </PublicLayout>

@@ -99,11 +99,11 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
 
   if (isLoading) {
     return (
-      <nav className="w-full lg:w-64 bg-white border-r border-gray-200 min-h-screen">
+      <nav className="w-full lg:w-64 bg-dark-surface border-r border-white/10 min-h-screen">
         <div className="p-6">
           <div className="space-y-4">
             {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="h-8 bg-gray-200 rounded animate-pulse" />
+              <div key={i} className="h-8 bg-white/5 rounded animate-pulse" />
             ))}
           </div>
         </div>
@@ -112,17 +112,17 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
   }
 
   return (
-    <nav className="w-full lg:w-64 bg-white border-r border-gray-200 min-h-screen">
-      <div className="sticky top-20 overflow-y-auto max-h-[calc(100vh-5rem)]">
+    <nav className="w-full lg:w-64 bg-dark-surface border-r border-white/10 min-h-screen">
+      <div className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-5rem)]">
         {/* Header del menú */}
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-light text-gray-900 uppercase tracking-wider">
+        <div className="p-6 border-b border-white/10 bg-dark-surface">
+          <h2 className="text-2xl font-light text-white uppercase tracking-wider">
             {currentGender === 'mujer' ? 'Mujer' : 'Hombre'}
           </h2>
         </div>
 
-        {/* Categorías */}
-        <div className="py-4">
+        {/* Categorías con scroll suave */}
+        <div className="overflow-y-auto lg:max-h-[calc(100vh-16rem)] py-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           {categories.map(({ main, subcategories }) => (
             <div key={main.id} className="mb-2">
               {/* Categoría principal */}
@@ -134,15 +134,17 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
                     window.location.href = `/${currentGender}/${main.slug}`;
                   }
                 }}
-                className={`w-full flex items-center justify-between px-6 py-3 text-left transition-colors group ${
+                className={`w-full flex items-center justify-between px-6 py-3 text-left transition-all duration-200 ease-in-out group ${
                   isActive(main.slug)
-                    ? 'bg-gray-100 text-brand-navy font-medium'
-                    : 'text-gray-900 hover:bg-gray-50'
+                    ? 'bg-accent-gold/20 text-accent-gold font-medium'
+                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <span className={`text-sm uppercase tracking-wide ${
-                  (main.slug.includes('rebajas') || main.slug.includes('novedades'))
-                    ? 'font-semibold text-red-600'
+                <span className={`text-sm uppercase tracking-wide transition-colors duration-200 ${
+                  main.slug.includes('rebajas')
+                    ? 'font-semibold text-red-400 group-hover:text-red-300'
+                    : main.slug.includes('novedades')
+                    ? 'font-semibold text-emerald-400 group-hover:text-emerald-300'
                     : ''
                 }`}>
                   {cleanCategoryName(main.name)}
@@ -150,8 +152,8 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
                 
                 {subcategories.length > 0 && (
                   <svg
-                    className={`w-4 h-4 transition-transform ${
-                      expandedCategories.has(main.id) ? 'rotate-180' : ''
+                    className={`w-4 h-4 transition-transform duration-300 ease-out text-gray-500 group-hover:text-gray-400 ${
+                      expandedCategories.has(main.id) ? 'rotate-180' : 'rotate-0'
                     }`}
                     fill="none"
                     stroke="currentColor"
@@ -167,18 +169,24 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
                 )}
               </button>
 
-              {/* Subcategorías */}
-              {subcategories.length > 0 && expandedCategories.has(main.id) && (
-                <div className="bg-gray-50">
+              {/* Subcategorías con animación suave */}
+              <div 
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  expandedCategories.has(main.id) 
+                    ? 'max-h-[500px] opacity-100' 
+                    : 'max-h-0 opacity-0'
+                }`}
+              >
+                <div className="bg-dark-card/30 backdrop-blur-sm">
                   <ul className="py-2">
                     {subcategories.map(sub => (
                       <li key={sub.id}>
                         <a
                           href={`/${currentGender}/${main.slug}/${sub.slug}`}
-                          className={`block px-10 py-2 text-sm transition-colors ${
+                          className={`block px-10 py-2.5 text-sm transition-all duration-200 ${
                             isActive(sub.slug)
-                              ? 'text-brand-navy font-medium bg-gray-100'
-                              : 'text-gray-700 hover:text-brand-navy hover:bg-gray-100'
+                              ? 'text-accent-gold font-medium bg-accent-gold/10 border-l-2 border-accent-gold'
+                              : 'text-gray-400 hover:text-white hover:bg-white/5 hover:border-l-2 hover:border-white/20 border-l-2 border-transparent'
                           }`}
                         >
                           {cleanCategoryName(sub.name)}
@@ -187,29 +195,29 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
                     ))}
                   </ul>
                 </div>
-              )}
+              </div>
             </div>
           ))}
         </div>
 
         {/* Footer del menú */}
-        <div className="p-6 border-t border-gray-200 mt-4">
-          <div className="space-y-2 text-sm text-gray-600">
+        <div className="p-6 border-t border-white/10 mt-4 bg-dark-surface">
+          <div className="space-y-2 text-sm text-gray-400">
             <a
               href={`/${currentGender}/tarjetas-regalo`}
-              className="block hover:text-brand-navy transition-colors"
+              className="block hover:text-accent-gold transition-colors duration-200"
             >
               Tarjetas regalo
             </a>
             <a
               href="/guia-tallas"
-              className="block hover:text-brand-navy transition-colors"
+              className="block hover:text-accent-gold transition-colors duration-200"
             >
               Guía de tallas
             </a>
             <a
               href="/envios"
-              className="block hover:text-brand-navy transition-colors"
+              className="block hover:text-accent-gold transition-colors duration-200"
             >
               Envíos y devoluciones
             </a>

@@ -62,25 +62,63 @@ if (category.level === 1) {
   subcategories = (data || []) as Category[];
 }
 
-// Obtener productos de esta categoría Y sus subcategorías
-let categoryIds = [category.id];
-if (subcategories.length > 0) {
-  categoryIds = [...categoryIds, ...subcategories.map(sub => sub.id)];
+// Detectar si es página de Rebajas o Novedades
+const isRebajas = categorySlug?.includes('rebajas');
+const isNovedades = categorySlug?.includes('novedades');
+
+// Obtener productos según el tipo de categoría
+let productsArray: Product[] = [];
+
+if (isRebajas) {
+  // Para rebajas: filtrar por is_on_sale = true
+  const { data: products } = await supabase
+    .from('products')
+    .select(`
+      *,
+      category:categories!products_category_id_fkey(name, slug)
+    `)
+    .eq('gender_id', genderData.id)
+    .eq('is_on_sale', true)
+    .order('sale_price', { ascending: true })
+    .order('created_at', { ascending: false })
+    .limit(48);
+  
+  productsArray = (products || []) as Product[];
+} else if (isNovedades) {
+  // Para novedades: filtrar por is_new = true o productos recientes
+  const { data: products } = await supabase
+    .from('products')
+    .select(`
+      *,
+      category:categories!products_category_id_fkey(name, slug)
+    `)
+    .eq('gender_id', genderData.id)
+    .eq('is_new', true)
+    .order('created_at', { ascending: false })
+    .limit(48);
+  
+  productsArray = (products || []) as Product[];
+} else {
+  // Para otras categorías: filtrar por category_id
+  let categoryIds = [category.id];
+  if (subcategories.length > 0) {
+    categoryIds = [...categoryIds, ...subcategories.map(sub => sub.id)];
+  }
+
+  const { data: products } = await supabase
+    .from('products')
+    .select(`
+      *,
+      category:categories!products_category_id_fkey(name, slug)
+    `)
+    .in('category_id', categoryIds)
+    .eq('gender_id', genderData.id)
+    .order('featured', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(48);
+
+  productsArray = (products || []) as Product[];
 }
-
-const { data: products } = await supabase
-  .from('products')
-  .select(`
-    *,
-    category:categories!products_category_id_fkey(name, slug)
-  `)
-  .in('category_id', categoryIds)
-  .eq('gender_id', genderData.id)
-  .order('featured', { ascending: false })
-  .order('created_at', { ascending: false })
-  .limit(48);
-
-const productsArray = (products || []) as Product[];
 
 // Breadcrumbs
 const breadcrumbs = [
@@ -104,19 +142,19 @@ const breadcrumbs = [
     </aside>
 
     <!-- Contenido principal -->
-    <main class="flex-1 bg-gray-50">
+    <main class="flex-1 bg-dark-bg">
       <!-- Breadcrumbs -->
-      <div class="bg-white border-b border-gray-200 py-4 px-6">
+      <div class="bg-dark-surface border-b border-white/10 py-4 px-6">
         <div class="max-w-7xl mx-auto">
-          <nav class="flex items-center space-x-2 text-sm text-gray-600">
-            <a href="/" class="hover:text-brand-navy">Inicio</a>
+          <nav class="flex items-center space-x-2 text-sm text-gray-400">
+            <a href="/" class="hover:text-accent-gold transition-colors">Inicio</a>
             {breadcrumbs.map((crumb, index) => (
               <>
-                <span>/</span>
+                <span class="text-gray-600">/</span>
                 {index === breadcrumbs.length - 1 ? (
-                  <span class="text-brand-navy font-medium">{crumb.name}</span>
+                  <span class="text-white font-medium">{crumb.name}</span>
                 ) : (
-                  <a href={crumb.href} class="hover:text-brand-navy">{crumb.name}</a>
+                  <a href={crumb.href} class="hover:text-accent-gold transition-colors">{crumb.name}</a>
                 )}
               </>
             ))}
@@ -124,30 +162,125 @@ const breadcrumbs = [
         </div>
       </div>
 
-      <!-- Header de categoría -->}
-      <section class="bg-white py-12 px-6 border-b border-gray-200">
-        <div class="max-w-7xl mx-auto">
-          <h1 class="text-4xl font-light text-gray-900 uppercase tracking-wider mb-4">
-            {category.name}
-          </h1>
-          {category.description && (
-            <p class="text-lg text-gray-600 max-w-2xl">
-              {category.description}
-            </p>
-          )}
-        </div>
-      </section>
-
-      <!-- Subcategorías (si existen) -->}
-      {subcategories.length > 0 && (
-        <section class="py-8 px-6 bg-white border-b border-gray-200">
+      <!-- Header de categoría -->
+      {isRebajas ? (
+        <!-- Banner elegante para Rebajas -->
+        <section class="relative bg-dark-surface border-b border-white/10 overflow-hidden">
+          <!-- Patrón de fondo sutil -->
+          <div class="absolute inset-0 opacity-[0.02]">
+            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')]"></div>
+          </div>
+          
+          <!-- Acento dorado sutil en la parte superior -->
+          <div class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-accent-gold/30 to-transparent"></div>
+          
+          <div class="relative max-w-7xl mx-auto py-16 px-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <!-- Contenido principal -->
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-4">
+                  <h1 class="text-4xl md:text-5xl font-light text-white uppercase tracking-wider">
+                    {category.name}
+                  </h1>
+                  <!-- Badge elegante de descuento -->
+                  <div class="hidden md:flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-accent-gold/20 rounded-lg backdrop-blur-sm">
+                    <span class="text-accent-gold text-sm font-semibold tracking-wide">HASTA -70%</span>
+                  </div>
+                </div>
+                <p class="text-lg text-gray-400 max-w-2xl leading-relaxed">
+                  {category.description || 'Selección especial con descuentos exclusivos en prendas de alta calidad'}
+                </p>
+                <!-- Badge móvil -->
+                <div class="flex md:hidden items-center gap-2 px-4 py-1.5 bg-white/5 border border-accent-gold/20 rounded-lg backdrop-blur-sm w-fit mt-4">
+                  <span class="text-accent-gold text-sm font-semibold tracking-wide">HASTA -70%</span>
+                </div>
+              </div>
+              
+              <!-- Indicador visual elegante -->
+              <div class="flex flex-col items-end gap-2">
+                <div class="flex items-center gap-2 text-gray-400 text-sm">
+                  <svg class="w-5 h-5 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                  </svg>
+                  <span>Ofertas Especiales</span>
+                </div>
+                <div class="text-xs text-gray-500 uppercase tracking-wider">Stock Limitado</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : isNovedades ? (
+        <!-- Banner elegante para Novedades -->
+        <section class="relative bg-dark-surface border-b border-white/10 overflow-hidden">
+          <!-- Patrón de fondo sutil -->
+          <div class="absolute inset-0 opacity-[0.02]">
+            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')]"></div>
+          </div>
+          
+          <!-- Acento esmeralda sutil en la parte superior -->
+          <div class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent"></div>
+          
+          <div class="relative max-w-7xl mx-auto py-16 px-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <!-- Contenido principal -->
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-4">
+                  <h1 class="text-4xl md:text-5xl font-light text-white uppercase tracking-wider">
+                    {category.name}
+                  </h1>
+                  <!-- Badge elegante de novedad -->
+                  <div class="hidden md:flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-emerald-500/20 rounded-lg backdrop-blur-sm">
+                    <span class="text-emerald-400 text-sm font-semibold tracking-wide">LO MÁS NUEVO</span>
+                  </div>
+                </div>
+                <p class="text-lg text-gray-400 max-w-2xl leading-relaxed">
+                  {category.description || 'Descubre las últimas incorporaciones a nuestra colección exclusiva'}
+                </p>
+                <!-- Badge móvil -->
+                <div class="flex md:hidden items-center gap-2 px-4 py-1.5 bg-white/5 border border-emerald-500/20 rounded-lg backdrop-blur-sm w-fit mt-4">
+                  <span class="text-emerald-400 text-sm font-semibold tracking-wide">LO MÁS NUEVO</span>
+                </div>
+              </div>
+              
+              <!-- Indicador visual elegante -->
+              <div class="flex flex-col items-end gap-2">
+                <div class="flex items-center gap-2 text-gray-400 text-sm">
+                  <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                  </svg>
+                  <span>Recién Llegados</span>
+                </div>
+                <div class="text-xs text-gray-500 uppercase tracking-wider">Colección Nueva</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <!-- Header normal para otras categorías -->
+        <section class="bg-dark-surface py-12 px-6 border-b border-white/10">
           <div class="max-w-7xl mx-auto">
-            <h2 class="text-sm uppercase tracking-wider text-gray-600 mb-4">Comprar por:</h2>
+            <h1 class="text-4xl font-light text-white uppercase tracking-wider mb-4">
+              {category.name}
+            </h1>
+            {category.description && (
+              <p class="text-lg text-gray-400 max-w-2xl">
+                {category.description}
+              </p>
+            )}
+          </div>
+        </section>
+      )}
+
+      <!-- Subcategorías (si existen) -->
+      {subcategories.length > 0 && (
+        <section class="py-8 px-6 bg-dark-surface border-b border-white/10">
+          <div class="max-w-7xl mx-auto">
+            <h2 class="text-sm uppercase tracking-wider text-gray-400 mb-4">Comprar por:</h2>
             <div class="flex flex-wrap gap-3">
               {subcategories.map(sub => (
                 <a
                   href={`/${gender}/${category.slug}/${sub.slug}`}
-                  class="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-lg transition-colors text-sm"
+                  class="px-6 py-3 bg-white/5 hover:bg-accent-gold/20 hover:text-accent-gold text-gray-300 rounded-lg transition-colors text-sm border border-white/10"
                 >
                   {sub.name}
                 </a>
@@ -157,15 +290,28 @@ const breadcrumbs = [
         </section>
       )}
 
-      <!-- Productos -->}
+      <!-- Productos -->
       <section class="py-12 px-6">
         <div class="max-w-7xl mx-auto">
           <div class="flex items-center justify-between mb-8">
-            <p class="text-gray-600">
-              {productsArray.length} {productsArray.length === 1 ? 'producto' : 'productos'}
-            </p>
+            <div class="flex items-center gap-4">
+              <p class="text-gray-400">
+                {productsArray.length} {productsArray.length === 1 ? 'producto' : 'productos'}
+              </p>
+              {/* Indicador sutil */}
+              {isRebajas && (
+                <span class="text-xs text-gray-500 px-3 py-1 bg-white/5 rounded-full border border-white/10">
+                  Ofertas especiales
+                </span>
+              )}
+              {isNovedades && (
+                <span class="text-xs text-gray-500 px-3 py-1 bg-white/5 rounded-full border border-white/10">
+                  Recién llegados
+                </span>
+              )}
+            </div>
             
-            <select class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-navy focus:border-transparent">
+            <select class="px-4 py-2 bg-dark-surface border border-white/10 rounded-lg text-sm text-white focus:ring-2 focus:ring-accent-gold focus:border-transparent">
               <option value="relevance">Ordenar por: Relevancia</option>
               <option value="newest">Más recientes</option>
               <option value="price_asc">Precio: Menor a mayor</option>
@@ -181,14 +327,14 @@ const breadcrumbs = [
             </div>
           ) : (
             <div class="text-center py-16">
-              <svg class="w-24 h-24 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-24 h-24 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
-              <p class="text-gray-500 text-lg mb-2">No hay productos en esta categoría todavía</p>
-              <p class="text-gray-400 text-sm mb-6">Estamos trabajando para traerte las últimas tendencias</p>
+              <p class="text-gray-400 text-lg mb-2">No hay productos en esta categoría todavía</p>
+              <p class="text-gray-500 text-sm mb-6">Estamos trabajando para traerte las últimas tendencias</p>
               <a 
                 href={`/${gender}`}
-                class="inline-block px-6 py-3 bg-brand-navy text-white hover:bg-gray-800 transition-colors rounded-lg"
+                class="inline-block px-6 py-3 bg-accent-gold text-dark-bg font-medium hover:bg-accent-gold/90 transition-colors rounded-lg"
               >
                 Ver todas las categorías
               </a>
@@ -197,7 +343,7 @@ const breadcrumbs = [
 
           {productsArray.length >= 48 && (
             <div class="text-center mt-12">
-              <button class="px-8 py-3 border border-gray-300 text-gray-900 hover:bg-gray-100 transition-colors uppercase tracking-wider text-sm">
+              <button class="px-8 py-3 border border-white/20 text-white hover:bg-white/5 transition-colors uppercase tracking-wider text-sm rounded-lg">
                 Cargar más productos
               </button>
             </div>

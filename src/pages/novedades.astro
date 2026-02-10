@@ -18,28 +18,50 @@ const menProducts = newProducts?.filter(p => p.gender?.name?.toLowerCase().inclu
 
 <PublicLayout title="Novedades - FashionMarket">
   <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    {/* Hero */}
-    <div class="text-center mb-12">
-      <h1 class="font-serif text-4xl md:text-6xl font-bold text-brand-navy mb-4 tracking-tight">
-        Novedades
-      </h1>
-      <p class="text-lg text-brand-slate max-w-2xl mx-auto">
-        Descubre las últimas incorporaciones a nuestra colección. Piezas exclusivas que marcan tendencia.
-      </p>
-    </div>
+    {/* Hero elegante con estilo premium */}
+    <section class="relative bg-dark-surface border border-white/10 rounded-2xl overflow-hidden mb-12">
+      {/* Patrón de fondo sutil */}
+      <div class="absolute inset-0 opacity-[0.02]">
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')]"></div>
+      </div>
+      
+      {/* Acento esmeralda sutil en la parte superior */}
+      <div class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent"></div>
+      
+      <div class="relative py-16 px-6 text-center">
+        <div class="flex items-center justify-center gap-3 mb-4">
+          <h1 class="text-4xl md:text-6xl font-light text-white uppercase tracking-wider">
+            Novedades
+          </h1>
+          {/* Badge elegante de novedad */}
+          <div class="hidden md:flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-emerald-500/20 rounded-lg backdrop-blur-sm">
+            <span class="text-emerald-400 text-sm font-semibold tracking-wide">LO MÁS NUEVO</span>
+          </div>
+        </div>
+        
+        <p class="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed mb-6">
+          Descubre las últimas incorporaciones a nuestra colección exclusiva. Piezas únicas que marcan tendencia.
+        </p>
+        
+        {/* Badge móvil */}
+        <div class="flex md:hidden items-center justify-center gap-2 px-4 py-1.5 bg-white/5 border border-emerald-500/20 rounded-lg backdrop-blur-sm w-fit mx-auto">
+          <span class="text-emerald-400 text-sm font-semibold tracking-wide">LO MÁS NUEVO</span>
+        </div>
+      </div>
+    </section>
 
     {/* Tabs de género */}
     <div class="flex justify-center mb-8">
-      <div class="inline-flex rounded-lg border border-gray-200 p-1">
+      <div class="inline-flex rounded-xl bg-dark-surface border border-white/10 p-1">
         <button 
           data-tab="mujer" 
-          class="tab-btn px-6 py-2 text-sm font-medium rounded-md transition-colors active"
+          class="tab-btn px-6 py-2 text-sm font-medium rounded-lg transition-colors active"
         >
           MUJER ({womenProducts.length})
         </button>
         <button 
           data-tab="hombre" 
-          class="tab-btn px-6 py-2 text-sm font-medium rounded-md transition-colors"
+          class="tab-btn px-6 py-2 text-sm font-medium rounded-lg transition-colors"
         >
           HOMBRE ({menProducts.length})
         </button>
@@ -56,12 +78,12 @@ const menProducts = newProducts?.filter(p => p.gender?.name?.toLowerCase().inclu
         </div>
       ) : (
         <div class="text-center py-16">
-          <svg class="w-24 h-24 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-24 h-24 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
-          <h3 class="text-xl font-semibold text-gray-600 mb-2">No hay novedades de mujer</h3>
-          <p class="text-gray-500 mb-4">Pronto habrá nuevos productos disponibles</p>
-          <a href="/mujer" class="text-brand-navy hover:underline">Ver toda la colección de mujer →</a>
+          <h3 class="text-xl font-semibold text-white mb-2">No hay novedades de mujer</h3>
+          <p class="text-gray-400 mb-4">Pronto habrá nuevos productos disponibles</p>
+          <a href="/mujer" class="text-accent-gold hover:text-accent-gold/80 transition-colors">Ver toda la colección de mujer →</a>
         </div>
       )}
     </div>
@@ -76,12 +98,12 @@ const menProducts = newProducts?.filter(p => p.gender?.name?.toLowerCase().inclu
         </div>
       ) : (
         <div class="text-center py-16">
-          <svg class="w-24 h-24 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-24 h-24 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
-          <h3 class="text-xl font-semibold text-gray-600 mb-2">No hay novedades de hombre</h3>
-          <p class="text-gray-500 mb-4">Pronto habrá nuevos productos disponibles</p>
-          <a href="/hombre" class="text-brand-navy hover:underline">Ver toda la colección de hombre →</a>
+          <h3 class="text-xl font-semibold text-white mb-2">No hay novedades de hombre</h3>
+          <p class="text-gray-400 mb-4">Pronto habrá nuevos productos disponibles</p>
+          <a href="/hombre" class="text-accent-gold hover:text-accent-gold/80 transition-colors">Ver toda la colección de hombre →</a>
         </div>
       )}
     </div>
@@ -90,14 +112,16 @@ const menProducts = newProducts?.filter(p => p.gender?.name?.toLowerCase().inclu
 
 <style>
   .tab-btn {
-    color: #666;
+    color: #9ca3af;
   }
   .tab-btn.active {
-    background-color: #1e293b;
-    color: white;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10b981;
   }
   .tab-btn:not(.active):hover {
-    background-color: #f3f4f6;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #10b981;
   }
 </style>
 

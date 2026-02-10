@@ -1,7 +1,7 @@
 ---
 import { createServerSupabaseClient } from '../lib/auth';
 
-const supabase = createServerSupabaseClient(Astro);
+const supabase = createServerSupabaseClient();
 const { data: { session } } = await supabase.auth.getSession();
 
 // Buscar pedidos con este user_id

@@ -69,6 +69,84 @@ const { data: allAdmins } = await supabase
           </p>
         </div>
       </div>
+      
+      <!-- Cambiar Contraseña -->
+      <div class="mt-6 pt-6 border-t border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Cambiar Contraseña</h3>
+        <form id="password-form" class="space-y-4 max-w-md">
+          <div>
+            <label for="current-password" class="block text-sm font-medium text-gray-700">
+              Contraseña actual
+            </label>
+            <input
+              type="password"
+              id="current-password"
+              name="currentPassword"
+              required
+              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-navy focus:border-brand-navy"
+            />
+          </div>
+          <div>
+            <label for="new-password" class="block text-sm font-medium text-gray-700">
+              Nueva contraseña
+            </label>
+            <input
+              type="password"
+              id="new-password"
+              name="newPassword"
+              required
+              minlength="6"
+              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-navy focus:border-brand-navy"
+            />
+          </div>
+          <div>
+            <label for="confirm-password" class="block text-sm font-medium text-gray-700">
+              Confirmar nueva contraseña
+            </label>
+            <input
+              type="password"
+              id="confirm-password"
+              name="confirmPassword"
+              required
+              minlength="6"
+              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-navy focus:border-brand-navy"
+            />
+          </div>
+          <div id="password-message" class="hidden text-sm"></div>
+          <button
+            type="submit"
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-navy hover:bg-brand-navy/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy"
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+            Cambiar Contraseña
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Configuración de Ofertas Flash -->
+    <div class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">Ofertas Flash</h2>
+      <p class="text-sm text-gray-600 mb-4">
+        Activa o desactiva las ofertas flash globales. Cuando están activas, los productos en oferta mostrarán un contador regresivo.
+      </p>
+      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+        <div class="flex items-center space-x-3">
+          <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <div>
+            <p class="font-medium text-gray-900">Estado de Ofertas Flash</p>
+            <p class="text-sm text-gray-500" id="flash-status-text">Cargando...</p>
+          </div>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="flash-toggle" class="sr-only peer" />
+          <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-navy/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-gold"></div>
+        </label>
+      </div>
     </div>
 
     <!-- Lista de administradores -->
@@ -186,3 +264,109 @@ const { data: allAdmins } = await supabase
     </div>
   </div>
 </AdminLayout>
+
+<script>
+  // ========== Cambio de Contraseña ==========
+  const passwordForm = document.getElementById('password-form') as HTMLFormElement;
+  const passwordMessage = document.getElementById('password-message') as HTMLElement;
+  
+  passwordForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(passwordForm);
+    const currentPassword = formData.get('currentPassword') as string;
+    const newPassword = formData.get('newPassword') as string;
+    const confirmPassword = formData.get('confirmPassword') as string;
+    
+    // Validar que las contraseñas coincidan
+    if (newPassword !== confirmPassword) {
+      showPasswordMessage('Las contraseñas no coinciden', 'error');
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      showPasswordMessage('La contraseña debe tener al menos 6 caracteres', 'error');
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        showPasswordMessage('Contraseña actualizada correctamente', 'success');
+        passwordForm.reset();
+      } else {
+        showPasswordMessage(result.error || 'Error al cambiar la contraseña', 'error');
+      }
+    } catch (error) {
+      showPasswordMessage('Error de conexión', 'error');
+    }
+  });
+  
+  function showPasswordMessage(message: string, type: 'success' | 'error') {
+    passwordMessage.textContent = message;
+    passwordMessage.classList.remove('hidden', 'text-green-600', 'text-red-600');
+    passwordMessage.classList.add(type === 'success' ? 'text-green-600' : 'text-red-600');
+    
+    setTimeout(() => {
+      passwordMessage.classList.add('hidden');
+    }, 5000);
+  }
+  
+  // ========== Toggle de Ofertas Flash ==========
+  const flashToggle = document.getElementById('flash-toggle') as HTMLInputElement;
+  const flashStatusText = document.getElementById('flash-status-text') as HTMLElement;
+  
+  // Cargar estado inicial
+  async function loadFlashOfferStatus() {
+    try {
+      const response = await fetch('/api/settings/flash-offers');
+      const data = await response.json();
+      
+      flashToggle.checked = data.enabled;
+      updateFlashStatusText(data.enabled);
+    } catch (error) {
+      flashStatusText.textContent = 'Error al cargar';
+    }
+  }
+  
+  function updateFlashStatusText(enabled: boolean) {
+    flashStatusText.textContent = enabled 
+      ? 'Activas - Los clientes pueden ver ofertas flash' 
+      : 'Desactivadas - Ofertas flash ocultas';
+  }
+  
+  flashToggle?.addEventListener('change', async () => {
+    const enabled = flashToggle.checked;
+    
+    try {
+      const response = await fetch('/api/settings/flash-offers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        updateFlashStatusText(enabled);
+      } else {
+        // Revertir el toggle si hubo error
+        flashToggle.checked = !enabled;
+        alert('Error al actualizar la configuración');
+      }
+    } catch (error) {
+      flashToggle.checked = !enabled;
+      alert('Error de conexión');
+    }
+  });
+  
+  // Inicializar
+  loadFlashOfferStatus();
+</script>

@@ -10,16 +10,16 @@ const currentPath = Astro.url.pathname;
 ---
 
 <BaseLayout title={title}>
-  <div class="min-h-screen bg-gray-50 flex">
+  <div class="min-h-screen bg-dark-bg flex">
     {/* Sidebar */}
-    <aside class="w-64 bg-brand-navy text-white flex-shrink-0">
+    <aside class="w-64 bg-dark-surface border-r border-white/5 text-white flex-shrink-0">
       <div class="sticky top-0 h-screen overflow-y-auto">
         {/* Logo */}
-        <div class="p-6 border-b border-brand-charcoal/30">
-          <a href="/admin" class="font-serif text-2xl font-bold block">
+        <div class="p-6 border-b border-white/10">
+          <a href="/admin" class="font-serif text-2xl font-bold block text-white">
             FashionMarket
           </a>
-          <p class="text-sm text-brand-cream/70 mt-1">Panel de Administración</p>
+          <p class="text-sm text-gray-500 mt-1">Panel de Administración</p>
         </div>
 
         {/* Navigation */}
@@ -27,10 +27,10 @@ const currentPath = Astro.url.pathname;
           {/* Dashboard */}
           <a 
             href="/admin" 
-            class={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            class={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
               currentPath === '/admin' 
-                ? 'bg-brand-gold text-brand-navy' 
-                : 'hover:bg-brand-charcoal/30'
+                ? 'bg-accent-gold text-dark-bg font-medium' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,10 +42,10 @@ const currentPath = Astro.url.pathname;
           {/* Productos */}
           <a 
             href="/admin/productos" 
-            class={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            class={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
               currentPath.startsWith('/admin/productos') 
-                ? 'bg-brand-gold text-brand-navy' 
-                : 'hover:bg-brand-charcoal/30'
+                ? 'bg-accent-gold text-dark-bg font-medium' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,10 +57,10 @@ const currentPath = Astro.url.pathname;
           {/* Pedidos */}
           <a 
             href="/admin/pedidos" 
-            class={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            class={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
               currentPath.startsWith('/admin/pedidos') 
-                ? 'bg-brand-gold text-brand-navy' 
-                : 'hover:bg-brand-charcoal/30'
+                ? 'bg-accent-gold text-dark-bg font-medium' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -72,10 +72,10 @@ const currentPath = Astro.url.pathname;
           {/* Devoluciones */}
           <a 
             href="/admin/devoluciones" 
-            class={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            class={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
               currentPath.startsWith('/admin/devoluciones') 
-                ? 'bg-brand-gold text-brand-navy' 
-                : 'hover:bg-brand-charcoal/30'
+                ? 'bg-accent-gold text-dark-bg font-medium' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,10 +87,10 @@ const currentPath = Astro.url.pathname;
           {/* Clientes */}
           <a 
             href="/admin/clientes" 
-            class={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            class={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
               currentPath.startsWith('/admin/clientes') 
-                ? 'bg-brand-gold text-brand-navy' 
-                : 'hover:bg-brand-charcoal/30'
+                ? 'bg-accent-gold text-dark-bg font-medium' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,10 +102,10 @@ const currentPath = Astro.url.pathname;
           {/* Configuración */}
           <a 
             href="/admin/configuracion" 
-            class={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            class={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
               currentPath.startsWith('/admin/configuracion') 
-                ? 'bg-brand-gold text-brand-navy' 
-                : 'hover:bg-brand-charcoal/30'
+                ? 'bg-accent-gold text-dark-bg font-medium' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,15 +117,15 @@ const currentPath = Astro.url.pathname;
         </nav>
 
         {/* Bottom Section */}
-        <div class="absolute bottom-0 w-64 p-4 border-t border-brand-charcoal/30">
-          <a href="/" target="_blank" class="flex items-center space-x-3 px-4 py-3 text-sm hover:bg-brand-charcoal/30 rounded-lg transition-colors">
+        <div class="absolute bottom-0 w-64 p-4 border-t border-white/10">
+          <a href="/" target="_blank" class="flex items-center space-x-3 px-4 py-3 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
             <span>Ver tienda</span>
           </a>
           <form action="/api/auth/logout" method="POST" class="mt-2">
-            <button type="submit" class="w-full flex items-center space-x-3 px-4 py-3 text-sm hover:bg-brand-charcoal/30 rounded-lg transition-colors text-left">
+            <button type="submit" class="w-full flex items-center space-x-3 px-4 py-3 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all text-left">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
@@ -137,7 +137,7 @@ const currentPath = Astro.url.pathname;
     </aside>
 
     {/* Main Content */}
-    <main class="flex-1 overflow-x-hidden">
+    <main class="flex-1 overflow-x-hidden bg-dark-bg">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <slot />
       </div>

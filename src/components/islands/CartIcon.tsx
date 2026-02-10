@@ -13,7 +13,7 @@ export default function CartIcon() {
   return (
     <button
       onClick={toggleCart}
-      className="relative p-2 hover:text-brand-gold transition-colors"
+      className="relative flex items-center justify-center w-11 h-11 rounded-xl text-gray-400 bg-white/5 border border-white/10 transition-all duration-300 hover:text-[#d4af37] hover:bg-[rgba(212,175,55,0.1)] hover:border-[rgba(212,175,55,0.3)] hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(212,175,55,0.15)]"
       aria-label="Abrir carrito"
     >
       <svg
@@ -22,7 +22,7 @@ export default function CartIcon() {
         viewBox="0 0 24 24"
         strokeWidth={1.5}
         stroke="currentColor"
-        className="w-6 h-6"
+        className="w-5 h-5"
       >
         <path
           strokeLinecap="round"
@@ -31,7 +31,7 @@ export default function CartIcon() {
         />
       </svg>
       {hydrated && count > 0 && (
-        <span className="absolute -top-1 -right-1 bg-brand-gold text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+        <span className="absolute -top-1 -right-1 bg-gradient-to-r from-accent-gold to-accent-gold-soft text-dark-bg text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-glow-gold">
           {count}
         </span>
       )}

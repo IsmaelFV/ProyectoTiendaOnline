@@ -43,12 +43,12 @@ function formatCurrency(amount: number) {
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Productos</h1>
-        <p class="mt-1 text-sm text-gray-600">Gestiona el catálogo de productos</p>
+        <h1 class="text-3xl font-bold text-white">Productos</h1>
+        <p class="mt-1 text-sm text-gray-400">Gestiona el catálogo de productos</p>
       </div>
       <a
         href="/admin/productos/nuevo"
-        class="bg-brand-gold text-white px-6 py-2 rounded-lg hover:bg-yellow-600 transition-colors flex items-center space-x-2"
+        class="bg-accent-gold text-dark-bg px-6 py-2 rounded-lg hover:bg-accent-gold/90 transition-colors flex items-center space-x-2 font-medium"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -58,95 +58,95 @@ function formatCurrency(amount: number) {
     </div>
 
     <!-- Tabla de productos -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="bg-dark-surface rounded-xl border border-white/10 overflow-hidden">
       {error ? (
-        <div class="p-6 text-center text-red-600">
+        <div class="p-6 text-center text-red-400">
           Error al cargar los productos: {error.message}
         </div>
       ) : !products || products.length === 0 ? (
-        <div class="p-12 text-center text-gray-500">
-          <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="p-12 text-center text-gray-400">
+          <svg class="mx-auto h-12 w-12 text-gray-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
-          <p class="text-lg font-medium">No hay productos</p>
+          <p class="text-lg font-medium text-white">No hay productos</p>
           <p class="text-sm mt-1">Comienza agregando tu primer producto.</p>
           <a
             href="/admin/productos/nuevo"
-            class="mt-4 inline-flex items-center px-4 py-2 bg-brand-gold text-white rounded-lg hover:bg-yellow-600"
+            class="mt-4 inline-flex items-center px-4 py-2 bg-accent-gold text-dark-bg rounded-lg hover:bg-accent-gold/90 font-medium"
           >
             Crear Producto
           </a>
         </div>
       ) : (
         <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+          <table class="min-w-full divide-y divide-white/10">
+            <thead class="bg-dark-card/50">
               <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Producto
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Precio
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Stock
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Categoría
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Género
                 </th>
-                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody class="divide-y divide-white/5">
               {products.map((product) => (
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-white/5 transition-colors">
                   <td class="px-6 py-4">
                     <div class="flex items-center">
                       <img
                         src={product.image_urls?.[0] || '/placeholder.png'}
                         alt={product.name}
-                        class="w-12 h-12 object-cover rounded"
+                        class="w-12 h-12 object-cover rounded-lg border border-white/10"
                       />
                       <div class="ml-4">
-                        <div class="text-sm font-medium text-gray-900">{product.name}</div>
+                        <div class="text-sm font-medium text-white">{product.name}</div>
                         <div class="text-xs text-gray-500">{product.slug}</div>
                       </div>
                     </div>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-accent-gold">
                     {formatCurrency(product.price)}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <span class={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      product.stock > 10 ? 'bg-green-100 text-green-800' :
-                      product.stock > 0 ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
+                      product.stock > 10 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                      product.stock > 0 ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                      'bg-red-500/20 text-red-400 border border-red-500/30'
                     }`}>
                       {product.stock} unidades
                     </span>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                     {product.category}
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400 capitalize">
                     {product.gender}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                     <a
                       href={`/admin/productos/${product.id}/editar`}
-                      class="text-blue-600 hover:text-blue-900"
+                      class="text-blue-400 hover:text-blue-300 transition-colors"
                     >
                       Editar
                     </a>
                     <button
                       data-product-id={product.id}
                       data-product-name={product.name}
-                      class="delete-btn text-red-600 hover:text-red-900"
+                      class="delete-btn text-red-400 hover:text-red-300 transition-colors"
                     >
                       Eliminar
                     </button>
@@ -162,25 +162,25 @@ function formatCurrency(amount: number) {
     <!-- Estadísticas -->
     {products && products.length > 0 && (
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="bg-white rounded-lg shadow p-4">
-          <div class="text-sm text-gray-600">Total productos</div>
-          <div class="text-2xl font-bold text-gray-900">{products.length}</div>
+        <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+          <div class="text-sm text-gray-400">Total productos</div>
+          <div class="text-2xl font-bold text-white">{products.length}</div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4">
-          <div class="text-sm text-gray-600">En stock</div>
-          <div class="text-2xl font-bold text-green-600">
+        <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+          <div class="text-sm text-gray-400">En stock</div>
+          <div class="text-2xl font-bold text-emerald-400">
             {products.filter(p => p.stock > 0).length}
           </div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4">
-          <div class="text-sm text-gray-600">Sin stock</div>
-          <div class="text-2xl font-bold text-red-600">
+        <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+          <div class="text-sm text-gray-400">Sin stock</div>
+          <div class="text-2xl font-bold text-red-400">
             {products.filter(p => p.stock === 0).length}
           </div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4">
-          <div class="text-sm text-gray-600">Valor inventario</div>
-          <div class="text-2xl font-bold text-blue-600">
+        <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+          <div class="text-sm text-gray-400">Valor inventario</div>
+          <div class="text-2xl font-bold text-blue-400">
             {formatCurrency(products.reduce((sum, p) => sum + (p.price * p.stock), 0))}
           </div>
         </div>

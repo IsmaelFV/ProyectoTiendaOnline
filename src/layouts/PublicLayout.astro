@@ -3,6 +3,7 @@ import BaseLayout from './BaseLayout.astro';
 import Header from '../components/ui/Header.astro';
 import Footer from '../components/ui/Footer.astro';
 import CartSlideOver from '../components/ui/CartSlideOver';
+import NewsletterPopup from '../components/islands/NewsletterPopup';
 
 interface Props {
   title?: string;
@@ -24,4 +25,5 @@ const { title, description } = Astro.props;
   </main>
   <Footer />
   <CartSlideOver client:load />
+  <NewsletterPopup client:load promoCode="BIENVENIDO10" discountPercentage={10} />
 </BaseLayout>

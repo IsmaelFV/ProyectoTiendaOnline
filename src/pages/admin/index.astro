@@ -3,19 +3,24 @@ import AdminLayout from '@layouts/AdminLayout.astro';
 import { supabase } from '@lib/supabase';
 
 // Obtener estadísticas principales
-const [productsCount, ordersData, recentOrders] = await Promise.all([
+const [productsCount, ordersData, recentOrders, topProductsData] = await Promise.all([
   // Total productos
   supabase.from('products').select('*', { count: 'exact', head: true }),
   
   // Estadísticas de pedidos
-  supabase.from('orders').select('total, status, created_at'),
+  supabase.from('orders').select('total, status, created_at, payment_status'),
   
   // Últimos 5 pedidos
   supabase
     .from('orders')
     .select('id, order_number, total, status, created_at')
     .order('created_at', { ascending: false })
-    .limit(5)
+    .limit(5),
+    
+  // Productos más vendidos
+  supabase
+    .from('order_items')
+    .select('product_id, product_name, product_image, quantity')
 ]);
 
 // Calcular estadísticas
@@ -34,6 +39,50 @@ const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 const thisMonthOrders = orders.filter(o => new Date(o.created_at) >= startOfMonth);
 const thisMonthRevenue = thisMonthOrders.reduce((sum, order) => sum + parseFloat(order.total.toString()), 0);
 
+// Producto más vendido
+const productSales: Record<string, { name: string; image: string; quantity: number }> = {};
+(topProductsData.data || []).forEach((item: any) => {
+  if (!productSales[item.product_id]) {
+    productSales[item.product_id] = {
+      name: item.product_name,
+      image: item.product_image || '',
+      quantity: 0
+    };
+  }
+  productSales[item.product_id].quantity += item.quantity;
+});
+
+const topProduct = Object.entries(productSales)
+  .sort((a, b) => b[1].quantity - a[1].quantity)[0];
+
+// Datos para gráfico de últimos 7 días
+const last7Days: string[] = [];
+const salesByDay: number[] = [];
+const ordersByDay: number[] = [];
+
+for (let i = 6; i >= 0; i--) {
+  const date = new Date();
+  date.setDate(date.getDate() - i);
+  const dateStr = date.toISOString().split('T')[0];
+  const dayName = date.toLocaleDateString('es-ES', { weekday: 'short' });
+  
+  last7Days.push(dayName);
+  
+  const dayOrders = orders.filter(o => {
+    const orderDate = new Date(o.created_at).toISOString().split('T')[0];
+    return orderDate === dateStr && o.status !== 'cancelled';
+  });
+  
+  salesByDay.push(dayOrders.reduce((sum, o) => sum + parseFloat(o.total.toString()), 0));
+  ordersByDay.push(dayOrders.length);
+}
+
+const chartData = JSON.stringify({
+  labels: last7Days,
+  sales: salesByDay,
+  orders: ordersByDay
+});
+
 // Formatear moneda
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('es-ES', {
@@ -47,8 +96,8 @@ const formatCurrency = (amount: number) => {
   <div class="space-y-6">
     {/* Header */}
     <div>
-      <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
-      <p class="mt-2 text-sm text-gray-600">
+      <h1 class="text-3xl font-bold text-white">Dashboard</h1>
+      <p class="mt-2 text-sm text-gray-400">
         Vista general de tu tienda online
       </p>
     </div>
@@ -56,78 +105,78 @@ const formatCurrency = (amount: number) => {
     {/* Stats Cards */}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {/* Ventas Totales */}
-      <div class="bg-white rounded-lg shadow p-6">
+      <div class="bg-dark-surface rounded-xl border border-white/10 p-6">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-600">Ventas Totales</p>
-            <p class="text-2xl font-bold text-gray-900 mt-2">
+            <p class="text-sm font-medium text-gray-400">Ventas Totales</p>
+            <p class="text-2xl font-bold text-white mt-2">
               {formatCurrency(totalRevenue)}
             </p>
           </div>
-          <div class="bg-green-100 rounded-full p-3">
-            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="bg-emerald-500/20 rounded-full p-3">
+            <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
         </div>
         <p class="text-xs text-gray-500 mt-4">
-          Este mes: {formatCurrency(thisMonthRevenue)}
+          Este mes: <span class="text-emerald-400">{formatCurrency(thisMonthRevenue)}</span>
         </p>
       </div>
 
       {/* Total Pedidos */}
-      <div class="bg-white rounded-lg shadow p-6">
+      <div class="bg-dark-surface rounded-xl border border-white/10 p-6">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-600">Total Pedidos</p>
-            <p class="text-2xl font-bold text-gray-900 mt-2">
+            <p class="text-sm font-medium text-gray-400">Total Pedidos</p>
+            <p class="text-2xl font-bold text-white mt-2">
               {totalOrders}
             </p>
           </div>
-          <div class="bg-blue-100 rounded-full p-3">
-            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="bg-blue-500/20 rounded-full p-3">
+            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
           </div>
         </div>
         <p class="text-xs text-gray-500 mt-4">
-          {pendingOrders} pendientes
+          <span class="text-yellow-400">{pendingOrders}</span> pendientes
         </p>
       </div>
 
       {/* Total Productos */}
-      <div class="bg-white rounded-lg shadow p-6">
+      <div class="bg-dark-surface rounded-xl border border-white/10 p-6">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-600">Total Productos</p>
-            <p class="text-2xl font-bold text-gray-900 mt-2">
+            <p class="text-sm font-medium text-gray-400">Total Productos</p>
+            <p class="text-2xl font-bold text-white mt-2">
               {totalProducts}
             </p>
           </div>
-          <div class="bg-purple-100 rounded-full p-3">
-            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="bg-purple-500/20 rounded-full p-3">
+            <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
           </div>
         </div>
         <p class="text-xs text-gray-500 mt-4">
-          <a href="/admin/productos" class="text-brand-navy hover:underline">
+          <a href="/admin/productos" class="text-accent-gold hover:text-accent-gold/80 transition-colors">
             Ver catálogo →
           </a>
         </p>
       </div>
 
       {/* Ticket Promedio */}
-      <div class="bg-white rounded-lg shadow p-6">
+      <div class="bg-dark-surface rounded-xl border border-white/10 p-6">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-600">Ticket Promedio</p>
-            <p class="text-2xl font-bold text-gray-900 mt-2">
+            <p class="text-sm font-medium text-gray-400">Ticket Promedio</p>
+            <p class="text-2xl font-bold text-white mt-2">
               {formatCurrency(totalOrders > 0 ? totalRevenue / totalOrders : 0)}
             </p>
           </div>
-          <div class="bg-yellow-100 rounded-full p-3">
-            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="bg-accent-gold/20 rounded-full p-3">
+            <svg class="w-6 h-6 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           </div>
@@ -139,102 +188,147 @@ const formatCurrency = (amount: number) => {
     </div>
 
     {/* Quick Actions */}
-    <div class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h2>
+    <div class="bg-dark-surface rounded-xl border border-white/10 p-6">
+      <h2 class="text-lg font-semibold text-white mb-4">Acciones Rápidas</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <a 
           href="/admin/productos/nuevo" 
-          class="flex items-center space-x-3 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-brand-navy hover:bg-gray-50 transition-colors"
+          class="flex items-center space-x-3 p-4 border-2 border-dashed border-white/20 rounded-xl hover:border-accent-gold hover:bg-white/5 transition-all"
         >
-          <svg class="w-8 h-8 text-brand-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-8 h-8 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
           <div>
-            <p class="font-medium text-gray-900">Nuevo Producto</p>
+            <p class="font-medium text-white">Nuevo Producto</p>
             <p class="text-sm text-gray-500">Añadir al catálogo</p>
           </div>
         </a>
 
         <a 
           href="/admin/pedidos" 
-          class="flex items-center space-x-3 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-brand-navy hover:bg-gray-50 transition-colors"
+          class="flex items-center space-x-3 p-4 border-2 border-dashed border-white/20 rounded-xl hover:border-accent-gold hover:bg-white/5 transition-all"
         >
-          <svg class="w-8 h-8 text-brand-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-8 h-8 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           <div>
-            <p class="font-medium text-gray-900">Ver Pedidos</p>
+            <p class="font-medium text-white">Ver Pedidos</p>
             <p class="text-sm text-gray-500">Gestionar órdenes</p>
           </div>
         </a>
 
         <a 
           href="/admin/devoluciones" 
-          class="flex items-center space-x-3 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-brand-navy hover:bg-gray-50 transition-colors"
+          class="flex items-center space-x-3 p-4 border-2 border-dashed border-white/20 rounded-xl hover:border-accent-gold hover:bg-white/5 transition-all"
         >
-          <svg class="w-8 h-8 text-brand-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-8 h-8 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
           </svg>
           <div>
-            <p class="font-medium text-gray-900">Devoluciones</p>
+            <p class="font-medium text-white">Devoluciones</p>
             <p class="text-sm text-gray-500">Gestionar returns</p>
           </div>
         </a>
       </div>
     </div>
 
+    {/* Gráfico de Ventas y Producto Más Vendido */}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Gráfico de Ventas - 2/3 del ancho */}
+      <div class="lg:col-span-2 bg-dark-surface rounded-xl border border-white/10 p-6">
+        <h2 class="text-lg font-semibold text-white mb-4">Ventas Últimos 7 Días</h2>
+        <div id="sales-chart-container" class="h-64">
+          <canvas id="salesChart"></canvas>
+        </div>
+      </div>
+
+      {/* Producto Más Vendido - 1/3 del ancho */}
+      <div class="bg-dark-surface rounded-xl border border-white/10 p-6">
+        <h2 class="text-lg font-semibold text-white mb-4">Producto Más Vendido</h2>
+        {topProduct ? (
+          <div class="flex flex-col items-center text-center">
+            {topProduct[1].image ? (
+              <img 
+                src={topProduct[1].image} 
+                alt={topProduct[1].name}
+                class="w-32 h-32 object-cover rounded-xl mb-4 border border-white/10"
+              />
+            ) : (
+              <div class="w-32 h-32 bg-dark-card rounded-xl mb-4 flex items-center justify-center border border-white/10">
+                <svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+            )}
+            <h3 class="font-medium text-white mb-1">{topProduct[1].name}</h3>
+            <p class="text-sm text-gray-500 mb-2">{topProduct[1].quantity} unidades vendidas</p>
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-accent-gold/20 text-accent-gold border border-accent-gold/30">
+              🏆 Top Ventas
+            </span>
+          </div>
+        ) : (
+          <div class="flex flex-col items-center justify-center h-48 text-center">
+            <svg class="w-12 h-12 text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <p class="text-sm text-gray-500">Aún no hay datos de ventas</p>
+          </div>
+        )}
+      </div>
+    </div>
+
     {/* Recent Orders */}
-    <div class="bg-white rounded-lg shadow">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-lg font-semibold text-gray-900">Pedidos Recientes</h2>
+    <div class="bg-dark-surface rounded-xl border border-white/10 overflow-hidden">
+      <div class="px-6 py-4 border-b border-white/10">
+        <h2 class="text-lg font-semibold text-white">Pedidos Recientes</h2>
       </div>
       <div class="overflow-x-auto">
         {recentOrders.data && recentOrders.data.length > 0 ? (
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+          <table class="min-w-full divide-y divide-white/10">
+            <thead class="bg-dark-card/50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Número de Pedido
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Estado
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Total
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Fecha
                 </th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Acción
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody class="divide-y divide-white/5">
               {recentOrders.data.map((order) => (
-                <tr class="hover:bg-gray-50">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <tr class="hover:bg-white/5 transition-colors">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
                     {order.order_number}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm">
                     <span class={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                      order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                      order.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                      order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
+                      order.status === 'delivered' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                      order.status === 'shipped' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                      order.status === 'processing' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                      order.status === 'cancelled' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                      'bg-gray-500/20 text-gray-400 border border-gray-500/30'
                     }`}>
                       {order.status}
                     </span>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-accent-gold font-medium">
                     {formatCurrency(parseFloat(order.total.toString()))}
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                     {new Date(order.created_at).toLocaleDateString('es-ES')}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <a href={`/admin/pedidos/${order.id}`} class="text-brand-navy hover:text-brand-gold">
+                    <a href={`/admin/pedidos/${order.id}`} class="text-accent-gold hover:text-accent-gold/80 transition-colors">
                       Ver detalles
                     </a>
                   </td>
@@ -244,7 +338,7 @@ const formatCurrency = (amount: number) => {
           </table>
         ) : (
           <div class="px-6 py-12 text-center">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="mx-auto h-12 w-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
             <p class="mt-2 text-sm text-gray-500">No hay pedidos todavía</p>
@@ -252,8 +346,8 @@ const formatCurrency = (amount: number) => {
         )}
       </div>
       {recentOrders.data && recentOrders.data.length > 0 && (
-        <div class="px-6 py-4 border-t border-gray-200">
-          <a href="/admin/pedidos" class="text-sm text-brand-navy hover:text-brand-gold font-medium">
+        <div class="px-6 py-4 border-t border-white/10">
+          <a href="/admin/pedidos" class="text-sm text-accent-gold hover:text-accent-gold/80 font-medium transition-colors">
             Ver todos los pedidos →
           </a>
         </div>
@@ -261,3 +355,103 @@ const formatCurrency = (amount: number) => {
     </div>
   </div>
 </AdminLayout>
+
+<script define:vars={{ chartData }}>
+  // Cargar Chart.js desde CDN e inicializar el gráfico
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+  script.onload = function() {
+    const data = JSON.parse(chartData);
+    const ctx = document.getElementById('salesChart');
+    
+    if (ctx) {
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'Ventas (€)',
+              data: data.sales,
+              borderColor: '#d4af37',
+              backgroundColor: 'rgba(212, 175, 55, 0.1)',
+              fill: true,
+              tension: 0.4,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Pedidos',
+              data: data.orders,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              fill: false,
+              tension: 0.4,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                color: '#9ca3af'
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                color: '#9ca3af'
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.05)'
+              }
+            },
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              title: {
+                display: true,
+                text: 'Ventas (€)',
+                color: '#9ca3af'
+              },
+              ticks: {
+                color: '#9ca3af'
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.05)'
+              },
+              beginAtZero: true
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: {
+                display: true,
+                text: 'Pedidos',
+                color: '#9ca3af'
+              },
+              ticks: {
+                color: '#9ca3af'
+              },
+              beginAtZero: true,
+              grid: {
+                drawOnChartArea: false
+              }
+            }
+          }
+        }
+      });
+    }
+  };
+  document.head.appendChild(script);
+</script>

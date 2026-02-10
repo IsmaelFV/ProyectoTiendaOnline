@@ -1,0 +1,14 @@
+---
+/**
+ * ============================================================================
+ * REDIRECCIÓN A LA PÁGINA PRINCIPAL DE DETALLES DE PEDIDO
+ * ============================================================================
+ * Ruta: /perfil/pedidos/[id]
+ * Redirige a /perfil/mis-pedidos/[id] para mantener una única página de detalles
+ */
+
+const { id } = Astro.params;
+
+// Redirigir a la página principal de detalles de pedido
+return Astro.redirect(`/perfil/mis-pedidos/${id}`);
+---

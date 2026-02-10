@@ -96,7 +96,7 @@ export async function sendInvoiceEmail({
         <div class="content">
           <p>Hola <strong>${customerName}</strong>,</p>
           
-          <p>Gracias por tu compra en <strong>FashionMarket</strong>. Tu pedido <strong>${orderNumber}</strong> ha sido procesado correctamente.</p>
+          <p>Gracias por realizar su compra en <strong>FashionMarket</strong>. Tu pedido <strong>${orderNumber}</strong> ha sido procesado correctamente.</p>
           
           <p>📄 Adjuntamos tu factura en formato PDF.</p>
           
