@@ -75,7 +75,7 @@ export async function initializeSession() {
     const liveUser = liveSession?.user || null;
 
     if (liveUser) {
-      console.log('[SESSION] Sesión válida desde Supabase:', liveUser.email);
+      console.log('[SESSION] Sesion valida desde Supabase:', liveUser.email);
       sessionState.set({
         user: liveUser,
         session: liveSession,
@@ -83,24 +83,15 @@ export async function initializeSession() {
         error: null,
       });
     } else {
-      console.log('[SESSION] No hay sesión válida en Supabase');
+      console.log('[SESSION] No hay sesion valida en Supabase');
       
-      // Limpiar artefactos de sesión anterior: claves sb-user-* e sb-*-auth-token
-      // Esto previene que un hard refresh lea sesiones antiguas/expiradas
+      // IMPORTANTE: NO limpiar localStorage agresivamente aqui.
+      // getSession() puede retornar null temporalmente por timing issues,
+      // especialmente despues de un login reciente o detras de un reverse proxy.
+      // Solo limpiar last_cart_owner para el carrito.
       if (typeof window !== 'undefined') {
-        const toRemove: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && (key.startsWith('sb-') || key === 'last_cart_owner')) {
-            toRemove.push(key);
-          }
-        }
-        toRemove.forEach((k) => {
-          localStorage.removeItem(k);
-          console.log('[SESSION] Limpiado:', k);
-        });
-        
-        // Notificar al carrito que se limpió
+        localStorage.removeItem('last_cart_owner');
+        console.log('[SESSION] last_cart_owner limpiado');
         window.dispatchEvent(new CustomEvent('lastCartOwnerCleared'));
       }
       

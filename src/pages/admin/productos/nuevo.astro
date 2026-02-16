@@ -1087,7 +1087,7 @@ const errorMessage = errorParam ? errorMessages[errorParam] : null;
   // VALIDACIÓN DEL FORMULARIO ANTES DE ENVIAR
   // ═══════════════════════════════════════════════════════════
   const form = document.querySelector('form') as HTMLFormElement;
-  form?.addEventListener('submit', (e) => {
+  form?.addEventListener('submit', async (e) => {
     const errors: string[] = [];
     
     const nameVal = (document.getElementById('name') as HTMLInputElement)?.value?.trim();

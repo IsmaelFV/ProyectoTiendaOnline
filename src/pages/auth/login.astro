@@ -1,7 +1,46 @@
 ---
 import BaseLayout from '@layouts/BaseLayout.astro';
 
+// Si el usuario ya tiene tokens de sesion validos, redirigir en lugar de mostrar login
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+if (accessToken && refreshToken) {
+  // Tiene cookies de sesion - verificar si son validas antes de redirigir
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (supabaseUrl && supabaseServiceKey) {
+      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      
+      const { data } = await supabaseAdmin.auth.getUser(accessToken);
+      
+      if (data?.user) {
+        // Sesion valida - verificar si es admin
+        const { data: adminData } = await supabaseAdmin
+          .from('admin_users')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+        
+        if (adminData) {
+          return Astro.redirect('/admin');
+        }
+        return Astro.redirect('/');
+      }
+    }
+  } catch (e) {
+    // Si falla la verificacion, mostrar login normalmente
+    console.log('[LOGIN PAGE SSR] Error verificando sesion existente:', e);
+  }
+}
+
 const errorMessage = Astro.url.searchParams.get('error');
+const successMessage = Astro.url.searchParams.get('success');
 ---
 
 <BaseLayout title="Iniciar Sesión - Fashion Store">
@@ -36,6 +75,13 @@ const errorMessage = Astro.url.searchParams.get('error');
         {errorMessage && (
           <div class="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl">
             <p class="text-sm">{errorMessage}</p>
+          </div>
+        )}
+
+        {/* Mensaje de exito (ej: registro completado) */}
+        {successMessage && (
+          <div class="bg-green-500/10 border border-green-500/30 text-green-400 px-4 py-3 rounded-xl">
+            <p class="text-sm">{successMessage}</p>
           </div>
         )}
 

@@ -146,7 +146,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     console.log('[WEBHOOK] Amounts - Subtotal:', subtotalCents, 'Total:', totalCents, 'Tax:', taxCents, 'Shipping:', shippingCents, 'Discount:', discountCents);
 
     // 1. Crear el pedido en la base de datos (order_number se autogenera con trigger)
-    console.log('💾 Creando pedido en BD...');
+    console.log('[WEBHOOK] Creando pedido en BD...');
     
     const orderData = {
       user_id: (user_id && user_id !== 'guest') ? user_id : null,
@@ -189,7 +189,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
 
     // 1.5. Incrementar contador de usos del código de descuento si se usó
     if (discount_code && discountCents > 0) {
-      console.log(`🎫 Incrementando uso del código: ${discount_code}`);
+      console.log(`[WEBHOOK] Incrementando uso del codigo: ${discount_code}`);
       const { error: discountError } = await supabaseAdmin.rpc('increment_discount_usage', {
         p_code: discount_code
       });
@@ -305,7 +305,6 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
           }
         }
       }
-    }
     }
 
     console.log(`[WEBHOOK] Order ${orderNumber} processed successfully with ${lineItems.data.length} items`);

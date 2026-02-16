@@ -2,69 +2,49 @@
 /**
  * ============================================================================
  * OAuth Callback Handler
- * Maneja la redirección después de autenticación con Google
+ * ============================================================================
+ * Maneja la redireccion despues de autenticacion con Google.
+ * 
+ * IMPORTANTE: Los hash fragments (#access_token=...) NUNCA llegan al servidor.
+ * Por eso el procesamiento real se hace en el script del lado del cliente.
+ * El frontmatter SSR solo verifica si ya hay cookies de sesion previas.
  * ============================================================================
  */
-import { supabase } from '../../lib/supabase';
-import { createClient } from '@supabase/supabase-js';
 
-// Extraer tokens de la URL
-const hashParams = new URLSearchParams(Astro.url.hash.substring(1));
-const accessToken = hashParams.get('access_token');
-const refreshToken = hashParams.get('refresh_token');
+// Verificar si ya hay cookies de sesion (por si el usuario llega aqui con sesion activa)
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
 
-// Si hay tokens en la URL, guardarlos en cookies
 if (accessToken && refreshToken) {
-  const maxAge = 60 * 60 * 24 * 7; // 7 días
-  
-  Astro.cookies.set('sb-access-token', accessToken, {
-    path: '/',
-    maxAge,
-    httpOnly: true,
-    secure: import.meta.env.PROD,
-    sameSite: 'lax',
-  });
-  
-  Astro.cookies.set('sb-refresh-token', refreshToken, {
-    path: '/',
-    maxAge,
-    httpOnly: true,
-    secure: import.meta.env.PROD,
-    sameSite: 'lax',
-  });
-}
-
-// Verificar sesión
-const { data: { session } } = await supabase.auth.getSession();
-
-if (session) {
-  // Verificar si el usuario es admin usando service_role (evita RLS)
   try {
+    const { createClient } = await import('@supabase/supabase-js');
     const supabaseAdmin = createClient(
       import.meta.env.PUBLIC_SUPABASE_URL,
       import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { data: adminData } = await supabaseAdmin
-      .from('admin_users')
-      .select('id, user_id, email')
-      .eq('user_id', session.user.id)
-      .maybeSingle();
+    const { data } = await supabaseAdmin.auth.getUser(accessToken);
+    
+    if (data?.user) {
+      const { data: adminData } = await supabaseAdmin
+        .from('admin_users')
+        .select('id')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
 
-    if (adminData) {
-      return Astro.redirect('/admin');
+      if (adminData) {
+        return Astro.redirect('/admin');
+      }
+      return Astro.redirect('/');
     }
   } catch (err) {
-    console.warn('[Callback] Error verificando admin:', err);
+    console.warn('[Callback SSR] Error verificando sesion:', err);
   }
-
-  // Redirigir a la página principal (usuario normal)
-  return Astro.redirect('/');
-} else {
-  // Si no hay sesión, redirigir al login con error
-  return Astro.redirect('/auth/login?error=Error al autenticar con Google');
 }
+
+// Si no hay sesion SSR, renderizar la pagina con el script del cliente
+// que procesara los hash fragments del OAuth
 ---
 
 <!DOCTYPE html>
@@ -112,32 +92,45 @@ if (session) {
   <script type="module">
     import { supabase } from '/src/lib/supabase';
 
+    function setAuthCookie(name, value, maxAge) {
+      const isSecure = window.location.protocol === 'https:';
+      const parts = [
+        `${name}=${value}`,
+        'Path=/',
+        `Max-Age=${maxAge}`,
+        'SameSite=Lax',
+      ];
+      if (isSecure) {
+        parts.push('Secure');
+      }
+      document.cookie = parts.join('; ');
+    }
+
     (async () => {
-      // Procesar tokens del hash
+      // Procesar tokens del hash fragment
       const hash = window.location.hash.substring(1);
       const params = new URLSearchParams(hash);
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');
 
       if (accessToken && refreshToken) {
-        // Guardar tokens en localStorage para Supabase
-        const maxAge = 60 * 60 * 24 * 7 * 1000; // 7 días en ms
-        const expiresAt = Date.now() + maxAge;
+        const maxAge = 60 * 60 * 24 * 7; // 7 dias
         
-        const authData = {
-          access_token: accessToken,
-          refresh_token: refreshToken,
-          expires_at: Math.floor(expiresAt / 1000),
-        };
+        // Setear sesion en Supabase client
+        try {
+          await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+        } catch (e) {
+          console.warn('[CALLBACK] Error seteando sesion:', e);
+        }
         
-        localStorage.setItem('sb-auth-token', JSON.stringify(authData));
+        // Guardar en cookies para SSR
+        setAuthCookie('sb-access-token', accessToken, maxAge);
+        setAuthCookie('sb-refresh-token', refreshToken, maxAge);
         
-        // Guardar en cookies también
-        const securePart = window.location.protocol === 'https:' ? '; Secure' : '';
-        document.cookie = `sb-access-token=${accessToken}; Path=/; Max-Age=${Math.floor(maxAge/1000)}; SameSite=Lax${securePart}`;
-        document.cookie = `sb-refresh-token=${refreshToken}; Path=/; Max-Age=${Math.floor(maxAge/1000)}; SameSite=Lax${securePart}`;
-        
-        // Verificar si es admin antes de redirigir (via API server-side)
+        // Verificar si es admin
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
@@ -146,27 +139,24 @@ if (session) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ userId: user.id }),
             });
-            const { isAdmin } = await res.json();
-
-            if (isAdmin) {
-              console.log('[CALLBACK] Usuario es ADMIN, redirigiendo a /admin');
-              window.location.href = '/admin';
-              return;
+            if (res.ok) {
+              const { isAdmin } = await res.json();
+              if (isAdmin) {
+                console.log('[CALLBACK] Usuario es ADMIN, redirigiendo a /admin');
+                window.location.href = '/admin';
+                return;
+              }
             }
           }
         } catch (err) {
           console.warn('[CALLBACK] Error verificando admin:', err);
         }
 
-        // Redirigir al home (usuario normal)
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 500);
+        // Usuario normal - redirigir al home
+        window.location.href = '/';
       } else {
-        // Error - redirigir al login
-        setTimeout(() => {
-          window.location.href = '/auth/login?error=Error al procesar la autenticación';
-        }, 1000);
+        // Sin tokens en hash - redirigir al login
+        window.location.href = '/auth/login?error=Error al procesar la autenticacion';
       }
     })();
   </script>
