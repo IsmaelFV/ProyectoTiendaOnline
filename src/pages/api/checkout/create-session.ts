@@ -64,25 +64,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // 4. Crear un mapa de productos para validación
     const productMap = new Map(products.map(p => [p.id, p]));
 
-    // 5. RESERVAR STOCK de forma atómica (OPCIONAL - si las funciones existen)
+    // 5. VALIDAR STOCK (lectura directa — el decrement atómico se hace en el webhook con FOR UPDATE)
     const supabaseAdmin = createServerSupabaseClient();
-    const reservationIds: string[] = [];
-    const tempSessionId = `temp_${Date.now()}_${user?.id || 'guest'}`;
-    let reservationSystemAvailable = true;
-
-    // Cancelar reservas activas previas del mismo usuario (evita acumulación si retrocede y vuelve)
-    if (user?.id) {
-      try {
-        await supabaseAdmin
-          .from('stock_reservations')
-          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-          .eq('user_id', user.id)
-          .eq('status', 'active');
-        console.log('[CHECKOUT] Reservas previas del usuario canceladas');
-      } catch (e) {
-        console.warn('[CHECKOUT] No se pudieron cancelar reservas previas:', e);
-      }
-    }
 
     for (const item of items) {
       const product = productMap.get(item.id);
@@ -96,7 +79,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         });
       }
 
-      // Validar stock básico (sin RPC, lectura directa)
+      // Validar stock real (lectura directa de la BD)
       const itemSize = item.size || 'Única';
       let availableStock = product.stock || 0;
       
@@ -116,47 +99,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           status: 400,
           headers: { 'Content-Type': 'application/json' }
         });
-      }
-
-      // Intentar reserva atómica (si la función existe)
-      if (reservationSystemAvailable) {
-        try {
-          const { data: reservation, error: reservationError } = await supabaseAdmin.rpc('reserve_stock', {
-            p_product_id: item.id,
-            p_quantity: item.quantity,
-            p_session_id: tempSessionId,
-            p_user_id: user?.id || null,
-            p_size: item.size || null
-          }) as { data: any; error: any };
-
-          if (reservationError) {
-            console.warn('[CHECKOUT] reserve_stock no disponible:', reservationError.message);
-            reservationSystemAvailable = false;
-          } else if (!reservation?.success) {
-            // Stock insuficiente según la reserva
-            if (reservationIds.length > 0) {
-              try {
-                await supabaseAdmin.rpc('cancel_reservation', {
-                  p_session_id: tempSessionId,
-                  p_reason: 'reservation_failed'
-                });
-              } catch (e) { /* ignorar */ }
-            }
-            return new Response(JSON.stringify({ 
-              error: `Stock insuficiente para "${product.name}" (talla ${item.size || 'Única'}). Solo quedan ${reservation.available} unidades disponibles.`,
-              available: reservation?.available || 0,
-              requested: item.quantity
-            }), {
-              status: 400,
-              headers: { 'Content-Type': 'application/json' }
-            });
-          } else {
-            reservationIds.push(reservation.reservation_id);
-          }
-        } catch (rpcErr: any) {
-          console.warn('[CHECKOUT] Sistema de reservas no disponible:', rpcErr.message);
-          reservationSystemAvailable = false;
-        }
       }
     }
 
@@ -224,15 +166,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           const validation = validationResult as { valid: boolean; message: string; discount_amount?: number; code?: string };
 
           if (!validation.valid) {
-            // Cancelar reservas si el codigo no es valido
-            if (reservationIds.length > 0) {
-              try {
-                await supabaseAdmin.rpc('cancel_reservation', {
-                  p_session_id: tempSessionId,
-                  p_reason: 'invalid_discount_code'
-                });
-              } catch (e) { /* ignorar */ }
-            }
             return new Response(JSON.stringify({ 
               error: validation.message 
             }), {
@@ -281,8 +214,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         user_id: user?.id || 'guest',
         user_email: user?.email || '',
         total_amount: totalAmount.toString(),
-        temp_session_id: tempSessionId, // Para actualizar reservas después
-        reservation_ids: JSON.stringify(reservationIds), // IDs de reservas
         discount_code: discountCode || '',
         discount_amount: discountAmount.toString(),
         // Info de tallas por item para decrement_stock en webhook
@@ -305,27 +236,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const session = await stripe.checkout.sessions.create(sessionConfig);
 
-    // 8. Actualizar reservas con el session_id real de Stripe (si se usaron reservas)
-    if (reservationIds.length > 0) {
-      try {
-        const { error: updateError } = await supabaseAdmin
-          .from('stock_reservations')
-          .update({ session_id: session.id })
-          .eq('session_id', tempSessionId);
-
-        if (updateError) {
-          console.warn('[CHECKOUT] Error actualizando session_id de reservas:', updateError.message);
-        }
-      } catch (e: any) {
-        console.warn('[CHECKOUT] Tabla stock_reservations no existe o error:', e.message);
-      }
-    }
-
-    // 9. Retornar URL de checkout de Stripe
+    // 8. Retornar URL de checkout de Stripe
     return new Response(JSON.stringify({ 
       url: session.url,
-      sessionId: session.id,
-      reservations: reservationIds.length // Info para debugging
+      sessionId: session.id
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
