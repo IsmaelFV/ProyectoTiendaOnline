@@ -54,11 +54,13 @@ function setupLogin() {
     const accessToken = sessionData.session?.access_token;
     const refreshToken = sessionData.session?.refresh_token;
     const maxAge = 60 * 60 * 24 * 7; // 7 días
+    const isSecure = window.location.protocol === 'https:';
+    const securePart = isSecure ? '; Secure' : '';
     if (accessToken) {
-      document.cookie = `sb-access-token=${accessToken}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+      document.cookie = `sb-access-token=${accessToken}; Path=/; Max-Age=${maxAge}; SameSite=Lax${securePart}`;
     }
     if (refreshToken) {
-      document.cookie = `sb-refresh-token=${refreshToken}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+      document.cookie = `sb-refresh-token=${refreshToken}; Path=/; Max-Age=${maxAge}; SameSite=Lax${securePart}`;
     }
 
     const keys: string[] = [];

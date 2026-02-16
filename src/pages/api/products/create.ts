@@ -125,6 +125,33 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   }
 
   // ============================================================================
+  // 6a. PROCESAR STOCK POR TALLA
+  // ============================================================================
+  const stockBySizeString = formData.get('stock_by_size')?.toString();
+  let stockBySize: Record<string, number> = {};
+  
+  if (stockBySizeString) {
+    try {
+      stockBySize = JSON.parse(stockBySizeString);
+    } catch {
+      // Si no se puede parsear, distribuir equitativamente
+      stockBySize = {};
+    }
+  }
+  
+  // Si no se proporcionó stock_by_size, distribuir el stock global equitativamente
+  if (Object.keys(stockBySize).length === 0) {
+    const perSize = Math.floor(stock / sizes.length);
+    const remainder = stock % sizes.length;
+    sizes.forEach((size, i) => {
+      stockBySize[size] = perSize + (i === 0 ? remainder : 0);
+    });
+  }
+  
+  // Recalcular stock total como suma de todas las tallas
+  const totalStock = Object.values(stockBySize).reduce((sum, v) => sum + v, 0);
+
+  // ============================================================================
   // 6b. PROCESAR MEDIDAS DE TALLAS
   // ============================================================================
   const sizeMeasurementsString = formData.get('size_measurements')?.toString();
@@ -183,7 +210,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     slug,
     description: description || null,
     price: priceInCents,
-    stock,
+    stock: totalStock,
+    stock_by_size: stockBySize,
     category_id,
     sizes,
     size_measurements: Object.keys(sizeMeasurements).length > 0 ? sizeMeasurements : null,

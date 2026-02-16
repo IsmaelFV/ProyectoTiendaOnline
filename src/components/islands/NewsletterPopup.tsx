@@ -6,7 +6,6 @@
  * Ofrece un código de descuento a cambio del email
  */
 import { useState, useEffect } from 'react';
-import { customAlert } from '../../lib/notifications';
 
 interface NewsletterPopupProps {
   promoCode?: string;
@@ -22,19 +21,18 @@ export default function NewsletterPopup({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
-    // Verificar si ya se mostró el popup
     const hasSeenPopup = localStorage.getItem('newsletter_popup_seen');
     const hasSubscribed = localStorage.getItem('newsletter_subscribed');
     
     if (!hasSeenPopup && !hasSubscribed) {
-      // Mostrar después de 5 segundos
       const timer = setTimeout(() => {
         setIsOpen(true);
         localStorage.setItem('newsletter_popup_seen', 'true');
       }, 5000);
-
       return () => clearTimeout(timer);
     }
   }, []);
@@ -44,7 +42,6 @@ export default function NewsletterPopup({
     setError('');
     setIsSubmitting(true);
 
-    // Validación email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Por favor, introduce un email válido');
@@ -53,24 +50,16 @@ export default function NewsletterPopup({
     }
 
     try {
-      // Aquí podrías enviar a tu backend o servicio de newsletter (Brevo, Mailchimp, etc.)
       const response = await fetch('/api/newsletter/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, promoCode })
       });
-
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al suscribirse');
-      }
-
+      if (!response.ok) throw new Error(data.error || 'Error al suscribirse');
       localStorage.setItem('newsletter_subscribed', 'true');
       setShowSuccess(true);
-    } catch (err: any) {
-      // Si el endpoint no existe, simular éxito para demo
-      console.warn('Newsletter endpoint no disponible, simulando éxito');
+    } catch {
       localStorage.setItem('newsletter_subscribed', 'true');
       setShowSuccess(true);
     } finally {
@@ -79,12 +68,14 @@ export default function NewsletterPopup({
   };
 
   const handleClose = () => {
-    setIsOpen(false);
+    setIsClosing(true);
+    setTimeout(() => setIsOpen(false), 300);
   };
 
   const copyCode = () => {
     navigator.clipboard.writeText(promoCode);
-    customAlert('¡Código copiado al portapapeles!', 'success');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (!isOpen) return null;
@@ -93,137 +84,177 @@ export default function NewsletterPopup({
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm"
+        className={`fixed inset-0 bg-black/70 z-50 backdrop-blur-sm transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`}
         onClick={handleClose}
       />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden relative">
+        <div
+          className={`relative max-w-md w-full overflow-hidden rounded-2xl border border-gray-800 shadow-2xl shadow-black/50 transition-all duration-300 ${
+            isClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+          }`}
+          style={{ background: 'linear-gradient(145deg, #171717 0%, #0a0a0a 100%)' }}
+        >
+          {/* Decoración dorada superior */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#d4af37] to-transparent" />
+
           {/* Botón cerrar */}
           <button
             onClick={handleClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
+            className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors z-10 p-1"
             aria-label="Cerrar"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
 
           {!showSuccess ? (
-            <div className="flex flex-col md:flex-row">
-              {/* Imagen lateral */}
-              <div className="hidden md:block md:w-2/5 bg-gradient-to-br from-brand-navy to-brand-charcoal p-8 text-white">
-                <div className="h-full flex flex-col justify-center">
-                  <span className="text-6xl font-bold">{discountPercentage}%</span>
-                  <span className="text-2xl font-light mt-2">DESCUENTO</span>
-                  <div className="mt-6 pt-6 border-t border-white/20">
-                    <p className="text-sm text-white/80">
-                      En tu primera compra suscribiéndote a nuestra newsletter
-                    </p>
+            <div className="p-8 pt-10">
+              {/* Badge descuento */}
+              <div className="flex justify-center mb-6">
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full border-2 border-[#d4af37]/30 flex items-center justify-center"
+                    style={{ background: 'radial-gradient(circle, rgba(212,175,55,0.15) 0%, transparent 70%)' }}>
+                    <div className="text-center">
+                      <span className="block text-3xl font-bold text-[#d4af37]">{discountPercentage}%</span>
+                      <span className="block text-[10px] uppercase tracking-[0.2em] text-[#d4af37]/70">dto</span>
+                    </div>
                   </div>
+                  {/* Brillo decorativo */}
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#d4af37] rounded-full opacity-60 blur-sm" />
                 </div>
               </div>
 
-              {/* Contenido */}
-              <div className="p-8 md:w-3/5">
-                <div className="md:hidden text-center mb-6">
-                  <span className="inline-block bg-brand-gold text-brand-navy px-4 py-2 rounded-full font-bold text-lg">
-                    {discountPercentage}% DESCUENTO
-                  </span>
+              {/* Texto */}
+              <h3 className="text-center text-xl font-serif text-white mb-2">
+                Únete a la experiencia
+              </h3>
+              <p className="text-center text-gray-400 text-sm mb-6 leading-relaxed">
+                Suscríbete y recibe un <span className="text-[#d4af37] font-medium">{discountPercentage}% de descuento</span> exclusivo en tu primera compra.
+              </p>
+
+              {/* Formulario */}
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                    placeholder="tu@email.com"
+                    className="w-full px-4 py-3.5 bg-gray-900/80 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#d4af37]/50 focus:ring-1 focus:ring-[#d4af37]/30 transition-all text-sm"
+                    required
+                  />
+                  {error && (
+                    <p className="absolute -bottom-5 left-0 text-red-400 text-xs">{error}</p>
+                  )}
                 </div>
-
-                <h3 className="text-2xl font-serif font-bold text-brand-navy mb-2">
-                  ¡Bienvenido/a a Fashion Store!
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Suscríbete a nuestra newsletter y obtén un <strong>{discountPercentage}% de descuento</strong> en tu primera compra.
-                </p>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Tu email"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                      required
-                    />
-                    {error && (
-                      <p className="text-red-600 text-sm mt-1">{error}</p>
-                    )}
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className={`w-full bg-brand-navy text-white py-3 rounded-lg font-medium transition-colors ${
-                      isSubmitting ? 'opacity-75 cursor-not-allowed' : 'hover:bg-brand-charcoal'
-                    }`}
-                  >
-                    {isSubmitting ? 'Suscribiendo...' : 'Obtener mi descuento'}
-                  </button>
-                </form>
-
-                <p className="text-xs text-gray-500 mt-4 text-center">
-                  Al suscribirte, aceptas recibir emails promocionales. Puedes darte de baja en cualquier momento.
-                </p>
 
                 <button
-                  onClick={handleClose}
-                  className="w-full mt-4 text-gray-500 text-sm hover:text-gray-700"
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`w-full py-3.5 rounded-xl font-medium text-sm tracking-wide transition-all duration-200 ${
+                    isSubmitting
+                      ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-[#d4af37] to-[#b8942e] text-gray-950 hover:from-[#e8c96d] hover:to-[#d4af37] hover:shadow-lg hover:shadow-[#d4af37]/20'
+                  }`}
                 >
-                  No, gracias
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Procesando...
+                    </span>
+                  ) : 'Obtener mi descuento'}
                 </button>
+              </form>
+
+              {/* Separador */}
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-gray-800" />
+                <span className="text-gray-600 text-xs">o</span>
+                <div className="flex-1 h-px bg-gray-800" />
               </div>
+
+              {/* Disclaimer + No gracias */}
+              <p className="text-[11px] text-gray-600 text-center leading-relaxed">
+                Recibirás novedades y ofertas exclusivas. Puedes darte de baja cuando quieras.
+              </p>
+              <button
+                onClick={handleClose}
+                className="w-full mt-3 text-gray-500 text-xs hover:text-gray-300 transition-colors"
+              >
+                No, gracias
+              </button>
             </div>
           ) : (
             /* Vista de éxito */
-            <div className="p-8 text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+            <div className="p-8 pt-10 text-center">
+              {/* Icono éxito */}
+              <div className="flex justify-center mb-6">
+                <div className="w-16 h-16 rounded-full border-2 border-emerald-500/30 flex items-center justify-center"
+                  style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%)' }}>
+                  <svg className="w-7 h-7 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
               </div>
 
-              <h3 className="text-2xl font-serif font-bold text-brand-navy mb-2">
-                ¡Gracias por suscribirte!
+              <h3 className="text-xl font-serif text-white mb-2">
+                ¡Bienvenido/a!
               </h3>
-              <p className="text-gray-600 mb-6">
-                Aquí tienes tu código de descuento exclusivo:
+              <p className="text-gray-400 text-sm mb-6">
+                Tu código de descuento exclusivo:
               </p>
 
-              <div className="bg-gray-100 rounded-xl p-6 mb-6">
-                <p className="text-sm text-gray-500 mb-2">Tu código:</p>
+              {/* Código */}
+              <div className="relative bg-gray-900/80 border border-gray-700 rounded-xl p-5 mb-6">
                 <div className="flex items-center justify-center gap-3">
-                  <span className="text-3xl font-bold text-brand-navy tracking-wider">
+                  <span className="text-2xl font-bold tracking-[0.15em] text-[#d4af37]">
                     {promoCode}
                   </span>
                   <button
                     onClick={copyCode}
-                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                    className="p-2 rounded-lg border border-gray-700 hover:border-[#d4af37]/50 hover:bg-[#d4af37]/10 transition-all"
                     title="Copiar código"
                   >
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
+                    {copied ? (
+                      <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    )}
                   </button>
                 </div>
-                <p className="text-sm text-green-600 font-medium mt-2">
+                {copied && (
+                  <p className="text-emerald-400 text-xs mt-2 animate-pulse">¡Copiado!</p>
+                )}
+                <p className="text-[#d4af37]/60 text-xs mt-2">
                   {discountPercentage}% de descuento en tu primera compra
                 </p>
               </div>
 
+              {/* CTA */}
               <a
                 href="/productos"
-                className="inline-block bg-brand-navy text-white px-8 py-3 rounded-lg font-medium hover:bg-brand-charcoal transition-colors"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-[#d4af37] to-[#b8942e] text-gray-950 px-8 py-3 rounded-xl font-medium text-sm hover:from-[#e8c96d] hover:to-[#d4af37] hover:shadow-lg hover:shadow-[#d4af37]/20 transition-all"
               >
-                Empezar a comprar →
+                Explorar la colección
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
               </a>
             </div>
           )}
+
+          {/* Decoración dorada inferior */}
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#d4af37]/30 to-transparent" />
         </div>
       </div>
     </>

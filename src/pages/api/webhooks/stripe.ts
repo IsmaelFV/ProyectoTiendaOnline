@@ -95,6 +95,16 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     
     const { user_id, discount_code } = session.metadata || {};
 
+    // ⭐ Parsear info de tallas por item desde metadata
+    let orderItemsSizes: Array<{ id: string; size: string; qty: number }> = [];
+    try {
+      if (session.metadata?.order_items_sizes) {
+        orderItemsSizes = JSON.parse(session.metadata.order_items_sizes);
+      }
+    } catch (e) {
+      console.warn('⚠️ Error parsing order_items_sizes metadata:', e);
+    }
+
     // ⭐ PASO 0: Confirmar reservas de stock (marcar como completadas)
     console.log('🔒 Confirmando reservas de stock...');
     const { data: confirmResult, error: confirmError } = await supabaseAdmin.rpc('confirm_reservation', {
@@ -211,6 +221,10 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
 
       // Solo crear order_item si encontramos el producto (product_id es requerido)
       if (product?.id) {
+        // ⭐ Buscar la talla de este item desde los metadata
+        const itemSizeInfo = orderItemsSizes.find(oi => oi.id === product.id);
+        const itemSize = itemSizeInfo?.size || 'Única';
+
         const { error: itemError } = await supabaseAdmin
           .from('order_items')
           .insert({
@@ -219,7 +233,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
             product_name: productName,
             product_slug: product.slug,
             product_image: product.images?.[0] || null,
-            size: 'M', // Default
+            size: itemSize,
             color: null,
             price: pricePerUnit / 100,
             quantity: quantity,
@@ -231,11 +245,12 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
           continue;
         }
 
-        // Decrementar stock de forma atómica usando la función SQL
+        // Decrementar stock de forma atómica — POR TALLA
         const stockBefore = product.stock || 0;
         const { error: stockError } = await supabaseAdmin.rpc('decrement_stock', {
           product_id: product.id,
-          quantity: quantity
+          quantity: quantity,
+          p_size: itemSize
         });
 
         if (stockError) {

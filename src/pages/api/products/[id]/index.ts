@@ -60,6 +60,7 @@ export const PUT: APIRoute = async ({ request, cookies, params }) => {
     const imagesString = formData.get('images')?.toString();
     const sizesString = formData.get('sizes')?.toString();
     const sizeMeasurementsString = formData.get('size_measurements')?.toString();
+    const stockBySizeString = formData.get('stock_by_size')?.toString();
     const isOnSale = formData.get('is_on_sale') === 'on';
     const discountPercentageInput = formData.get('discount_percentage')?.toString();
 
@@ -134,6 +135,19 @@ export const PUT: APIRoute = async ({ request, cookies, params }) => {
       ? sizesString.split(',').map((s: string) => s.trim()).filter(Boolean)
       : existingProduct.sizes || [];
 
+    // Procesar stock por talla
+    let stockBySize: Record<string, number> = existingProduct.stock_by_size || {};
+    if (stockBySizeString) {
+      try {
+        stockBySize = JSON.parse(stockBySizeString);
+      } catch {
+        stockBySize = existingProduct.stock_by_size || {};
+      }
+    }
+    
+    // Recalcular stock total como suma de stock por talla
+    const totalStock = Object.values(stockBySize).reduce((sum: number, v: any) => sum + (parseInt(v) || 0), 0);
+
     // Procesar medidas de tallas
     let sizeMeasurements = existingProduct.size_measurements || null;
     if (sizeMeasurementsString && sizeMeasurementsString.trim() !== '') {
@@ -155,7 +169,8 @@ export const PUT: APIRoute = async ({ request, cookies, params }) => {
         slug,
         description,
         price: priceInCents,
-        stock: stockNum,
+        stock: totalStock,
+        stock_by_size: stockBySize,
         images,
         sizes,
         size_measurements: sizeMeasurements,

@@ -104,6 +104,7 @@ export interface Product {
   description?: string;
   price: number; // En céntimos
   stock: number;
+  stock_by_size?: Record<string, number>; // Stock por talla: {"S": 10, "M": 15, "L": 8}
   category_id?: string;
   images: string[];
   sizes: string[];

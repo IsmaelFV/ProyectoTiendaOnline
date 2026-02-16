@@ -133,8 +133,9 @@ if (session) {
         localStorage.setItem('sb-auth-token', JSON.stringify(authData));
         
         // Guardar en cookies también
-        document.cookie = `sb-access-token=${accessToken}; Path=/; Max-Age=${Math.floor(maxAge/1000)}; SameSite=Lax`;
-        document.cookie = `sb-refresh-token=${refreshToken}; Path=/; Max-Age=${Math.floor(maxAge/1000)}; SameSite=Lax`;
+        const securePart = window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `sb-access-token=${accessToken}; Path=/; Max-Age=${Math.floor(maxAge/1000)}; SameSite=Lax${securePart}`;
+        document.cookie = `sb-refresh-token=${refreshToken}; Path=/; Max-Age=${Math.floor(maxAge/1000)}; SameSite=Lax${securePart}`;
         
         // Verificar si es admin antes de redirigir (via API server-side)
         try {

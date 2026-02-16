@@ -47,7 +47,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const productIds = items.map((item: any) => item.id);
     const { data: products, error: productsError } = await supabase
       .from('products')
-      .select('id, name, slug, sku, price, stock, images')
+      .select('id, name, slug, sku, price, stock, stock_by_size, images')
       .in('id', productIds);
 
     if (productsError || !products) {
@@ -89,12 +89,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         });
       }
 
-      // ⭐ Reservar stock atómicamente (con lock de fila)
+      // ⭐ Reservar stock atómicamente (con lock de fila) — POR TALLA
       const { data: reservation, error: reservationError } = await supabaseAdmin.rpc('reserve_stock', {
         p_product_id: item.id,
         p_quantity: item.quantity,
         p_session_id: tempSessionId,
-        p_user_id: user?.id || null
+        p_user_id: user?.id || null,
+        p_size: item.size || null
       }) as { data: any; error: any };
 
       if (reservationError || !reservation?.success) {
@@ -240,6 +241,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         reservation_ids: JSON.stringify(reservationIds), // ⭐ IDs de reservas
         discount_code: discountCode || '',
         discount_amount: discountAmount.toString(),
+        // ⭐ Info de tallas por item para decrement_stock en webhook
+        order_items_sizes: JSON.stringify(
+          items.map((item: any) => ({ id: item.id, size: item.size || 'Única', qty: item.quantity }))
+        ),
       },
       shipping_address_collection: {
         allowed_countries: ['ES', 'FR', 'DE', 'IT', 'PT', 'US'],

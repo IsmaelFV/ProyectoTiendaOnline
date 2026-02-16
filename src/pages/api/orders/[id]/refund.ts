@@ -107,7 +107,8 @@ export const POST: APIRoute = async ({ params, request }) => {
         try {
           const { error: stockError } = await supabase.rpc('increment_stock', {
             product_id: item.product_id,
-            quantity: item.quantity
+            quantity: item.quantity,
+            p_size: item.size || null
           });
 
           if (stockError) {
