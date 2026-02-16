@@ -241,13 +241,26 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Calcular total final
     const finalTotalAmount = totalAmount - discountAmount;
 
-    // 7. Crear sesión de Stripe Checkout
+    // 7. Crear sesion de Stripe Checkout
+    // Obtener URL base de forma robusta (proxy-safe)
+    const origin = request.headers.get('origin') 
+      || request.headers.get('x-forwarded-proto') && request.headers.get('x-forwarded-host') 
+        ? `${request.headers.get('x-forwarded-proto') || 'https'}://${request.headers.get('x-forwarded-host')}`
+        : null;
+    const referer = request.headers.get('referer');
+    const baseUrl = origin 
+      || (referer ? new URL(referer).origin : null) 
+      || import.meta.env.PUBLIC_SITE_URL 
+      || 'http://localhost:4321';
+
+    console.log(`[CHECKOUT] Base URL para Stripe: ${baseUrl}`);
+
     const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: lineItems,
-      success_url: `${request.headers.get('origin')}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${request.headers.get('origin')}/checkout/cancel`,
+      success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/checkout/cancel`,
       customer_email: user?.email,
       client_reference_id: user?.id || `guest_${Date.now()}`,
       metadata: {

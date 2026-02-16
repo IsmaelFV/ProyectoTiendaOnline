@@ -147,10 +147,17 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
 
     console.log('[WEBHOOK] Amounts - Subtotal:', subtotalCents, 'Total:', totalCents, 'Tax:', taxCents, 'Shipping:', shippingCents, 'Discount:', discountCents);
 
-    // 1. Crear el pedido en la base de datos (order_number se autogenera con trigger)
+    // 1. Crear el pedido en la base de datos
     console.log('[WEBHOOK] Creando pedido en BD...');
+
+    // Generar order_number desde codigo (por si el trigger no existe en la BD)
+    const now = new Date();
+    const year = now.getFullYear();
+    const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const fallbackOrderNumber = `ORD-${year}-${Date.now().toString().slice(-6)}-${randomSuffix}`;
     
     const orderData = {
+      order_number: fallbackOrderNumber,
       user_id: (user_id && user_id !== 'guest') ? user_id : null,
       shipping_full_name: session.customer_details?.name || 'Cliente',
       shipping_phone: session.customer_details?.phone || '',
@@ -189,18 +196,21 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     const orderNumber = order.order_number;
     console.log(`[WEBHOOK] Order created: ${orderNumber} (ID: ${order.id})`);
 
-    // 1.5. Incrementar contador de usos del código de descuento si se usó
+    // 1.5. Incrementar contador de usos del codigo de descuento si se uso
     if (discount_code && discountCents > 0) {
-      console.log(`[WEBHOOK] Incrementando uso del codigo: ${discount_code}`);
-      const { error: discountError } = await supabaseAdmin.rpc('increment_discount_usage', {
-        p_code: discount_code
-      });
-      
-      if (discountError) {
-        console.error('[WEBHOOK] Error al incrementar uso del código:', discountError);
-        // No lanzar error, el pedido ya está creado
-      } else {
-        console.log(`[WEBHOOK] Código ${discount_code} registrado como usado`);
+      try {
+        console.log(`[WEBHOOK] Incrementando uso del codigo: ${discount_code}`);
+        const { error: discountError } = await supabaseAdmin.rpc('increment_discount_usage', {
+          p_code: discount_code
+        });
+        
+        if (discountError) {
+          console.warn('[WEBHOOK] Error al incrementar uso del codigo:', discountError.message);
+        } else {
+          console.log(`[WEBHOOK] Codigo ${discount_code} registrado como usado`);
+        }
+      } catch (rpcErr: any) {
+        console.warn('[WEBHOOK] increment_discount_usage no disponible:', rpcErr.message);
       }
     }
 

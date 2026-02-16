@@ -131,7 +131,13 @@ export const POST: APIRoute = async ({ request }) => {
     const discountCents = session.total_details?.amount_discount || 0;
 
     // Crear pedido
+    // Generar order_number desde codigo (por si el trigger no existe en la BD)
+    const yearNow = new Date().getFullYear();
+    const rndSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const fallbackOrderNum = `ORD-${yearNow}-${Date.now().toString().slice(-6)}-${rndSuffix}`;
+
     const orderData = {
+      order_number: fallbackOrderNum,
       user_id: (user_id && user_id !== 'guest') ? user_id : null,
       shipping_full_name: session.customer_details?.name || 'Cliente',
       shipping_phone: session.customer_details?.phone || '',
