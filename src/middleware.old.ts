@@ -9,7 +9,7 @@
  * 4. Adjunta información del admin a locals para usar en páginas/APIs
  * 
  * RUTAS PROTEGIDAS:
- * - /admin/* (excepto /admin/login)
+ * - /admin/* (excepto /auth/login)
  * - Requiere ser admin activo
  * ============================================================================
  */
@@ -42,8 +42,8 @@ export const onRequest = defineMiddleware(async ({ locals, url, cookies, redirec
   // PROTECCIÓN DE RUTAS /admin/*
   // ============================================================================
   if (url.pathname.startsWith('/admin')) {
-    // Permitir acceso a /admin/login sin autenticación
-    if (url.pathname === '/admin/login') {
+    // Permitir acceso a /auth/login sin autenticación
+    if (url.pathname === '/auth/login') {
       return next();
     }
 
@@ -66,7 +66,7 @@ export const onRequest = defineMiddleware(async ({ locals, url, cookies, redirec
         ? 'not_admin'
         : 'unauthorized';
       
-      return redirect(`/admin/login?error=${errorParam}`);
+      return redirect(`/auth/login?error=${errorParam}`);
     }
 
     // Usuario válido y es admin

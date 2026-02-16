@@ -4,16 +4,21 @@ import Header from '../components/ui/Header.astro';
 import Footer from '../components/ui/Footer.astro';
 import CartSlideOver from '../components/ui/CartSlideOver';
 import NewsletterPopup from '../components/islands/NewsletterPopup';
+import CookieBanner from '../components/ui/CookieBanner.astro';
 
 interface Props {
   title?: string;
   description?: string;
+  ogImage?: string;
+  ogType?: string;
+  canonicalUrl?: string;
+  jsonLd?: Record<string, any>;
 }
 
-const { title, description } = Astro.props;
+const { title, description, ogImage, ogType, canonicalUrl, jsonLd } = Astro.props;
 ---
 
-<BaseLayout title={title} description={description}>
+<BaseLayout title={title} description={description} ogImage={ogImage} ogType={ogType} canonicalUrl={canonicalUrl} jsonLd={jsonLd}>
   <!-- CRÍTICO: auth-sync DEBE ejecutarse PRIMERO, antes de cualquier componente -->
   <script>
     import '@lib/auth-sync';
@@ -26,4 +31,5 @@ const { title, description } = Astro.props;
   <Footer />
   <CartSlideOver client:load />
   <NewsletterPopup client:load promoCode="BIENVENIDO10" discountPercentage={10} />
+  <CookieBanner />
 </BaseLayout>

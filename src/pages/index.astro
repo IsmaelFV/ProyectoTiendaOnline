@@ -8,546 +8,421 @@ const { data: featuredProducts, error } = await supabase
   .from('products')
   .select('*')
   .eq('featured', true)
-  .limit(6);
+  .limit(8);
 ---
 
 <PublicLayout>
   <main class="w-full">
-    <!-- Hero Section Premium -->
-    <section class="hero-section">
-      <!-- Background effects -->
-      <div class="hero-gradient-overlay"></div>
-      <div class="hero-glow hero-glow-1"></div>
-      <div class="hero-glow hero-glow-2"></div>
-      <div class="hero-glow hero-glow-3"></div>
-      <div class="hero-grid-pattern"></div>
-      
-      <!-- Content -->
-      <div class="hero-content">
-        <div class="hero-badge animate-fade-in">
-          <span class="hero-badge-dot"></span>
-          Nueva Colección Primavera 2026
-        </div>
-        
-        <h1 class="hero-title">
-          <span class="hero-title-line animate-slide-up stagger-1">Elegancia</span>
-          <span class="hero-title-line hero-title-accent animate-slide-up stagger-2">Atemporal</span>
+
+    <!-- ===== HERO ===== -->
+    <section class="hero">
+      <div class="hero-bg"></div>
+      <div class="hero-inner">
+        <span class="hero-tag">Nueva Colección Primavera 2026</span>
+        <h1 class="hero-heading">
+          <span class="hero-line-1">Elegancia</span>
+          <span class="hero-line-2">Atemporal</span>
         </h1>
-        
-        <p class="hero-subtitle animate-slide-up stagger-3">
-          Descubre nuestra colección exclusiva de moda premium. 
+        <p class="hero-desc">
+          Descubre nuestra colección exclusiva de moda premium.<br class="hidden sm:block" />
           Diseños que combinan sofisticación y comodidad.
         </p>
-        
-        <div class="hero-cta animate-slide-up stagger-4">
-          <a href="/mujer" class="hero-btn-primary">
-            <span>Explorar Colección</span>
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+        <div class="hero-actions">
+          <a href="/mujer" class="hero-btn-gold">
+            Explorar Mujer
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>
           </a>
-          <a href="/hombre" class="hero-btn-secondary">
-            <span>Ver Hombre</span>
-          </a>
+          <a href="/hombre" class="hero-btn-outline">Ver Hombre</a>
         </div>
-        
-        <!-- Stats -->
-        <div class="hero-stats animate-fade-in stagger-5">
-          <div class="hero-stat">
-            <span class="hero-stat-number">500+</span>
-            <span class="hero-stat-label">Productos</span>
-          </div>
-          <div class="hero-stat-divider"></div>
-          <div class="hero-stat">
-            <span class="hero-stat-number">50k+</span>
-            <span class="hero-stat-label">Clientes</span>
-          </div>
-          <div class="hero-stat-divider"></div>
-          <div class="hero-stat">
-            <span class="hero-stat-number">4.9</span>
-            <span class="hero-stat-label">Valoración</span>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Scroll indicator -->
-      <div class="hero-scroll-indicator">
-        <div class="hero-scroll-line"></div>
-        <span>Scroll</span>
       </div>
     </section>
 
-    <!-- Featured Products Section -->
-    <section class="products-section">
-      <div class="products-glow"></div>
-      
-      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        <div class="section-header">
-          <span class="section-label">Selección Curada</span>
-          <h2 class="section-title">Productos Destacados</h2>
-          <p class="section-subtitle">Nuestra selección de piezas más exclusivas</p>
+    <!-- ===== CATEGORÍAS RÁPIDAS ===== -->
+    <section class="py-10 lg:py-14">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <a href="/novedades" class="cat-card group">
+            <div class="cat-icon">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              </svg>
+            </div>
+            <span class="cat-label">Novedades</span>
+            <span class="cat-arrow">→</span>
+          </a>
+          <a href="/ofertas" class="cat-card cat-card-sale group">
+            <div class="cat-icon cat-icon-sale">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+              </svg>
+            </div>
+            <span class="cat-label">Rebajas</span>
+            <span class="cat-arrow">→</span>
+          </a>
+          <a href="/mujer" class="cat-card group">
+            <div class="cat-icon">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </div>
+            <span class="cat-label">Mujer</span>
+            <span class="cat-arrow">→</span>
+          </a>
+          <a href="/hombre" class="cat-card group">
+            <div class="cat-icon">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </div>
+            <span class="cat-label">Hombre</span>
+            <span class="cat-arrow">→</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PRODUCTOS DESTACADOS ===== -->
+    <section class="pb-14 lg:pb-20">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6">
+        <div class="flex items-end justify-between mb-8">
+          <div>
+            <span class="text-[11px] font-semibold tracking-[0.2em] uppercase text-gold-500 block mb-1">Selección curada</span>
+            <h2 class="text-2xl sm:text-3xl font-serif font-bold text-white">Productos Destacados</h2>
+          </div>
+          <a href="/productos" class="hidden sm:inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gold-500 transition-colors">
+            Ver todos
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+          </a>
         </div>
 
         {featuredProducts && featuredProducts.length > 0 ? (
-          <div class="products-grid">
-            {featuredProducts.map((product, index) => (
-              <div class={`animate-slide-up stagger-${Math.min(index + 1, 5)}`}>
-                <ProductCard product={product} />
-              </div>
+          <div class="product-grid">
+            {featuredProducts.map((product) => (
+              <ProductCard product={product} />
             ))}
           </div>
         ) : (
-          <p class="text-center text-gray-500">No hay productos destacados disponibles.</p>
+          <p class="text-center text-gray-500 py-12">No hay productos destacados disponibles.</p>
         )}
 
-        <div class="text-center mt-16">
-          <a href="/productos" class="btn btn-outline">
-            Ver Todos los Productos
+        <div class="text-center mt-10 sm:hidden">
+          <a href="/productos" class="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gold-500 transition-colors">
+            Ver todos los productos →
           </a>
         </div>
       </div>
     </section>
 
-    <!-- Features Section -->
-    <section class="features-section">
-      <div class="features-container">
-        <!-- Feature 1 -->
-        <div class="feature-card">
-          <div class="feature-icon-wrapper">
-            <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
-            </svg>
+    <!-- ===== BENEFICIOS ===== -->
+    <section class="border-t border-white/5 py-10 lg:py-14">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          <div class="benefit">
+            <div class="benefit-icon">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-white">Calidad Premium</p>
+              <p class="text-xs text-gray-500 mt-0.5">Materiales seleccionados</p>
+            </div>
           </div>
-          <h3 class="feature-title">Calidad Premium</h3>
-          <p class="feature-desc">Materiales de la más alta calidad seleccionados cuidadosamente</p>
-        </div>
-        
-        <!-- Feature 2 -->
-        <div class="feature-card">
-          <div class="feature-icon-wrapper">
-            <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-            </svg>
+
+          <div class="benefit">
+            <div class="benefit-icon">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-white">Envío Gratis</p>
+              <p class="text-xs text-gray-500 mt-0.5">Pedidos +50€</p>
+            </div>
           </div>
-          <h3 class="feature-title">Envío Express</h3>
-          <p class="feature-desc">Envío gratuito en pedidos superiores a 50€</p>
-        </div>
-        
-        <!-- Feature 3 -->
-        <div class="feature-card">
-          <div class="feature-icon-wrapper">
-            <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-            </svg>
+
+          <div class="benefit">
+            <div class="benefit-icon">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-white">Devoluciones</p>
+              <p class="text-xs text-gray-500 mt-0.5">30 días gratis</p>
+            </div>
           </div>
-          <h3 class="feature-title">Devoluciones Fáciles</h3>
-          <p class="feature-desc">30 días para devoluciones sin complicaciones</p>
-        </div>
-        
-        <!-- Feature 4 -->
-        <div class="feature-card">
-          <div class="feature-icon-wrapper">
-            <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-            </svg>
+
+          <div class="benefit">
+            <div class="benefit-icon">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-white">Pago Seguro</p>
+              <p class="text-xs text-gray-500 mt-0.5">Stripe certificado</p>
+            </div>
           </div>
-          <h3 class="feature-title">Pago Seguro</h3>
-          <p class="feature-desc">Transacciones 100% seguras y encriptadas</p>
         </div>
       </div>
     </section>
+
   </main>
 </PublicLayout>
 
 <style>
-  /* Hero Section */
-  .hero-section {
+  /* ===== HERO ===== */
+  .hero {
     position: relative;
-    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 70vh;
+    max-height: 600px;
     overflow: hidden;
   }
-  
-  .hero-gradient-overlay {
+
+  .hero-bg {
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, 
-      rgba(6, 8, 7, 0.3) 0%, 
-      rgba(6, 8, 7, 0.8) 50%,
-      rgba(6, 8, 7, 1) 100%
-    );
+    background: 
+      radial-gradient(ellipse at 30% 20%, rgba(212, 175, 55, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 80%, rgba(16, 185, 129, 0.04) 0%, transparent 50%),
+      linear-gradient(180deg, rgba(10, 10, 10, 0.3) 0%, rgba(10, 10, 10, 1) 100%);
   }
-  
-  .hero-glow {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(120px);
-    pointer-events: none;
-  }
-  
-  .hero-glow-1 {
-    top: 10%;
-    left: 20%;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
-    animation: float 20s ease-in-out infinite;
-  }
-  
-  .hero-glow-2 {
-    bottom: 20%;
-    right: 10%;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(212, 175, 55, 0.12) 0%, transparent 70%);
-    animation: float 25s ease-in-out infinite reverse;
-  }
-  
-  .hero-glow-3 {
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 800px;
-    height: 800px;
-    background: radial-gradient(circle, rgba(20, 184, 166, 0.08) 0%, transparent 60%);
-    animation: pulse 8s ease-in-out infinite;
-  }
-  
-  .hero-grid-pattern {
-    position: absolute;
-    inset: 0;
-    background-image: 
-      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-    background-size: 60px 60px;
-    mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%);
-  }
-  
-  .hero-content {
+
+  .hero-inner {
     position: relative;
-    z-index: 10;
-    max-width: 56rem;
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+    z-index: 2;
     text-align: center;
+    padding: 3rem 1.5rem;
+    max-width: 40rem;
+    margin: 0 auto;
   }
-  
-  .hero-badge {
+
+  .hero-tag {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 20px;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.05em;
+    gap: 8px;
+    padding: 6px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     color: #d4af37;
     background: rgba(212, 175, 55, 0.08);
-    border: 1px solid rgba(212, 175, 55, 0.2);
-    border-radius: 50px;
-    margin-bottom: 2rem;
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    border-radius: 100px;
+    margin-bottom: 1.5rem;
   }
-  
-  .hero-badge-dot {
-    width: 8px;
-    height: 8px;
-    background: #10b981;
-    border-radius: 50%;
-    animation: pulse 2s ease-in-out infinite;
+
+  .hero-heading {
+    font-family: 'Georgia', serif;
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.25rem;
   }
-  
-  .hero-title {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(3.5rem, 10vw, 7rem);
-    font-weight: 600;
-    line-height: 1.05;
-    letter-spacing: -0.03em;
-    margin-bottom: 2rem;
-  }
-  
-  .hero-title-line {
+
+  .hero-line-1 {
     display: block;
     color: #ffffff;
   }
-  
-  .hero-title-accent {
-    background: linear-gradient(135deg, #d4af37 0%, #f4e5af 50%, #d4af37 100%);
+
+  .hero-line-2 {
+    display: block;
+    background: linear-gradient(135deg, #d4af37 0%, #f0d878 50%, #d4af37 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
-  
-  .hero-subtitle {
-    font-size: 1.25rem;
-    line-height: 1.8;
-    color: #9ca3af;
-    max-width: 36rem;
-    margin: 0 auto 3rem;
+
+  .hero-desc {
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: #737373;
+    margin-bottom: 2rem;
   }
-  
-  .hero-cta {
+
+  .hero-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 0.75rem;
     justify-content: center;
-    margin-bottom: 4rem;
   }
-  
-  .hero-btn-primary {
+
+  .hero-btn-gold {
     display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 1rem 2rem;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: #060807;
-    background: linear-gradient(135deg, #d4af37 0%, #e8c96d 100%);
-    border-radius: 12px;
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 0 40px rgba(212, 175, 55, 0.3);
-  }
-  
-  .hero-btn-primary:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 20px 50px rgba(212, 175, 55, 0.4);
-  }
-  
-  .hero-btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 1rem 2rem;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    backdrop-filter: blur(8px);
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  
-  .hero-btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(212, 175, 55, 0.4);
-    transform: translateY(-3px);
-  }
-  
-  .hero-stats {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 2rem;
-  }
-  
-  .hero-stat {
-    text-align: center;
-  }
-  
-  .hero-stat-number {
-    display: block;
-    font-family: 'Playfair Display', serif;
-    font-size: 2rem;
-    font-weight: 600;
-    color: #ffffff;
-    margin-bottom: 4px;
-  }
-  
-  .hero-stat-label {
-    font-size: 0.875rem;
-    color: #6b7280;
-  }
-  
-  .hero-stat-divider {
-    width: 1px;
-    height: 40px;
-    background: linear-gradient(180deg, transparent, rgba(255,255,255,0.2), transparent);
-  }
-  
-  .hero-scroll-indicator {
-    position: absolute;
-    bottom: 2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
     align-items: center;
     gap: 8px;
-    color: #6b7280;
-    font-size: 12px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-  
-  .hero-scroll-line {
-    width: 1px;
-    height: 40px;
-    background: linear-gradient(180deg, rgba(212, 175, 55, 0.6), transparent);
-    animation: scroll-indicator 2s ease-in-out infinite;
-  }
-  
-  @keyframes scroll-indicator {
-    0%, 100% { transform: scaleY(1); opacity: 1; }
-    50% { transform: scaleY(0.5); opacity: 0.5; }
-  }
-  
-  /* Products Section */
-  .products-section {
-    position: relative;
-    padding: 6rem 0;
-    overflow: hidden;
-  }
-  
-  .products-glow {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 800px;
-    height: 400px;
-    background: radial-gradient(ellipse at center, rgba(16, 185, 129, 0.08) 0%, transparent 60%);
-    pointer-events: none;
-  }
-  
-  .section-header {
-    text-align: center;
-    margin-bottom: 4rem;
-  }
-  
-  .section-label {
-    display: inline-block;
-    font-size: 12px;
+    padding: 0.75rem 1.75rem;
+    font-size: 13px;
     font-weight: 600;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: #d4af37;
-    margin-bottom: 1rem;
+    color: #0a0a0a;
+    background: linear-gradient(135deg, #d4af37, #e8c96d);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 24px rgba(212, 175, 55, 0.2);
   }
-  
-  .section-title {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(2rem, 5vw, 3.5rem);
+
+  .hero-btn-gold:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(212, 175, 55, 0.35);
+  }
+
+  .hero-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.75rem 1.75rem;
+    font-size: 13px;
     font-weight: 600;
-    color: #ffffff;
-    margin-bottom: 1rem;
+    color: #e5e5e5;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    transition: all 0.3s ease;
   }
-  
-  .section-subtitle {
-    font-size: 1.125rem;
-    color: #9ca3af;
-    max-width: 32rem;
-    margin: 0 auto;
+
+  .hero-btn-outline:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(212, 175, 55, 0.3);
+    transform: translateY(-2px);
   }
-  
-  .products-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 2rem;
-    margin-bottom: 3rem;
+
+  /* ===== CATEGORÍAS ===== */
+  .cat-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    transition: all 0.25s ease;
   }
-  
-  /* Features Section */
-  .features-section {
-    position: relative;
-    padding: 6rem 0;
-    background: linear-gradient(180deg, rgba(14, 18, 16, 0.5) 0%, transparent 100%);
-    border-top: 1px solid rgba(255, 255, 255, 0.03);
-  }
-  
-  .features-container {
-    max-width: 80rem;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1.5rem;
-  }
-  
-  .feature-card {
-    text-align: center;
-    padding: 2.5rem 2rem;
-    background: linear-gradient(135deg, rgba(20, 26, 23, 0.6) 0%, rgba(14, 18, 16, 0.4) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    border-radius: 1.25rem;
-    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  
-  .feature-card:hover {
-    transform: translateY(-8px);
+
+  .cat-card:hover {
+    background: rgba(255, 255, 255, 0.05);
     border-color: rgba(212, 175, 55, 0.2);
-    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
   }
-  
-  .feature-icon-wrapper {
-    width: 64px;
-    height: 64px;
-    margin: 0 auto 1.5rem;
+
+  .cat-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(20, 184, 166, 0.05) 100%);
-    border: 1px solid rgba(16, 185, 129, 0.15);
-    border-radius: 16px;
-    transition: all 0.5s ease;
-  }
-  
-  .feature-card:hover .feature-icon-wrapper {
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(232, 201, 109, 0.1) 100%);
-    border-color: rgba(212, 175, 55, 0.3);
-  }
-  
-  .feature-icon {
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(212, 175, 55, 0.08);
     color: #d4af37;
+    flex-shrink: 0;
+    transition: background 0.25s ease;
   }
-  
-  .feature-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.25rem;
+
+  .cat-card:hover .cat-icon {
+    background: rgba(212, 175, 55, 0.15);
+  }
+
+  .cat-icon-sale {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+  }
+
+  .cat-card-sale:hover .cat-icon-sale {
+    background: rgba(239, 68, 68, 0.18);
+  }
+
+  .cat-label {
+    font-size: 13px;
     font-weight: 500;
-    color: #ffffff;
-    margin-bottom: 0.75rem;
+    color: #e5e5e5;
+    flex: 1;
   }
-  
-  .feature-desc {
-    font-size: 0.9375rem;
-    line-height: 1.6;
-    color: #9ca3af;
+
+  .cat-arrow {
+    font-size: 14px;
+    color: #525252;
+    transition: all 0.25s ease;
   }
-  
-  @keyframes float {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    50% { transform: translateY(-30px) rotate(3deg); }
+
+  .cat-card:hover .cat-arrow {
+    color: #d4af37;
+    transform: translateX(3px);
   }
-  
-  @keyframes pulse {
-    0%, 100% { opacity: 0.8; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(1.05); }
+
+  /* ===== PRODUCTS GRID ===== */
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
-  
-  @media (max-width: 768px) {
-    .hero-stats {
+
+  @media (min-width: 640px) {
+    .product-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .product-grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+  }
+
+  /* ===== BENEFICIOS ===== */
+  .benefit {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+  }
+
+  .benefit-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(212, 175, 55, 0.08);
+    color: #d4af37;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 640px) {
+    .hero {
+      min-height: 60vh;
+    }
+
+    .hero-actions {
       flex-direction: column;
-      gap: 1rem;
     }
-    
-    .hero-stat-divider {
-      width: 40px;
-      height: 1px;
-    }
-    
-    .hero-cta {
-      flex-direction: column;
-    }
-    
-    .hero-btn-primary,
-    .hero-btn-secondary {
+
+    .hero-btn-gold,
+    .hero-btn-outline {
       width: 100%;
       justify-content: center;
+    }
+
+    .benefit {
+      flex-direction: column;
+      text-align: center;
+      gap: 8px;
+      padding: 14px 10px;
     }
   }
 </style>

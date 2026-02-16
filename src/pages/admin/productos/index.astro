@@ -1,27 +1,18 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { supabase } from '../../../lib/supabase';
+import { verifyAdminFromCookies, createServerSupabaseClient } from '../../../lib/auth';
 
 // Protección: solo admins
 const accessToken = Astro.cookies.get('sb-access-token')?.value;
-if (!accessToken) {
-  return Astro.redirect('/admin/login');
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+if (!userId) {
+  return Astro.redirect('/auth/login');
 }
 
-// Verificar si es admin
-const { data: { user } } = await supabase.auth.getUser(accessToken);
-if (!user) {
-  return Astro.redirect('/admin/login');
-}
-
-const { data: adminUser } = await supabase
-  .from('admin_users')
-  .select('*')
-  .eq('user_id', user.id);
-
-if (!adminUser || adminUser.length === 0) {
-  return Astro.redirect('/admin/login');
-}
+// Usar service_role para consultas de admin
+const supabase = createServerSupabaseClient();
 
 // Obtener productos
 const { data: products, error } = await supabase
@@ -108,7 +99,7 @@ function formatCurrency(amount: number) {
                   <td class="px-6 py-4">
                     <div class="flex items-center">
                       <img
-                        src={product.image_urls?.[0] || '/placeholder.png'}
+                        src={product.images?.[0] || '/placeholder.svg'}
                         alt={product.name}
                         class="w-12 h-12 object-cover rounded-lg border border-white/10"
                       />
@@ -190,6 +181,8 @@ function formatCurrency(amount: number) {
 </AdminLayout>
 
 <script>
+  import { customConfirm, customAlert } from '../../../lib/notifications';
+  
   // Manejar eliminación de productos
   document.addEventListener('DOMContentLoaded', () => {
     const deleteButtons = document.querySelectorAll('.delete-btn');
@@ -201,7 +194,17 @@ function formatCurrency(amount: number) {
         const productId = button.getAttribute('data-product-id');
         const productName = button.getAttribute('data-product-name');
         
-        if (!confirm(`¿Estás seguro de que quieres eliminar "${productName}"?\n\nEsta acción no se puede deshacer.`)) {
+        const confirmed = await customConfirm(
+          `¿Estás seguro de que quieres eliminar "${productName}"?\n\nEsta acción no se puede deshacer.`,
+          {
+            title: 'Eliminar producto',
+            confirmText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger'
+          }
+        );
+        
+        if (!confirmed) {
           return;
         }
         
@@ -227,7 +230,7 @@ function formatCurrency(amount: number) {
           window.location.reload();
           
         } catch (error) {
-          alert((error as Error).message);
+          customAlert((error as Error).message, 'error');
           (button as HTMLButtonElement).disabled = false;
           button.textContent = 'Eliminar';
         }

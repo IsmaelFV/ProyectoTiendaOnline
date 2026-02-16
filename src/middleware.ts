@@ -102,7 +102,7 @@ export const onRequest = defineMiddleware(async ({ locals, url, cookies, redirec
 
     if (!accessToken) {
       console.warn('[SECURITY] No access token found for admin route');
-      return redirect(`${ADMIN_BASE_PATH}/login?error=unauthorized`);
+      return redirect('/auth/login');
     }
 
     // -----------------
@@ -125,7 +125,7 @@ export const onRequest = defineMiddleware(async ({ locals, url, cookies, redirec
         ? 'forbidden'      // Usuario existe pero NO es admin
         : 'unauthorized';  // Token inválido o expirado
       
-      return redirect(`${ADMIN_BASE_PATH}/login?error=${errorParam}`);
+      return redirect('/auth/login');
     }
 
     // -----------------
@@ -135,7 +135,7 @@ export const onRequest = defineMiddleware(async ({ locals, url, cookies, redirec
       console.warn(`[SECURITY] Inactive admin attempted access: ${permissionCheck.user?.email}`);
       cookies.delete('sb-access-token', { path: '/' });
       cookies.delete('sb-refresh-token', { path: '/' });
-      return redirect(`${ADMIN_BASE_PATH}/login?error=inactive`);
+      return redirect('/auth/login');
     }
 
     // -----------------

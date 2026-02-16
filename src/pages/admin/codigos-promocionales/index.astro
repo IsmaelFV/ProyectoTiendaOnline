@@ -1,0 +1,478 @@
+---
+import AdminLayout from '@layouts/AdminLayout.astro';
+import { verifyAdminFromCookies, createServerSupabaseClient } from '@lib/auth';
+
+// Protección: solo admins
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+if (!userId) {
+  return Astro.redirect('/auth/login');
+}
+
+const supabase = createServerSupabaseClient();
+
+// Obtener todos los códigos de descuento
+const { data: codes } = await supabase
+  .from('discount_codes')
+  .select('*')
+  .order('created_at', { ascending: false });
+
+const now = new Date();
+---
+
+<AdminLayout title="Códigos Promocionales - Admin">
+  <div class="space-y-6">
+    {/* Header */}
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-white">Códigos Promocionales</h1>
+        <p class="mt-1 text-sm text-gray-400">Gestiona los códigos de descuento de tu tienda</p>
+      </div>
+      <button
+        id="openCreateModal"
+        class="px-4 py-2 bg-accent-gold text-dark-bg rounded-lg hover:bg-accent-gold/90 transition-colors font-medium flex items-center gap-2"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Nuevo Código
+      </button>
+    </div>
+
+    {/* Estadísticas */}
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+        <p class="text-sm text-gray-400">Total códigos</p>
+        <p class="text-2xl font-bold text-white mt-1">{codes?.length || 0}</p>
+      </div>
+      <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+        <p class="text-sm text-gray-400">Activos</p>
+        <p class="text-2xl font-bold text-emerald-400 mt-1">{codes?.filter(c => c.is_active).length || 0}</p>
+      </div>
+      <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+        <p class="text-sm text-gray-400">Usos totales</p>
+        <p class="text-2xl font-bold text-accent-gold mt-1">{codes?.reduce((sum, c) => sum + (c.uses_count || 0), 0) || 0}</p>
+      </div>
+      <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+        <p class="text-sm text-gray-400">Expirados</p>
+        <p class="text-2xl font-bold text-red-400 mt-1">
+          {codes?.filter(c => c.valid_until && new Date(c.valid_until) < now).length || 0}
+        </p>
+      </div>
+    </div>
+
+    {/* Tabla de códigos */}
+    <div class="bg-dark-surface rounded-xl border border-white/10">
+      <div class="p-6 border-b border-white/10">
+        <h2 class="text-lg font-semibold text-white">Todos los Códigos</h2>
+      </div>
+
+      {(!codes || codes.length === 0) ? (
+        <div class="p-12 text-center">
+          <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+          </svg>
+          <p class="text-gray-400 text-lg">No hay códigos promocionales</p>
+          <p class="text-gray-500 text-sm mt-1">Crea uno nuevo con el botón de arriba</p>
+        </div>
+      ) : (
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-white/10">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Código</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Descuento</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Validez</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Usos</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Mín. compra</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Estado</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              {codes.map((code) => {
+                const isExpired = code.valid_until && new Date(code.valid_until) < now;
+                const isMaxUsed = code.max_uses && code.uses_count >= code.max_uses;
+                const statusColor = !code.is_active ? 'bg-gray-500/20 text-gray-400' :
+                  isExpired ? 'bg-red-500/20 text-red-400' :
+                  isMaxUsed ? 'bg-yellow-500/20 text-yellow-400' :
+                  'bg-emerald-500/20 text-emerald-400';
+                const statusText = !code.is_active ? 'Inactivo' :
+                  isExpired ? 'Expirado' :
+                  isMaxUsed ? 'Agotado' :
+                  'Activo';
+
+                return (
+                  <tr class="hover:bg-white/5 transition-colors">
+                    <td class="px-6 py-4">
+                      <div>
+                        <span class="text-white font-mono font-bold text-sm">{code.code}</span>
+                        {code.description && (
+                          <p class="text-xs text-gray-500 mt-0.5">{code.description}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td class="px-6 py-4">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-gold/20 text-accent-gold">
+                        {code.discount_type === 'percentage' ? `${code.discount_value}%` : `€${code.discount_value}`}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-400">
+                      {code.valid_from || code.valid_until ? (
+                        <div class="text-xs">
+                          {code.valid_from && <p>Desde: {new Date(code.valid_from).toLocaleDateString('es-ES')}</p>}
+                          {code.valid_until && <p>Hasta: {new Date(code.valid_until).toLocaleDateString('es-ES')}</p>}
+                        </div>
+                      ) : (
+                        <span class="text-gray-500">Sin límite</span>
+                      )}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-400">
+                      {code.uses_count || 0}{code.max_uses ? ` / ${code.max_uses}` : ''}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-400">
+                      {code.min_purchase_amount > 0 ? `€${code.min_purchase_amount}` : '—'}
+                    </td>
+                    <td class="px-6 py-4">
+                      <span class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                        {statusText}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                      <div class="flex items-center justify-end gap-2">
+                        <button
+                          class="toggle-code-btn px-3 py-1.5 text-xs rounded-lg transition-colors"
+                          class:list={[code.is_active ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30']}
+                          data-id={code.id}
+                          data-active={code.is_active.toString()}
+                        >
+                          {code.is_active ? 'Desactivar' : 'Activar'}
+                        </button>
+                        <button
+                          class="edit-code-btn px-3 py-1.5 text-xs bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition-colors"
+                          data-code={JSON.stringify(code)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          class="delete-code-btn px-3 py-1.5 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                          data-id={code.id}
+                          data-code={code.code}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  </div>
+
+  {/* Modal: Crear / Editar Código */}
+  <div id="codeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="codeModalOverlay"></div>
+    <div class="relative bg-dark-surface border border-white/10 rounded-xl w-full max-w-lg mx-4 p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h3 id="codeModalTitle" class="text-xl font-bold text-white">Nuevo Código Promocional</h3>
+        <button id="closeCodeModal" class="text-gray-400 hover:text-white transition-colors">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <input type="hidden" id="codeEditId" />
+
+      <div class="space-y-4">
+        {/* Código */}
+        <div>
+          <label class="block text-sm font-medium text-gray-400 mb-2">Código <span class="text-red-400">*</span></label>
+          <input
+            type="text"
+            id="codeInput"
+            placeholder="VERANO2025"
+            class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent uppercase font-mono"
+          />
+          <p class="mt-1 text-xs text-gray-500">Se convertirá a mayúsculas automáticamente</p>
+        </div>
+
+        {/* Descripción */}
+        <div>
+          <label class="block text-sm font-medium text-gray-400 mb-2">Descripción</label>
+          <input
+            type="text"
+            id="codeDescription"
+            placeholder="Promoción de verano"
+            class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+          />
+        </div>
+
+        {/* Tipo y Valor */}
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Tipo de descuento <span class="text-red-400">*</span></label>
+            <select
+              id="codeDiscountType"
+              class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+            >
+              <option value="percentage">Porcentaje (%)</option>
+              <option value="fixed">Fijo (€)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Valor <span class="text-red-400">*</span></label>
+            <input
+              type="number"
+              id="codeDiscountValue"
+              min="0.01"
+              step="0.01"
+              placeholder="15"
+              class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Fechas */}
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Válido desde</label>
+            <input
+              type="date"
+              id="codeValidFrom"
+              class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Válido hasta</label>
+            <input
+              type="date"
+              id="codeValidUntil"
+              class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Usos y Mínimo */}
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Máximo de usos</label>
+            <input
+              type="number"
+              id="codeMaxUses"
+              min="1"
+              placeholder="Sin límite"
+              class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Compra mínima (€)</label>
+            <input
+              type="number"
+              id="codeMinPurchase"
+              min="0"
+              step="0.01"
+              placeholder="0"
+              class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Activo */}
+        <label class="flex items-center space-x-3 cursor-pointer">
+          <input
+            type="checkbox"
+            id="codeIsActive"
+            checked
+            class="w-4 h-4 text-accent-gold border-white/20 bg-dark-card rounded focus:ring-accent-gold"
+          />
+          <span class="text-sm font-medium text-gray-300">Código activo</span>
+        </label>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2 border-t border-white/10">
+        <button id="cancelCodeModal" class="px-4 py-2 text-gray-400 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
+          Cancelar
+        </button>
+        <button id="confirmCodeModal" class="px-4 py-2 bg-accent-gold text-dark-bg rounded-lg hover:bg-accent-gold/90 transition-colors font-medium">
+          Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  const modal = document.getElementById('codeModal');
+  const modalTitle = document.getElementById('codeModalTitle');
+  const editIdField = document.getElementById('codeEditId') as HTMLInputElement;
+  const codeInput = document.getElementById('codeInput') as HTMLInputElement;
+  const descInput = document.getElementById('codeDescription') as HTMLInputElement;
+  const typeSelect = document.getElementById('codeDiscountType') as HTMLSelectElement;
+  const valueInput = document.getElementById('codeDiscountValue') as HTMLInputElement;
+  const fromInput = document.getElementById('codeValidFrom') as HTMLInputElement;
+  const untilInput = document.getElementById('codeValidUntil') as HTMLInputElement;
+  const maxUsesInput = document.getElementById('codeMaxUses') as HTMLInputElement;
+  const minPurchaseInput = document.getElementById('codeMinPurchase') as HTMLInputElement;
+  const isActiveCheck = document.getElementById('codeIsActive') as HTMLInputElement;
+
+  function resetModal() {
+    if (editIdField) editIdField.value = '';
+    if (codeInput) codeInput.value = '';
+    if (descInput) descInput.value = '';
+    if (typeSelect) typeSelect.value = 'percentage';
+    if (valueInput) valueInput.value = '';
+    if (fromInput) fromInput.value = '';
+    if (untilInput) untilInput.value = '';
+    if (maxUsesInput) maxUsesInput.value = '';
+    if (minPurchaseInput) minPurchaseInput.value = '';
+    if (isActiveCheck) isActiveCheck.checked = true;
+    if (modalTitle) modalTitle.textContent = 'Nuevo Código Promocional';
+  }
+
+  function openModal() {
+    modal?.classList.remove('hidden');
+  }
+
+  function closeModal() {
+    modal?.classList.add('hidden');
+    resetModal();
+  }
+
+  // Abrir modal crear
+  document.getElementById('openCreateModal')?.addEventListener('click', () => {
+    resetModal();
+    openModal();
+  });
+
+  // Cerrar modal
+  document.getElementById('closeCodeModal')?.addEventListener('click', closeModal);
+  document.getElementById('codeModalOverlay')?.addEventListener('click', closeModal);
+  document.getElementById('cancelCodeModal')?.addEventListener('click', closeModal);
+
+  // Editar código
+  document.querySelectorAll('.edit-code-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const code = JSON.parse((btn as HTMLElement).dataset.code!);
+      resetModal();
+      if (modalTitle) modalTitle.textContent = 'Editar Código Promocional';
+      if (editIdField) editIdField.value = code.id;
+      if (codeInput) codeInput.value = code.code;
+      if (descInput) descInput.value = code.description || '';
+      if (typeSelect) typeSelect.value = code.discount_type;
+      if (valueInput) valueInput.value = code.discount_value;
+      if (fromInput && code.valid_from) fromInput.value = code.valid_from.split('T')[0];
+      if (untilInput && code.valid_until) untilInput.value = code.valid_until.split('T')[0];
+      if (maxUsesInput && code.max_uses) maxUsesInput.value = code.max_uses;
+      if (minPurchaseInput) minPurchaseInput.value = code.min_purchase_amount || '0';
+      if (isActiveCheck) isActiveCheck.checked = code.is_active;
+      openModal();
+    });
+  });
+
+  // Guardar (crear o editar)
+  document.getElementById('confirmCodeModal')?.addEventListener('click', async () => {
+    const editId = editIdField?.value;
+    const code = codeInput?.value?.trim();
+    const discount_type = typeSelect?.value;
+    const discount_value = valueInput?.value;
+
+    if (!code || !discount_type || !discount_value) {
+      alert('Código, tipo y valor de descuento son obligatorios');
+      return;
+    }
+
+    const btn = document.getElementById('confirmCodeModal') as HTMLButtonElement;
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    const payload: Record<string, any> = {
+      code,
+      description: descInput?.value || '',
+      discount_type,
+      discount_value,
+      valid_from: fromInput?.value || null,
+      valid_until: untilInput?.value || null,
+      max_uses: maxUsesInput?.value || null,
+      min_purchase_amount: minPurchaseInput?.value || '0',
+      is_active: isActiveCheck?.checked,
+    };
+
+    if (editId) {
+      payload.id = editId;
+    }
+
+    try {
+      const res = await fetch('/api/discount-codes/manage', {
+        method: editId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      window.location.reload();
+    } catch (err: any) {
+      alert(err.message || 'Error al guardar el código');
+      btn.disabled = false;
+      btn.textContent = 'Guardar';
+    }
+  });
+
+  // Toggle activar/desactivar
+  document.querySelectorAll('.toggle-code-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const el = btn as HTMLElement;
+      const id = el.dataset.id!;
+      const currentActive = el.dataset.active === 'true';
+
+      try {
+        const res = await fetch('/api/discount-codes/manage', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, is_active: !currentActive }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        window.location.reload();
+      } catch (err: any) {
+        alert(err.message || 'Error al cambiar estado');
+      }
+    });
+  });
+
+  // Eliminar
+  document.querySelectorAll('.delete-code-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const el = btn as HTMLElement;
+      const id = el.dataset.id!;
+      const code = el.dataset.code!;
+
+      if (!confirm(`¿Eliminar el código "${code}"? Esta acción no se puede deshacer.`)) return;
+
+      try {
+        const res = await fetch('/api/discount-codes/manage', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        window.location.reload();
+      } catch (err: any) {
+        alert(err.message || 'Error al eliminar el código');
+      }
+    });
+  });
+</script>

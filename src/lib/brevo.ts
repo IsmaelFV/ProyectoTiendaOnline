@@ -37,7 +37,7 @@ export async function sendEmail({
   sendSmtpEmail.subject = subject;
   sendSmtpEmail.htmlContent = htmlContent;
   sendSmtpEmail.sender = {
-    name: 'FashionMarket',
+    name: 'Fashion Store',
     email: import.meta.env.EMAIL_FROM,
   };
   sendSmtpEmail.to = [{ email: to }];
@@ -73,7 +73,7 @@ export async function sendInvoiceEmail({
   const apiInstance = getBrevoClient();
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
-  sendSmtpEmail.subject = `Factura de tu pedido ${orderNumber} - FashionMarket`;
+  sendSmtpEmail.subject = `Factura de tu pedido ${orderNumber} - Fashion Store`;
   sendSmtpEmail.htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -96,7 +96,7 @@ export async function sendInvoiceEmail({
         <div class="content">
           <p>Hola <strong>${customerName}</strong>,</p>
           
-          <p>Gracias por realizar su compra en <strong>FashionMarket</strong>. Tu pedido <strong>${orderNumber}</strong> ha sido procesado correctamente.</p>
+          <p>Gracias por realizar su compra en <strong>Fashion Store</strong>. Tu pedido <strong>${orderNumber}</strong> ha sido procesado correctamente.</p>
           
           <p>📄 Adjuntamos tu factura en formato PDF.</p>
           
@@ -115,7 +115,7 @@ export async function sendInvoiceEmail({
           <p>¡Gracias por confiar en nosotros!</p>
         </div>
         <div class="footer">
-          <p>FashionMarket - Moda de calidad para ti</p>
+          <p>Fashion Store - Moda de calidad para ti</p>
           <p>Este es un email automático, por favor no respondas.</p>
         </div>
       </div>
@@ -124,7 +124,7 @@ export async function sendInvoiceEmail({
   `;
   
   sendSmtpEmail.sender = {
-    name: 'FashionMarket',
+    name: 'Fashion Store',
     email: import.meta.env.EMAIL_FROM,
   };
   

@@ -1,0 +1,223 @@
+---
+/**
+ * ============================================================================
+ * Página: Devoluciones - Dark Theme
+ * ============================================================================
+ */
+
+import PublicLayout from '../layouts/PublicLayout.astro';
+---
+
+<PublicLayout 
+  title="Devoluciones - Fashion Store" 
+  description="Política de devoluciones y cambios. Proceso sencillo y transparente."
+>
+  <div class="bg-black min-h-screen">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="text-center mb-12">
+        <h1 class="text-4xl font-bold text-white mb-4">Devoluciones y Cambios</h1>
+        <p class="text-xl text-gray-300">
+          Proceso sencillo y sin complicaciones
+        </p>
+      </div>
+
+      <!-- Destacado principal -->
+      <div class="bg-gradient-to-br from-gold-500/20 to-gray-900 border border-gold-500/50 rounded-xl p-8 mb-12 text-center">
+        <h2 class="text-2xl font-bold text-white mb-4">30 días para devoluciones GRATIS</h2>
+        <p class="text-gray-300 text-lg">
+          Tienes hasta 30 días desde la recepción de tu pedido para solicitar una devolución sin coste adicional.
+        </p>
+      </div>
+
+      <!-- Condiciones -->
+      <div class="mb-12">
+        <h2 class="text-2xl font-bold text-white mb-6">Condiciones de Devolución</h2>
+        <div class="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-4">
+          <div class="flex gap-4">
+            <div class="flex-shrink-0">
+              <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-white mb-1">Artículo sin usar</h3>
+              <p class="text-gray-400">El producto debe estar en su estado original, sin usar y con todas las etiquetas.</p>
+            </div>
+          </div>
+
+          <div class="flex gap-4">
+            <div class="flex-shrink-0">
+              <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-white mb-1">Embalaje original</h3>
+              <p class="text-gray-400">Preferiblemente en su embalaje original o en un embalaje similar que proteja el producto.</p>
+            </div>
+          </div>
+
+          <div class="flex gap-4">
+            <div class="flex-shrink-0">
+              <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-white mb-1">Plazo de 30 días</h3>
+              <p class="text-gray-400">Tienes 30 días naturales desde la recepción del pedido para solicitar la devolución.</p>
+            </div>
+          </div>
+
+          <div class="flex gap-4">
+            <div class="flex-shrink-0">
+              <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-white mb-1">Devolución gratuita</h3>
+              <p class="text-gray-400">El coste del envío de devolución es totalmente gratuito para España peninsular.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Proceso -->
+      <div class="mb-12">
+        <h2 class="text-2xl font-bold text-white mb-6">Cómo Realizar una Devolución</h2>
+        <div class="space-y-6">
+          <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+            <div class="flex gap-4">
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-gold-500/10 rounded-full flex items-center justify-center border border-gold-500/20">
+                  <span class="text-xl font-bold text-gold-500">1</span>
+                </div>
+              </div>
+              <div>
+                <h3 class="font-semibold text-white mb-2">Solicita la devolución</h3>
+                <p class="text-gray-400 mb-3">
+                  Accede a tu área de cliente y selecciona el pedido que deseas devolver. Indica el motivo de la devolución.
+                </p>
+                <a href="/perfil/mis-pedidos" class="text-gold-500 hover:text-gold-400 font-medium inline-flex items-center gap-1">
+                  Ir a mis pedidos
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+            <div class="flex gap-4">
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-gold-500/10 rounded-full flex items-center justify-center border border-gold-500/20">
+                  <span class="text-xl font-bold text-gold-500">2</span>
+                </div>
+              </div>
+              <div>
+                <h3 class="font-semibold text-white mb-2">Recibe la etiqueta de devolución</h3>
+                <p class="text-gray-400">
+                  Te enviaremos por email una etiqueta de devolución prepagada. Imprime la etiqueta y pégala en el paquete.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+            <div class="flex gap-4">
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-gold-500/10 rounded-full flex items-center justify-center border border-gold-500/20">
+                  <span class="text-xl font-bold text-gold-500">3</span>
+                </div>
+              </div>
+              <div>
+                <h3 class="font-semibold text-white mb-2">Envía el paquete</h3>
+                <p class="text-gray-400">
+                  Lleva el paquete a la oficina de correos más cercana o solicita una recogida a domicilio (según disponibilidad).
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+            <div class="flex gap-4">
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-gold-500/10 rounded-full flex items-center justify-center border border-gold-500/20">
+                  <span class="text-xl font-bold text-gold-500">4</span>
+                </div>
+              </div>
+              <div>
+                <h3 class="font-semibold text-white mb-2">Recibe tu reembolso</h3>
+                <p class="text-gray-400">
+                  Una vez recibido y revisado el producto, procesaremos tu reembolso en un plazo de 5-7 días laborables. El dinero se abonará al método de pago original.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cambios -->
+      <div class="mb-12">
+        <h2 class="text-2xl font-bold text-white mb-6">Cambios de Talla o Color</h2>
+        <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+          <p class="text-gray-400 mb-4">
+            Si necesitas cambiar la talla o el color de un producto, puedes hacerlo siguiendo el mismo proceso de devolución. Una vez procesada la devolución, podrás realizar un nuevo pedido con la talla o color deseado.
+          </p>
+          <div class="bg-gold-500/10 border border-gold-500/30 rounded-lg p-4">
+            <p class="text-sm text-gray-300">
+              <strong class="text-gold-500">💡 Consejo:</strong> Para evitar que se agote el stock, te recomendamos realizar el nuevo pedido antes de devolver el producto original.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Excepciones -->
+      <div class="mb-12">
+        <h2 class="text-2xl font-bold text-white mb-6">Productos No Retornables</h2>
+        <div class="bg-orange-500/10 border border-orange-500/30 rounded-xl p-6">
+          <p class="text-gray-300 mb-4">Por motivos de higiene, los siguientes productos no admiten devolución:</p>
+          <ul class="space-y-2 text-gray-400">
+            <li class="flex items-start gap-2">
+              <svg class="w-5 h-5 text-orange-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+              </svg>
+              <span>Ropa interior y bañadores (si el precinto está roto)</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <svg class="w-5 h-5 text-orange-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+              </svg>
+              <span>Productos personalizados o hechos a medida</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <svg class="w-5 h-5 text-orange-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+              </svg>
+              <span>Productos en oferta con descuento superior al 70%</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <div class="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-800 rounded-xl p-8 text-center">
+        <h2 class="text-2xl font-bold text-white mb-4">¿Necesitas ayuda con tu devolución?</h2>
+        <p class="mb-6 text-gray-300">
+          Nuestro equipo de atención al cliente está aquí para ayudarte
+        </p>
+        <a 
+          href="/contacto" 
+          class="inline-flex items-center gap-2 bg-gold-500 text-black font-semibold px-6 py-3 rounded-lg hover:bg-gold-600 transition-colors"
+        >
+          Contactar con soporte
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</PublicLayout>

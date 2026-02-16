@@ -1,539 +1,997 @@
 ---
 import CartIcon from '../islands/CartIcon';
 import SearchBar from '../search/SearchBar';
-
-// Detectar página actual desde la URL para resaltar enlace activo
-const currentPath = Astro.url.pathname;
 ---
 
-<header class="header-premium sticky top-0 z-50">
-  <!-- Barra superior decorativa -->
-  <div class="header-top-bar">
-    <div class="max-w-7xl mx-auto px-4 flex justify-center items-center">
-      <span class="flex items-center gap-2 text-xs">
-        <svg class="w-4 h-4 text-gold-500" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-        </svg>
-        <span class="text-gold-400">Envío gratis</span>
-        <span class="text-gray-500">en pedidos +50€</span>
-        <span class="mx-3 text-gray-700">|</span>
-        <span class="text-emerald-400">Devoluciones gratuitas</span>
-      </span>
-    </div>
-  </div>
-  
-  <!-- Header principal -->
-  <div class="header-main">
-    <div class="header-glow"></div>
-    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-      <!-- Fila principal: Logo + Búsqueda + Acciones -->
-      <div class="flex justify-between items-center py-4 gap-6">
-        <!-- Logo -->
-        <a href="/" class="group flex items-center gap-3 flex-shrink-0">
-          <div class="logo-icon">
-            <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" class="stroke-gold-500"/>
-              <path d="M2 17l10 5 10-5" class="stroke-gold-400 opacity-60"/>
-              <path d="M2 12l10 5 10-5" class="stroke-gold-300 opacity-40"/>
-            </svg>
-          </div>
-          <div class="flex flex-col">
-            <span class="font-serif text-xl font-bold text-white tracking-tight whitespace-nowrap group-hover:text-gold-500 transition-colors duration-500">
-              FashionMarket
-            </span>
-            <span class="text-[10px] text-gray-500 tracking-widest uppercase">Premium Fashion</span>
-          </div>
+<!-- ===== HEADER MINIMALISTA - 3 ZONAS ===== -->
+<header class="header-minimal sticky top-0 z-50">
+  <div class="header-glow-line"></div>
+  <div class="max-w-screen-2xl mx-auto px-4 sm:px-6">
+    <div class="flex items-center justify-between h-14">
+
+      <!-- ZONA IZQUIERDA: Hamburger -->
+      <div class="flex items-center w-1/3">
+        <button id="sidebar-toggle" class="hdr-icon" aria-label="Abrir menú">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- ZONA CENTRAL: Logo Fashion Store -->
+      <div class="flex items-center justify-center w-1/3">
+        <a href="/" class="logo-link" aria-label="Ir a inicio">
+          <span class="logo-text">FASHION STORE</span>
+        </a>
+      </div>
+
+      <!-- ZONA DERECHA: Lupa + Usuario + Carrito -->
+      <div class="flex items-center justify-end w-1/3 gap-1 sm:gap-2">
+        <!-- Botón de búsqueda -->
+        <button id="search-toggle" class="hdr-icon" aria-label="Buscar">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+        </button>
+
+        <!-- Usuario Guest -->
+        <a id="user-guest" href="/auth/login" class="hdr-icon flex" aria-label="Iniciar sesión">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+          </svg>
         </a>
 
-        <!-- Barra de búsqueda (desktop) -->
-        <div class="hidden lg:block flex-1 max-w-lg mx-8">
-          <SearchBar client:load />
-        </div>
-
-        <!-- Acciones: Usuario + Carrito -->
-        <div class="flex items-center gap-3">
-          <!-- Usuario Guest (solo visible sin sesión) -->
-          <a id="user-guest" href="/auth/login" class="header-icon-btn flex" aria-label="Iniciar sesión">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        <!-- Usuario Autenticado -->
+        <div id="user-auth" class="relative" style="display: none;">
+          <button id="user-menu-btn" class="hdr-icon" aria-label="Menú de usuario">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
             </svg>
-          </a>
-
-          <!-- Usuario Autenticado (solo visible con sesión) -->
-          <div id="user-auth" class="relative" style="display: none;">
-            <button id="user-menu-btn" class="header-icon-btn" aria-label="Menú de usuario">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </button>
-            
-            <!-- Menú desplegable -->
-            <div id="user-menu" class="hidden absolute right-0 mt-3 w-56 user-dropdown animate-scale-in">
-              <div class="py-2">
-                <a href="/perfil" class="dropdown-item">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  Mi Perfil
-                </a>
-                <a href="/perfil/mis-pedidos" class="dropdown-item">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                  Mis Pedidos
-                </a>
-                <div class="my-2 mx-3 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-                <button id="logout-btn-header" class="dropdown-item text-red-400 hover:bg-red-500/10 w-full">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                  Cerrar Sesión
-                </button>
-              </div>
+          </button>
+          <!-- Menú desplegable -->
+          <div id="user-menu" class="hidden absolute right-0 mt-2 w-52 user-dropdown animate-scale-in">
+            <div class="py-1.5">
+              <a href="/perfil" class="dropdown-item">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+                Mi Perfil
+              </a>
+              <a href="/perfil/mis-pedidos" class="dropdown-item">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                Mis Pedidos
+              </a>
+              <a href="/perfil/favoritos" class="dropdown-item">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                Mis Favoritos
+              </a>
+              <div class="my-1 mx-3 h-px bg-white/10"></div>
+              <button id="logout-btn-header" class="dropdown-item text-red-400 hover:bg-red-500/10 w-full">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Cerrar Sesión
+              </button>
             </div>
           </div>
-          
-          <CartIcon client:load />
         </div>
-      </div>
-    </nav>
-  </div>
 
-  <!-- Navegación secundaria (Desktop) -->
-  <div class="nav-bar hidden lg:block">
-    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-center gap-1">
-        <a href="/productos" class={`nav-item ${currentPath === '/productos' || currentPath.startsWith('/productos') ? 'nav-item-active' : ''}`}>
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-          </svg>
-          Todos
-        </a>
-        
-        <span class="nav-divider"></span>
-        
-        <a href="/hombre" class={`nav-item ${currentPath.startsWith('/hombre') ? 'nav-item-active' : ''}`}>
-          Hombre
-        </a>
-        
-        <a href="/mujer" class={`nav-item ${currentPath.startsWith('/mujer') ? 'nav-item-active' : ''}`}>
-          Mujer
-        </a>
-        
-        <span class="nav-divider"></span>
-        
-        <a href="/novedades" class={`nav-item nav-item-new ${currentPath.startsWith('/novedades') ? 'nav-item-active' : ''}`}>
-          <span class="nav-badge">New</span>
-          Novedades
-        </a>
-        
-        <a href="/ofertas" class={`nav-item nav-item-sale ${currentPath.startsWith('/ofertas') ? 'nav-item-active' : ''}`}>
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-          </svg>
-          Rebajas
-        </a>
-        
-        <a href="/sostenibilidad" class={`nav-item ${currentPath.startsWith('/sostenibilidad') ? 'nav-item-active' : ''}`}>
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Eco
-        </a>
+        <CartIcon client:load />
       </div>
-    </nav>
-  </div>
 
-  <!-- Navegación mobile -->
-  <div class="lg:hidden border-t border-white/5">
-    <div class="flex items-center justify-center gap-1 py-2 px-2 overflow-x-auto">
-      <a href="/productos" class={`nav-item-mobile ${currentPath.startsWith('/productos') ? 'nav-item-active' : ''}`}>
-        Todos
-      </a>
-      <a href="/hombre" class={`nav-item-mobile ${currentPath.startsWith('/hombre') ? 'nav-item-active' : ''}`}>
-        Hombre
-      </a>
-      <a href="/mujer" class={`nav-item-mobile ${currentPath.startsWith('/mujer') ? 'nav-item-active' : ''}`}>
-        Mujer
-      </a>
-      <a href="/novedades" class={`nav-item-mobile nav-item-new ${currentPath.startsWith('/novedades') ? 'nav-item-active' : ''}`}>
-        <span class="nav-badge-sm">New</span>
-        Nuevo
-      </a>
-      <a href="/ofertas" class={`nav-item-mobile nav-item-sale ${currentPath.startsWith('/ofertas') ? 'nav-item-active' : ''}`}>
-        Ofertas
-      </a>
-    </div>
-    
-    <!-- Búsqueda mobile -->
-    <div class="px-4 pb-3">
-      <SearchBar client:load />
     </div>
   </div>
 </header>
 
+<!-- ===== OVERLAY DE BÚSQUEDA ===== -->
+<div id="search-overlay" class="search-overlay hidden">
+  <div class="search-overlay-inner">
+    <div class="max-w-2xl mx-auto px-4 py-4 relative">
+      <SearchBar client:load placeholder="¿Qué estás buscando?" />
+      <button id="search-close" class="absolute top-4 right-6 text-gray-400 hover:text-white transition-colors" aria-label="Cerrar búsqueda">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div id="search-overlay-bg" class="fixed inset-0 bg-black/50 -z-10"></div>
+</div>
+
+<!-- ===== SIDEBAR (PANEL LATERAL) ===== -->
+<div id="sidebar-backdrop" class="sidebar-backdrop hidden"></div>
+<aside id="sidebar" class="sidebar">
+  <!-- Cabecera del sidebar -->
+  <div class="sidebar-header">
+    <a href="/" class="sidebar-logo">FASHION STORE</a>
+    <button id="sidebar-close" class="sidebar-close-btn" aria-label="Cerrar menú">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- Buscador integrado en sidebar -->
+  <div class="sidebar-search-wrap">
+    <form id="sidebar-search-form" class="sidebar-search-form">
+      <svg class="sidebar-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+      </svg>
+      <input
+        id="sidebar-search-input"
+        type="text"
+        placeholder="Buscar productos..."
+        class="sidebar-search-input"
+        autocomplete="off"
+      />
+    </form>
+  </div>
+
+  <!-- Contenido scrollable -->
+  <div class="sidebar-body">
+    <!-- Navegación principal -->
+    <nav class="sidebar-nav">
+      <div class="sidebar-nav-group">
+        <a href="/productos" class="sidebar-nav-item">
+          <span class="sidebar-nav-icon">
+            <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
+          </span>
+          <span>Todos los Productos</span>
+        </a>
+        <a href="/novedades" class="sidebar-nav-item">
+          <span class="sidebar-nav-icon sidebar-nav-icon--green">
+            <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+            </svg>
+          </span>
+          <span>Novedades</span>
+          <span class="sidebar-badge sidebar-badge--green">NEW</span>
+        </a>
+        <a href="/ofertas" class="sidebar-nav-item">
+          <span class="sidebar-nav-icon sidebar-nav-icon--red">
+            <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+          </span>
+          <span>Rebajas</span>
+          <span class="sidebar-badge sidebar-badge--red">SALE</span>
+        </a>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Sección MUJER -->
+      <div class="sidebar-section">
+        <button class="sidebar-section-title" data-section="mujer">
+          <div class="sidebar-section-left">
+            <span class="sidebar-nav-icon">
+              <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </span>
+            <a href="/mujer" class="sidebar-section-link" onclick="event.stopPropagation()">Mujer</a>
+          </div>
+          <svg class="sidebar-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+        <div id="sidebar-cats-mujer" class="sidebar-categories collapsed">
+          <div class="sidebar-cats-inner" id="cats-mujer-list">
+            <div class="sidebar-loading">
+              <div class="sidebar-loading-bar" style="width:100%"></div>
+              <div class="sidebar-loading-bar" style="width:75%"></div>
+              <div class="sidebar-loading-bar" style="width:85%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección HOMBRE -->
+      <div class="sidebar-section">
+        <button class="sidebar-section-title" data-section="hombre">
+          <div class="sidebar-section-left">
+            <span class="sidebar-nav-icon">
+              <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </span>
+            <a href="/hombre" class="sidebar-section-link" onclick="event.stopPropagation()">Hombre</a>
+          </div>
+          <svg class="sidebar-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+        <div id="sidebar-cats-hombre" class="sidebar-categories collapsed">
+          <div class="sidebar-cats-inner" id="cats-hombre-list">
+            <div class="sidebar-loading">
+              <div class="sidebar-loading-bar" style="width:100%"></div>
+              <div class="sidebar-loading-bar" style="width:75%"></div>
+              <div class="sidebar-loading-bar" style="width:85%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Enlaces secundarios -->
+      <div class="sidebar-nav-group">
+        <a href="/sostenibilidad" class="sidebar-nav-item sidebar-nav-item--subtle">
+          <span class="sidebar-nav-icon sidebar-nav-icon--green">
+            <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12.75 3.03v.568c0 .334.148.65.405.864l1.068.89c.442.369.535 1.01.216 1.49l-.51.766a2.25 2.25 0 01-1.161.886l-.143.048a1.107 1.107 0 00-.57 1.664c.369.555.169 1.307-.427 1.605L9 13.125l.423 1.059a.956.956 0 01-1.652.928l-.679-.906a1.125 1.125 0 00-1.906.172L4.5 15.75l-.612.153M12.75 3.031a9 9 0 00-8.862 12.872M12.75 3.031a9 9 0 016.69 14.036m0 0l-.177-.529A2.25 2.25 0 0017.128 15H16.5l-.324-.324a1.453 1.453 0 00-2.328.377l-.036.073a1.586 1.586 0 01-.982.816l-.99.282c-.55.157-.894.702-.8 1.267l.073.438c.08.474.49.821.97.821.846 0 1.598.542 1.865 1.345l.215.643m5.276-3.67a9.012 9.012 0 01-5.276 3.67" />
+            </svg>
+          </span>
+          <span>Sostenibilidad</span>
+        </a>
+        <a href="/contacto" class="sidebar-nav-item sidebar-nav-item--subtle">
+          <span class="sidebar-nav-icon">
+            <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+            </svg>
+          </span>
+          <span>Contacto</span>
+        </a>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Footer del sidebar -->
+  <div class="sidebar-footer">
+    <div class="sidebar-footer-links">
+      <a href="/envios-devoluciones">Envíos</a>
+      <span class="sidebar-footer-dot">·</span>
+      <a href="/politica-privacidad">Privacidad</a>
+      <span class="sidebar-footer-dot">·</span>
+      <a href="/faq">FAQ</a>
+    </div>
+  </div>
+</aside>
+
 <style>
-  /* === Barra superior === */
-  .header-top-bar {
-    background: linear-gradient(90deg, 
-      #0a0a0a 0%, 
-      #171717 50%,
-      #0a0a0a 100%
-    );
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 8px 0;
-    box-shadow: 0 1px 0 rgba(212, 175, 55, 0.06);
-  }
-
-  /* === Header principal === */
-  .header-premium {
-    background: linear-gradient(180deg, 
-      rgba(23, 23, 23, 0.98) 0%, 
-      rgba(10, 10, 10, 0.96) 100%
-    );
-    backdrop-filter: blur(24px) saturate(150%);
-    -webkit-backdrop-filter: blur(24px) saturate(150%);
-    box-shadow: 
-      0 4px 24px rgba(0, 0, 0, 0.6),
-      0 1px 0 rgba(255, 255, 255, 0.08) inset,
-      0 -1px 0 rgba(212, 175, 55, 0.12) inset;
-  }
-
-  .header-main {
-    position: relative;
+  /* ===== HEADER MINIMALISTA ===== */
+  .header-minimal {
+    background: rgba(10, 10, 10, 0.97);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
-  
-  .header-glow {
+
+  .header-glow-line {
     position: absolute;
     top: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 80%;
-    height: 2px;
-    background: linear-gradient(90deg, 
-      transparent 0%, 
-      rgba(212, 175, 55, 0.4) 25%,
-      rgba(232, 201, 109, 0.6) 50%, 
-      rgba(212, 175, 55, 0.4) 75%,
-      transparent 100%
-    );
-    opacity: 0.7;
-    filter: blur(1px);
-    animation: glow-pulse 4s ease-in-out infinite;
-  }
-
-  @keyframes glow-pulse {
-    0%, 100% { opacity: 0.5; filter: blur(1px); }
-    50% { opacity: 0.9; filter: blur(0.5px); }
-  }
-  
-  .logo-icon {
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.04) 100%);
-    border-radius: 12px;
-    border: 1px solid rgba(212, 175, 55, 0.2);
-    box-shadow: 
-      0 0 16px rgba(212, 175, 55, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .group:hover .logo-icon {
-    border-color: rgba(212, 175, 55, 0.4);
-    box-shadow: 
-      0 0 24px rgba(212, 175, 55, 0.15),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transform: scale(1.05);
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.18) 0%, rgba(212, 175, 55, 0.06) 100%);
-  }
-
-  /* === Barra de navegación === */
-  .nav-bar {
-    background: linear-gradient(180deg, 
-      rgba(10, 10, 10, 0.92) 0%, 
-      rgba(23, 23, 23, 0.96) 100%
-    );
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    border-bottom: 1px solid rgba(212, 175, 55, 0.1);
-    padding: 12px 0;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  }
-
-  .nav-item {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: #a3a3a3;
-    padding: 10px 18px;
-    border-radius: 8px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .nav-item:hover {
-    color: #f5f5f5;
-    background: rgba(255, 255, 255, 0.06);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  }
-
-  .nav-item-active {
-    color: #d4af37 !important;
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.06) 100%);
-    box-shadow: 0 2px 12px rgba(212, 175, 55, 0.15);
-  }
-
-  .nav-item-active::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40%;
-    height: 2px;
-    background: linear-gradient(90deg, #d4af37, #e8c96d);
-    border-radius: 2px;
-  }
-
-  .nav-divider {
-    width: 1px;
-    height: 24px;
-    background: linear-gradient(180deg, 
+    width: 60%;
+    height: 1px;
+    background: linear-gradient(90deg,
       transparent 0%,
-      rgba(255, 255, 255, 0.15) 50%,
+      rgba(212, 175, 55, 0.35) 30%,
+      rgba(212, 175, 55, 0.5) 50%,
+      rgba(212, 175, 55, 0.35) 70%,
       transparent 100%
     );
-    margin: 0 8px;
+    z-index: 1;
   }
 
-  /* === Estilos especiales para Novedades y Rebajas === */
-  .nav-item-new {
-    color: #10b981;
+  /* ===== LOGO ===== */
+  .logo-link {
+    text-decoration: none;
+    transition: opacity 0.3s ease;
   }
 
-  .nav-item-new:hover {
-    color: #34d399;
-    background: rgba(16, 185, 129, 0.1);
+  .logo-link:hover {
+    opacity: 0.8;
   }
 
-  .nav-item-sale {
-    color: #ef4444;
+  .logo-text {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+    letter-spacing: 0.35em;
+    color: #ffffff;
   }
 
-  .nav-item-sale:hover {
-    color: #f87171;
-    background: rgba(239, 68, 68, 0.1);
-  }
-
-  .nav-badge {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    animation: badge-pulse 2s ease-in-out infinite;
-  }
-
-  .nav-badge-sm {
-    font-size: 8px;
-    font-weight: 700;
-    padding: 1px 4px;
-    border-radius: 3px;
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-  }
-
-  @keyframes badge-pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-  }
-
-  /* === Iconos del header === */
-  .header-icon-btn {
+  /* ===== ICONOS DEL HEADER ===== */
+  .hdr-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
     color: #a3a3a3;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
   }
-  
-  .header-icon-btn:hover {
+
+  .hdr-icon:hover {
     color: #d4af37;
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(212, 175, 55, 0.08) 100%);
-    border-color: rgba(212, 175, 55, 0.35);
-    transform: translateY(-2px);
-    box-shadow: 
-      0 8px 24px rgba(212, 175, 55, 0.2),
-      0 2px 8px rgba(0, 0, 0, 0.4);
+    background: rgba(212, 175, 55, 0.08);
   }
-  
-  /* === Dropdown usuario === */
+
+  /* ===== DROPDOWN USUARIO ===== */
   .user-dropdown {
-    background: linear-gradient(135deg, rgba(38, 38, 38, 0.96) 0%, rgba(23, 23, 23, 0.98) 100%);
-    backdrop-filter: blur(32px) saturate(150%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 16px;
-    box-shadow: 
-      0 24px 48px rgba(0, 0, 0, 0.7),
-      0 0 0 1px rgba(255, 255, 255, 0.06) inset,
-      0 1px 0 rgba(212, 175, 55, 0.08);
-    z-index: 50;
+    background: rgba(23, 23, 23, 0.98);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+    z-index: 60;
   }
-  
+
   .dropdown-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    font-size: 14px;
+    gap: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
     color: #d4d4d4;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s ease;
+    cursor: pointer;
   }
-  
+
   .dropdown-item:hover {
     color: #d4af37;
-    background: rgba(255, 255, 255, 0.06);
-    box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.15);
-  }
-
-  /* === Navegación mobile === */
-  .nav-item-mobile {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    color: #9ca3af;
-    padding: 8px 12px;
-    border-radius: 6px;
-    white-space: nowrap;
-    transition: all 0.2s ease;
-  }
-  
-  .nav-item-mobile:hover {
-    color: #d4af37;
-    background: rgba(212, 175, 55, 0.1);
-  }
-  
-  .nav-item-mobile.nav-item-active {
-    color: #d4af37;
-    background: rgba(212, 175, 55, 0.15);
-  }
-
-  .nav-item-mobile.nav-item-new {
-    color: #10b981;
-  }
-
-  .nav-item-mobile.nav-item-sale {
-    color: #ef4444;
-  }
-
-  /* === Animaciones === */
-  @keyframes scale-in {
-    from {
-      opacity: 0;
-      transform: scale(0.95) translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
+    background: rgba(255, 255, 255, 0.05);
   }
 
   .animate-scale-in {
-    animation: scale-in 0.2s ease-out;
+    animation: scale-in 0.15s ease-out;
+  }
+
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.95) translateY(-6px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* ===== OVERLAY DE BÚSQUEDA ===== */
+  .search-overlay {
+    position: fixed;
+    top: 56px; /* h-14 */
+    left: 0;
+    right: 0;
+    z-index: 45;
+    animation: search-slide-down 0.2s ease-out;
+  }
+
+  .search-overlay.hidden {
+    display: none;
+  }
+
+  .search-overlay-inner {
+    background: rgba(10, 10, 10, 0.98);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  }
+
+  @keyframes search-slide-down {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 55;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+
+  .sidebar-backdrop.active {
+    opacity: 1;
+  }
+
+  .sidebar-backdrop.hidden {
+    display: none;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 340px;
+    max-width: 88vw;
+    height: 100vh;
+    height: 100dvh;
+    background: #0a0a0a;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* Header */
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+  }
+
+  .sidebar-logo {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 1rem;
+    letter-spacing: 0.3em;
+    color: #ffffff;
+    text-decoration: none;
+    transition: opacity 0.2s;
+  }
+
+  .sidebar-logo:hover {
+    opacity: 0.7;
+  }
+
+  .sidebar-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #737373;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .sidebar-close-btn:hover {
+    color: #e5e5e5;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  /* Search */
+  .sidebar-search-wrap {
+    padding: 14px 20px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-search-form {
+    position: relative;
+  }
+
+  .sidebar-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: #525252;
+    pointer-events: none;
+  }
+
+  .sidebar-search-input {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    font-size: 13px;
+    color: #e5e5e5;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    outline: none;
+    transition: all 0.25s ease;
+  }
+
+  .sidebar-search-input::placeholder {
+    color: #525252;
+  }
+
+  .sidebar-search-input:focus {
+    border-color: rgba(212, 175, 55, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.06);
+  }
+
+  /* Scrollable body */
+  .sidebar-body {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sidebar-body::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .sidebar-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+  }
+
+  /* Nav */
+  .sidebar-nav {
+    padding: 6px 0;
+  }
+
+  .sidebar-nav-group {
+    padding: 4px 12px;
+  }
+
+  .sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    font-size: 13.5px;
+    font-weight: 450;
+    color: #d4d4d4;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+
+  .sidebar-nav-item:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .sidebar-nav-item--subtle {
+    color: #a3a3a3;
+    font-size: 13px;
+  }
+
+  .sidebar-nav-item--subtle:hover {
+    color: #d4d4d4;
+  }
+
+  .sidebar-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #a3a3a3;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+  }
+
+  .sidebar-nav-item:hover .sidebar-nav-icon {
+    background: rgba(212, 175, 55, 0.1);
+    color: #d4af37;
+  }
+
+  .sidebar-nav-icon--green {
+    background: rgba(16, 185, 129, 0.08);
+    color: #10b981;
+  }
+
+  .sidebar-nav-item:hover .sidebar-nav-icon--green {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+  }
+
+  .sidebar-nav-icon--red {
+    background: rgba(239, 68, 68, 0.08);
+    color: #ef4444;
+  }
+
+  .sidebar-nav-item:hover .sidebar-nav-icon--red {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+  }
+
+  .sidebar-badge {
+    margin-left: auto;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 3px 7px;
+    border-radius: 5px;
+  }
+
+  .sidebar-badge--green {
+    background: rgba(16, 185, 129, 0.12);
+    color: #34d399;
+  }
+
+  .sidebar-badge--red {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+  }
+
+  .sidebar-divider {
+    height: 1px;
+    margin: 6px 20px;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  /* ===== SIDEBAR SECTIONS (Mujer / Hombre) ===== */
+  .sidebar-section {
+    padding: 0 12px;
+  }
+
+  .sidebar-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 11px 12px;
+    font-size: 13.5px;
+    font-weight: 450;
+    color: #d4d4d4;
+    background: none;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .sidebar-section-title:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .sidebar-section-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .sidebar-section-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .sidebar-section-link:hover {
+    color: #d4af37;
+  }
+
+  .sidebar-section-title:hover .sidebar-nav-icon {
+    background: rgba(212, 175, 55, 0.1);
+    color: #d4af37;
+  }
+
+  .sidebar-chevron {
+    width: 16px;
+    height: 16px;
+    color: #525252;
+    transition: transform 0.3s ease, color 0.2s;
+    flex-shrink: 0;
+  }
+
+  .sidebar-section-title.expanded .sidebar-chevron {
+    transform: rotate(180deg);
+    color: #d4af37;
+  }
+
+  .sidebar-categories {
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+  }
+
+  .sidebar-categories.collapsed {
+    max-height: 0;
+    opacity: 0;
+  }
+
+  .sidebar-categories.expanded {
+    max-height: 600px;
+    opacity: 1;
+  }
+
+  .sidebar-cats-inner {
+    padding: 2px 0 6px 58px;
+  }
+
+  .sidebar-loading {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 6px 0;
+  }
+
+  .sidebar-loading-bar {
+    height: 24px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    animation: sidebar-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes sidebar-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  /* Footer */
+  .sidebar-footer {
+    flex-shrink: 0;
+    padding: 14px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .sidebar-footer-links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .sidebar-footer-links a {
+    font-size: 11px;
+    color: #525252;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .sidebar-footer-links a:hover {
+    color: #a3a3a3;
+  }
+
+  .sidebar-footer-dot {
+    color: #333;
+    font-size: 10px;
+  }
+
+  /* ===== SCROLLBAR DEL SIDEBAR ===== */
+  .sidebar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .sidebar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+
+  .sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
   }
 </style>
 
 <script>
-  // Toggle user menu
+  // ==============================
+  // SIDEBAR: Abrir / Cerrar
+  // ==============================
+  const sidebar = document.getElementById('sidebar');
+  const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const sidebarClose = document.getElementById('sidebar-close');
+
+  function openSidebar() {
+    sidebar?.classList.add('open');
+    sidebarBackdrop?.classList.remove('hidden');
+    requestAnimationFrame(() => sidebarBackdrop?.classList.add('active'));
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSidebar() {
+    sidebar?.classList.remove('open');
+    sidebarBackdrop?.classList.remove('active');
+    setTimeout(() => {
+      sidebarBackdrop?.classList.add('hidden');
+      document.body.style.overflow = '';
+    }, 300);
+  }
+
+  sidebarToggle?.addEventListener('click', openSidebar);
+  sidebarClose?.addEventListener('click', closeSidebar);
+  sidebarBackdrop?.addEventListener('click', closeSidebar);
+
+  // ==============================
+  // SIDEBAR: Búsqueda integrada
+  // ==============================
+  const sidebarSearchForm = document.getElementById('sidebar-search-form');
+  const sidebarSearchInput = document.getElementById('sidebar-search-input') as HTMLInputElement;
+
+  sidebarSearchForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const q = sidebarSearchInput?.value.trim();
+    if (q) {
+      window.location.href = `/search?q=${encodeURIComponent(q)}`;
+    }
+  });
+
+  // ==============================
+  // SIDEBAR: Secciones expandibles
+  // ==============================
+  const categoriesCache: Record<string, any[]> = {};
+
+  async function loadGenderCategories(gender: string) {
+    if (categoriesCache[gender]) return categoriesCache[gender];
+    try {
+      const resp = await fetch(`/api/categories/${gender}?t=${Date.now()}`);
+      const data = await resp.json();
+      categoriesCache[gender] = data.categories || [];
+      return categoriesCache[gender];
+    } catch (err) {
+      console.error(`Error cargando categorías de ${gender}:`, err);
+      return [];
+    }
+  }
+
+  function renderCategories(gender: string, categories: any[]) {
+    const container = document.getElementById(`cats-${gender}-list`);
+    if (!container) return;
+
+    const mainCats = categories.filter((c: any) => !c.parent_id);
+    const genderSuffix = gender === 'mujer' ? ' Mujer' : ' Hombre';
+
+    let html = '';
+    mainCats.forEach((cat: any) => {
+      const name = cat.name.replace(new RegExp(genderSuffix + '$', 'i'), '');
+      const subs = categories.filter((c: any) => c.parent_id === cat.id);
+
+      // Categoría principal
+      html += `<a href="/productos?genero=${gender}&categoria=${cat.slug}" 
+        style="display:flex; align-items:center; padding:8px 10px; font-size:13px; color:#d4d4d4; border-radius:8px; transition:all 0.2s ease; text-decoration:none; margin-bottom:1px;"
+        onmouseover="this.style.color='#d4af37'; this.style.background='rgba(212,175,55,0.06)';"
+        onmouseout="this.style.color='#d4d4d4'; this.style.background='transparent';"
+      >${name}</a>`;
+
+      // Subcategorías (si hay)
+      if (subs.length > 0) {
+        subs.forEach((sub: any) => {
+          const subName = sub.name.replace(new RegExp(genderSuffix + '$', 'i'), '');
+          html += `<a href="/productos?genero=${gender}&categoria=${sub.slug}" 
+            style="display:flex; align-items:center; padding:6px 10px 6px 22px; font-size:12px; color:#737373; border-radius:6px; transition:all 0.2s ease; text-decoration:none; margin-bottom:1px;"
+            onmouseover="this.style.color='#d4af37'; this.style.background='rgba(212,175,55,0.04)';"
+            onmouseout="this.style.color='#737373'; this.style.background='transparent';"
+          >
+            <span style="width:4px; height:4px; border-radius:50%; background:#404040; margin-right:8px; flex-shrink:0;"></span>
+            ${subName}
+          </a>`;
+        });
+      }
+    });
+
+    if (html === '') {
+      html = '<span style="color:#404040; font-size:12px; padding:8px 10px; display:block;">Sin categorías</span>';
+    }
+
+    container.innerHTML = html;
+  }
+
+  document.querySelectorAll('.sidebar-section-title').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const gender = (btn as HTMLElement).dataset.section;
+      if (!gender) return;
+
+      const catsEl = document.getElementById(`sidebar-cats-${gender}`);
+      const isExpanded = btn.classList.contains('expanded');
+
+      // Cerrar todas
+      document.querySelectorAll('.sidebar-section-title').forEach((b) => b.classList.remove('expanded'));
+      document.querySelectorAll('.sidebar-categories').forEach((el) => {
+        el.classList.remove('expanded');
+        el.classList.add('collapsed');
+      });
+
+      if (!isExpanded) {
+        btn.classList.add('expanded');
+        catsEl?.classList.remove('collapsed');
+        catsEl?.classList.add('expanded');
+
+        // Cargar categorías si no están cargadas
+        const listEl = document.getElementById(`cats-${gender}-list`);
+        if (listEl?.querySelector('.sidebar-loading')) {
+          const cats = await loadGenderCategories(gender);
+          renderCategories(gender, cats);
+        }
+      }
+    });
+  });
+
+  // ==============================
+  // SEARCH OVERLAY: Abrir / Cerrar
+  // ==============================
+  const searchOverlay = document.getElementById('search-overlay');
+  const searchToggle = document.getElementById('search-toggle');
+  const searchClose = document.getElementById('search-close');
+  const searchOverlayBg = document.getElementById('search-overlay-bg');
+
+  function openSearch() {
+    searchOverlay?.classList.remove('hidden');
+    // Enfocar el input del SearchBar después de un pequeño delay
+    setTimeout(() => {
+      const input = searchOverlay?.querySelector('input[type="text"]') as HTMLInputElement;
+      input?.focus();
+    }, 100);
+  }
+
+  function closeSearch() {
+    searchOverlay?.classList.add('hidden');
+  }
+
+  searchToggle?.addEventListener('click', openSearch);
+  searchClose?.addEventListener('click', closeSearch);
+  searchOverlayBg?.addEventListener('click', closeSearch);
+
+  // ==============================
+  // TECLADO: Escape cierra todo
+  // ==============================
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeSidebar();
+      closeSearch();
+      const userMenu = document.getElementById('user-menu');
+      userMenu?.classList.add('hidden');
+    }
+  });
+
+  // ==============================
+  // USER MENU: Toggle
+  // ==============================
   const userMenuBtn = document.getElementById('user-menu-btn');
   const userMenu = document.getElementById('user-menu');
-  
-  // Abrir/cerrar menú al hacer clic en el botón
+
   userMenuBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     userMenu?.classList.toggle('hidden');
   });
 
-  // Cerrar menú al hacer clic fuera (pero NO en los enlaces internos)
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
-    // Si se hace clic en un enlace dentro del menú, dejar que navegue
-    if (target.tagName === 'A' && userMenu?.contains(target)) {
-      return;
-    }
-    // Si se hace clic fuera del menú y del botón, cerrar
+    if (target.tagName === 'A' && userMenu?.contains(target)) return;
     if (userMenu && !userMenu.contains(target) && !userMenuBtn?.contains(target)) {
       userMenu.classList.add('hidden');
     }
   });
 
-  // Cerrar menú al presionar Escape
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && userMenu) {
-      userMenu.classList.add('hidden');
-    }
-  });
-
-  // Cerrar sesión desde el header
+  // ==============================
+  // AUTH: Estado de sesión
+  // ==============================
   (async () => {
     try {
       const { supabase } = await import('../../lib/supabase');
       const guestEl = document.getElementById('user-guest');
       const authEl = document.getElementById('user-auth');
 
-      console.log('🔐 [HEADER] Elementos encontrados:', { guestEl: !!guestEl, authEl: !!authEl });
-
       const toggle = (hasUser: boolean) => {
-        console.log('🔐 [HEADER] Toggle llamado con hasUser:', hasUser);
-        if (!guestEl || !authEl) {
-          console.error('🔐 [HEADER] ERROR: Elementos no encontrados');
-          return;
-        }
+        if (!guestEl || !authEl) return;
         if (hasUser) {
-          // Usuario autenticado: ocultar guest, mostrar auth
           guestEl.style.display = 'none';
           guestEl.classList.add('hidden');
           authEl.style.display = 'block';
           authEl.classList.remove('hidden');
-          console.log('🔐 [HEADER] Usuario autenticado - ocultando guest, mostrando auth');
         } else {
-          // Usuario no autenticado: mostrar guest, ocultar auth
           guestEl.style.display = 'flex';
           guestEl.classList.remove('hidden');
           authEl.style.display = 'none';
           authEl.classList.add('hidden');
-          console.log('🔐 [HEADER] Sin usuario - mostrando guest, ocultando auth');
         }
       };
 
       const clearAuthArtifacts = () => {
         try {
-          // Borrar cookies manuales
           const expire = 'Expires=Thu, 01 Jan 1970 00:00:01 GMT; Path=/; SameSite=Lax';
           document.cookie = `sb-access-token=; ${expire}`;
           document.cookie = `sb-refresh-token=; ${expire}`;
-          // Borrar claves sb-* en localStorage (incluyendo custom sb-user-*)
           const toRemove: string[] = [];
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
@@ -545,35 +1003,25 @@ const currentPath = Astro.url.pathname;
         }
       };
 
-      // Logout button
+      // Logout
       document.getElementById('logout-btn-header')?.addEventListener('click', async () => {
-        console.log('🔓 [HEADER] Logout iniciado...');
         try {
-          // Limpiar PRIMERO antes de signOut para evitar race conditions
           clearAuthArtifacts();
-          console.log('🔓 [HEADER] Artefactos limpios, llamando signOut...');
-          
-          // Llamar signOut DESPUÉS de limpiar
           await supabase.auth.signOut();
-          console.log('🔓 [HEADER] signOut completado');
         } catch (e) {
-          console.warn('🔓 [HEADER] supabase.signOut falló (es ok, limpieza igual fue ejecutada):', e);
+          console.warn('signOut falló:', e);
         } finally {
-          // Esperar 200ms para que los eventos se procesen
           await new Promise((r) => setTimeout(r, 200));
-          console.log('🔓 [HEADER] Redirigiendo a /');
           window.location.href = '/';
         }
       });
 
-      // Estado inicial - verificar sesión inmediatamente
-      const { data, error } = await supabase.auth.getSession();
-      console.log('🔐 [HEADER] Estado inicial - session:', !!data.session, 'error:', error);
+      // Estado inicial
+      const { data } = await supabase.auth.getSession();
       toggle(!!data.session?.user);
 
-      // Escuchar cambios de autenticación
+      // Escuchar cambios
       supabase.auth.onAuthStateChange((event: any, session: any) => {
-        console.log('🔐 [HEADER] Auth state change:', event, 'hasSession:', !!session);
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           toggle(!!session?.user);
         }
@@ -583,7 +1031,7 @@ const currentPath = Astro.url.pathname;
         }
       });
     } catch (err) {
-      console.error('Error toggling user menu:', err);
+      console.error('Error en auth del header:', err);
     }
   })();
 </script>

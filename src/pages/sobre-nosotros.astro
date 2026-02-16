@@ -1,0 +1,99 @@
+---
+/**
+ * ============================================================================
+ * Página: Sobre Nosotros - Dark Theme
+ * ============================================================================
+ */
+
+import PublicLayout from '../layouts/PublicLayout.astro';
+---
+
+<PublicLayout 
+  title="Sobre Nosotros - Fashion Store" 
+  description="Conoce la historia de Fashion Store, nuestra misión y valores en el mundo de la moda sostenible."
+>
+  <div class="bg-black min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <!-- Hero Section -->
+      <div class="text-center mb-16">
+        <h1 class="text-4xl md:text-5xl font-bold text-white mb-6">
+          Sobre <span class="text-gold-500">Fashion Store</span>
+        </h1>
+        <p class="text-xl text-gray-300 max-w-3xl mx-auto">
+          Más que una tienda de moda, somos una comunidad comprometida con el estilo, la calidad y la sostenibilidad.
+        </p>
+      </div>
+
+      <!-- Historia -->
+      <div class="mb-20">
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <h2 class="text-3xl font-bold text-white mb-6">Nuestra Historia</h2>
+            <div class="space-y-4 text-gray-300">
+              <p>
+                Fashion Store nació con la visión de democratizar la moda premium, haciéndola accesible para todos aquellos que buscan calidad y estilo sin comprometer sus valores.
+              </p>
+              <p>
+                Desde nuestros inicios, hemos trabajado con diseñadores emergentes y marcas consolidadas para ofrecer una selección única de prendas que combinan las últimas tendencias con diseño atemporal.
+              </p>
+              <p>
+                Hoy, somos una comunidad global de amantes de la moda que comparten nuestra pasión por la expresión personal a través del estilo.
+              </p>
+            </div>
+          </div>
+          <div class="bg-gradient-to-br from-gold-500/20 to-gray-800/50 rounded-2xl h-96 border border-gray-800"></div>
+        </div>
+      </div>
+
+      <!-- Valores -->
+      <div class="mb-20">
+        <h2 class="text-3xl font-bold text-white mb-12 text-center">Nuestros Valores</h2>
+        <div class="grid md:grid-cols-3 gap-8">
+          <div class="text-center p-8 bg-gray-900 rounded-xl border border-gray-800 hover:border-gold-500/50 transition-all">
+            <div class="w-16 h-16 bg-gold-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-gold-500/20">
+              <svg class="w-8 h-8 text-gold-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-3">Calidad Premium</h3>
+            <p class="text-gray-400">
+              Seleccionamos cuidadosamente cada pieza para garantizar los más altos estándares de calidad y durabilidad.
+            </p>
+          </div>
+
+          <div class="text-center p-8 bg-gray-900 rounded-xl border border-gray-800 hover:border-gold-500/50 transition-all">
+            <div class="w-16 h-16 bg-gold-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-gold-500/20">
+              <svg class="w-8 h-8 text-gold-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-3">Sostenibilidad</h3>
+            <p class="text-gray-400">
+              Comprometidos con prácticas responsables que respetan el medio ambiente y las comunidades.
+            </p>
+          </div>
+
+          <div class="text-center p-8 bg-gray-900 rounded-xl border border-gray-800 hover:border-gold-500/50 transition-all">
+            <div class="w-16 h-16 bg-gold-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-gold-500/20">
+              <svg class="w-8 h-8 text-gold-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-3">Estilo Único</h3>
+            <p class="text-gray-400">
+              Curación experta de piezas que te ayudan a expresar tu personalidad y estilo individual.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Misión -->
+      <div class="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-800 rounded-2xl p-12 text-center">
+        <h2 class="text-3xl font-bold text-white mb-6">Nuestra Misión</h2>
+        <p class="text-xl text-gray-300 max-w-3xl mx-auto">
+          Inspirar confianza y autenticidad a través de la moda, ofreciendo una experiencia de compra excepcional que respeta tanto a las personas como al planeta.
+        </p>
+      </div>
+    </div>
+  </div>
+</PublicLayout>

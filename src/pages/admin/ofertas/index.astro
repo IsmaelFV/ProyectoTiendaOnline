@@ -1,0 +1,575 @@
+---
+import AdminLayout from '@layouts/AdminLayout.astro';
+import { verifyAdminFromCookies, createServerSupabaseClient } from '@lib/auth';
+
+// Protección: solo admins
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+if (!userId) {
+  return Astro.redirect('/auth/login');
+}
+
+const supabase = createServerSupabaseClient();
+
+// Obtener productos con oferta activa
+const { data: productsOnSale, error: saleError } = await supabase
+  .from('products')
+  .select('id, name, price, sale_price, is_on_sale, images, stock')
+  .eq('is_on_sale', true)
+  .order('updated_at', { ascending: false });
+
+if (saleError) console.error('Error cargando ofertas:', saleError);
+
+// Obtener todos los productos sin oferta (para añadir nuevas)
+const { data: productsNoSale, error: noSaleError } = await supabase
+  .from('products')
+  .select('id, name, price, images, stock')
+  .eq('is_on_sale', false)
+  .eq('is_active', true)
+  .order('name');
+
+if (noSaleError) console.error('Error cargando productos sin oferta:', noSaleError);
+---
+
+<AdminLayout title="Ofertas - Admin">
+  <div class="space-y-6">
+    {/* Header */}
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-white">Gestión de Ofertas</h1>
+        <p class="mt-1 text-sm text-gray-400">Administra las ofertas y descuentos de tus productos</p>
+      </div>
+      <button
+        id="openAddOfferModal"
+        class="px-4 py-2 bg-accent-gold text-dark-bg rounded-lg hover:bg-accent-gold/90 transition-colors font-medium flex items-center gap-2"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Nueva Oferta
+      </button>
+    </div>
+
+    {/* Estadísticas rápidas */}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+        <p class="text-sm text-gray-400">Ofertas activas</p>
+        <p class="text-2xl font-bold text-white mt-1">{productsOnSale?.length || 0}</p>
+      </div>
+      <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+        <p class="text-sm text-gray-400">Descuento medio</p>
+        <p class="text-2xl font-bold text-accent-gold mt-1">
+          {productsOnSale && productsOnSale.length > 0
+            ? Math.round(productsOnSale.reduce((acc, p) => acc + (1 - (p.sale_price || 0) / p.price) * 100, 0) / productsOnSale.length)
+            : 0}%
+        </p>
+      </div>
+      <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+        <p class="text-sm text-gray-400">Productos sin oferta</p>
+        <p class="text-2xl font-bold text-white mt-1">{productsNoSale?.length || 0}</p>
+      </div>
+    </div>
+
+    {/* Listado de ofertas activas */}
+    <div class="bg-dark-surface rounded-xl border border-white/10">
+      <div class="p-6 border-b border-white/10">
+        <h2 class="text-lg font-semibold text-white">Ofertas Activas</h2>
+      </div>
+
+      {(!productsOnSale || productsOnSale.length === 0) ? (
+        <div class="p-12 text-center">
+          <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+          <p class="text-gray-400 text-lg">No hay ofertas activas</p>
+          <p class="text-gray-500 text-sm mt-1">Añade una oferta usando el botón "Nueva Oferta"</p>
+        </div>
+      ) : (
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-white/10">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Producto</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Precio Original</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Descuento</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Precio Final</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Stock</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              {productsOnSale.map((product) => {
+                const discountPct = Math.round((1 - (product.sale_price || 0) / product.price) * 100);
+                return (
+                  <tr class="hover:bg-white/5 transition-colors" data-product-id={product.id}>
+                    <td class="px-6 py-4">
+                      <div class="flex items-center gap-3">
+                        <img
+                          src={product.images?.[0] || '/placeholder.svg'}
+                          alt={product.name}
+                          class="w-10 h-10 rounded-lg object-cover border border-white/10"
+                        />
+                        <span class="text-white font-medium text-sm">{product.name}</span>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 text-gray-400 text-sm line-through">
+                      €{(product.price / 100).toFixed(2)}
+                    </td>
+                    <td class="px-6 py-4">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
+                        -{discountPct}%
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 text-accent-gold font-semibold text-sm">
+                      €{((product.sale_price || 0) / 100).toFixed(2)}
+                    </td>
+                    <td class="px-6 py-4 text-gray-400 text-sm">
+                      {product.stock}
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                      <div class="flex items-center justify-end gap-2">
+                        <button
+                          class="edit-offer-btn px-3 py-1.5 text-xs bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition-colors"
+                          data-id={product.id}
+                          data-name={product.name}
+                          data-price={product.price}
+                          data-discount={discountPct}
+                        >
+                          Editar %
+                        </button>
+                        <button
+                          class="delete-offer-btn px-3 py-1.5 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                          data-id={product.id}
+                          data-name={product.name}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  </div>
+
+  {/* Modal: Añadir Nueva Oferta */}
+  <div id="addOfferModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="addOfferOverlay"></div>
+    <div class="relative bg-dark-surface border border-white/10 rounded-xl w-full max-w-lg mx-4 p-6 space-y-6">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xl font-bold text-white">Añadir Nueva Oferta</h3>
+        <button id="closeAddModal" class="text-gray-400 hover:text-white transition-colors">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-400 mb-2">Producto</label>
+          <select
+            id="addOfferProduct"
+            class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+          >
+            <option value="">Selecciona un producto</option>
+            {productsNoSale?.map((p) => (
+              <option value={p.id} data-price={p.price}>{p.name} — €{(p.price / 100).toFixed(2)}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-400 mb-2">Porcentaje de descuento (%)</label>
+          <div class="relative">
+            <input
+              type="number"
+              id="addOfferDiscount"
+              min="1"
+              max="99"
+              placeholder="20"
+              class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+            />
+            <span class="absolute right-3 top-2 text-gray-500">%</span>
+          </div>
+        </div>
+
+        <div class="p-3 bg-dark-card/50 rounded-lg border border-white/5">
+          <p class="text-sm text-gray-400">Precio con descuento:</p>
+          <p id="addOfferPreview" class="text-lg font-semibold text-accent-gold mt-1">—</p>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button id="cancelAddOffer" class="px-4 py-2 text-gray-400 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
+          Cancelar
+        </button>
+        <button id="confirmAddOffer" class="px-4 py-2 bg-accent-gold text-dark-bg rounded-lg hover:bg-accent-gold/90 transition-colors font-medium">
+          Aplicar Oferta
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {/* Modal: Editar Oferta */}
+  <div id="editOfferModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="editOfferOverlay"></div>
+    <div class="relative bg-dark-surface border border-white/10 rounded-xl w-full max-w-lg mx-4 p-6 space-y-6">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xl font-bold text-white">Editar Oferta</h3>
+        <button id="closeEditModal" class="text-gray-400 hover:text-white transition-colors">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <div class="p-3 bg-dark-card/50 rounded-lg border border-white/5">
+          <p class="text-sm text-gray-400">Producto:</p>
+          <p id="editOfferProductName" class="text-white font-medium mt-1">—</p>
+        </div>
+
+        <input type="hidden" id="editOfferProductId" />
+
+        <div>
+          <label class="block text-sm font-medium text-gray-400 mb-2">Nuevo porcentaje de descuento (%)</label>
+          <div class="relative">
+            <input
+              type="number"
+              id="editOfferDiscount"
+              min="1"
+              max="99"
+              class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+            />
+            <span class="absolute right-3 top-2 text-gray-500">%</span>
+          </div>
+        </div>
+
+        <div class="p-3 bg-dark-card/50 rounded-lg border border-white/5">
+          <p class="text-sm text-gray-400">Precio con descuento:</p>
+          <p id="editOfferPreview" class="text-lg font-semibold text-accent-gold mt-1">—</p>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button id="cancelEditOffer" class="px-4 py-2 text-gray-400 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
+          Cancelar
+        </button>
+        <button id="confirmEditOffer" class="px-4 py-2 bg-accent-gold text-dark-bg rounded-lg hover:bg-accent-gold/90 transition-colors font-medium">
+          Guardar Cambios
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {/* Sistema de Notificaciones Toast */}
+  <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2"></div>
+</AdminLayout>
+
+<script>
+  // ==========================================
+  // Sistema de Notificaciones Toast
+  // ==========================================
+  function showToast(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `
+      flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl border backdrop-blur-sm
+      transform translate-x-[400px] transition-all duration-300 ease-out
+      min-w-[320px] max-w-md
+    `;
+
+    // Colores según el tipo
+    const styles = {
+      success: 'bg-emerald-500/90 border-emerald-400/50 text-white',
+      error: 'bg-red-500/90 border-red-400/50 text-white',
+      warning: 'bg-amber-500/90 border-amber-400/50 text-white',
+      info: 'bg-blue-500/90 border-blue-400/50 text-white',
+    };
+
+    // Iconos según el tipo
+    const icons = {
+      success: '<svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>',
+      error: '<svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>',
+      warning: '<svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>',
+      info: '<svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>',
+    };
+
+    toast.className += ` ${styles[type]}`;
+    toast.innerHTML = `
+      ${icons[type]}
+      <span class="flex-1 text-sm font-medium">${message}</span>
+      <button class="toast-close ml-2 hover:opacity-70 transition-opacity">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
+      </button>
+    `;
+
+    container.appendChild(toast);
+
+    // Animación de entrada
+    setTimeout(() => {
+      toast.style.transform = 'translateX(0)';
+    }, 10);
+
+    // Botón de cerrar
+    const closeBtn = toast.querySelector('.toast-close');
+    closeBtn?.addEventListener('click', () => removeToast(toast));
+
+    // Auto-cerrar después de 4 segundos
+    setTimeout(() => removeToast(toast), 4000);
+  }
+
+  function removeToast(toast: HTMLElement) {
+    toast.style.transform = 'translateX(400px)';
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }
+
+  // ==========================================
+  // Modal de Confirmación Personalizado
+  // ==========================================
+  function showConfirmDialog(message: string, onConfirm: () => void) {
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 z-[9998] flex items-center justify-center';
+    overlay.innerHTML = `
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm confirm-overlay"></div>
+      <div class="relative bg-dark-surface border border-white/10 rounded-xl w-full max-w-md mx-4 p-6 space-y-6 transform scale-95 opacity-0 transition-all duration-200">
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+            <svg class="w-6 h-6 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-white mb-2">¿Estás seguro?</h3>
+            <p class="text-sm text-gray-400">${message}</p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3">
+          <button class="confirm-cancel px-4 py-2 text-gray-400 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
+            Cancelar
+          </button>
+          <button class="confirm-accept px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium">
+            Confirmar
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Animación de entrada
+    setTimeout(() => {
+      const dialog = overlay.querySelector('.relative');
+      if (dialog) {
+        (dialog as HTMLElement).style.transform = 'scale(1)';
+        (dialog as HTMLElement).style.opacity = '1';
+      }
+    }, 10);
+
+    const closeDialog = () => {
+      const dialog = overlay.querySelector('.relative');
+      if (dialog) {
+        (dialog as HTMLElement).style.transform = 'scale(0.95)';
+        (dialog as HTMLElement).style.opacity = '0';
+      }
+      setTimeout(() => overlay.remove(), 200);
+    };
+
+    overlay.querySelector('.confirm-overlay')?.addEventListener('click', closeDialog);
+    overlay.querySelector('.confirm-cancel')?.addEventListener('click', closeDialog);
+    overlay.querySelector('.confirm-accept')?.addEventListener('click', () => {
+      closeDialog();
+      onConfirm();
+    });
+  }
+
+  // Esperar a que el DOM esté completamente cargado
+  document.addEventListener('DOMContentLoaded', () => {
+    // ==========================================
+    // Modal: Añadir Nueva Oferta
+    // ==========================================
+    const addModal = document.getElementById('addOfferModal');
+    const addProductSelect = document.getElementById('addOfferProduct') as HTMLSelectElement;
+    const addDiscountInput = document.getElementById('addOfferDiscount') as HTMLInputElement;
+    const addPreview = document.getElementById('addOfferPreview');
+
+    document.getElementById('openAddOfferModal')?.addEventListener('click', () => {
+      addModal?.classList.remove('hidden');
+    });
+
+  function closeAddModal() {
+    addModal?.classList.add('hidden');
+    if (addProductSelect) addProductSelect.value = '';
+    if (addDiscountInput) addDiscountInput.value = '';
+    if (addPreview) addPreview.textContent = '—';
+  }
+
+  document.getElementById('closeAddModal')?.addEventListener('click', closeAddModal);
+  document.getElementById('addOfferOverlay')?.addEventListener('click', closeAddModal);
+  document.getElementById('cancelAddOffer')?.addEventListener('click', closeAddModal);
+
+  function updateAddPreview() {
+    const selected = addProductSelect?.selectedOptions[0];
+    const price = parseInt(selected?.dataset.price || '0');
+    const discount = parseInt(addDiscountInput?.value || '0');
+    if (price > 0 && discount > 0 && discount < 100) {
+      const salePrice = price * (1 - discount / 100) / 100;
+      if (addPreview) addPreview.textContent = `€${salePrice.toFixed(2)} (antes €${(price / 100).toFixed(2)})`;
+    } else {
+      if (addPreview) addPreview.textContent = '—';
+    }
+  }
+
+  addProductSelect?.addEventListener('change', updateAddPreview);
+  addDiscountInput?.addEventListener('input', updateAddPreview);
+
+  document.getElementById('confirmAddOffer')?.addEventListener('click', async () => {
+    const productId = addProductSelect?.value;
+    const discount = addDiscountInput?.value;
+    if (!productId || !discount) {
+      showToast('Selecciona un producto y un porcentaje', 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('confirmAddOffer') as HTMLButtonElement;
+    btn.disabled = true;
+    btn.textContent = 'Aplicando...';
+
+    try {
+      const res = await fetch('/api/offers/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: productId, discount_percentage: discount }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      window.location.reload();
+    } catch (err: any) {
+      showToast(err.message || 'Error al aplicar la oferta', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Aplicar Oferta';
+    }
+  });
+
+  // ==========================================
+  // Modal: Editar Oferta
+  // ==========================================
+  const editModal = document.getElementById('editOfferModal');
+  const editProductId = document.getElementById('editOfferProductId') as HTMLInputElement;
+  const editProductName = document.getElementById('editOfferProductName');
+  const editDiscountInput = document.getElementById('editOfferDiscount') as HTMLInputElement;
+  const editPreview = document.getElementById('editOfferPreview');
+  let editProductPrice = 0;
+
+  document.querySelectorAll('.edit-offer-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const el = btn as HTMLElement;
+      const id = el.dataset.id!;
+      const name = el.dataset.name!;
+      const price = parseInt(el.dataset.price!);
+      const discount = el.dataset.discount!;
+
+      editProductPrice = price;
+      if (editProductId) editProductId.value = id;
+      if (editProductName) editProductName.textContent = name;
+      if (editDiscountInput) editDiscountInput.value = discount;
+      updateEditPreview();
+      editModal?.classList.remove('hidden');
+    });
+  });
+
+  function closeEditModal() {
+    editModal?.classList.add('hidden');
+  }
+
+  document.getElementById('closeEditModal')?.addEventListener('click', closeEditModal);
+  document.getElementById('editOfferOverlay')?.addEventListener('click', closeEditModal);
+  document.getElementById('cancelEditOffer')?.addEventListener('click', closeEditModal);
+
+  function updateEditPreview() {
+    const discount = parseInt(editDiscountInput?.value || '0');
+    if (editProductPrice > 0 && discount > 0 && discount < 100) {
+      const salePrice = editProductPrice * (1 - discount / 100) / 100;
+      if (editPreview) editPreview.textContent = `€${salePrice.toFixed(2)} (antes €${(editProductPrice / 100).toFixed(2)})`;
+    } else {
+      if (editPreview) editPreview.textContent = '—';
+    }
+  }
+
+  editDiscountInput?.addEventListener('input', updateEditPreview);
+
+  document.getElementById('confirmEditOffer')?.addEventListener('click', async () => {
+    const productId = editProductId?.value;
+    const discount = editDiscountInput?.value;
+    if (!productId || !discount) return;
+
+    const btn = document.getElementById('confirmEditOffer') as HTMLButtonElement;
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    try {
+      const res = await fetch('/api/offers/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: productId, discount_percentage: discount }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      window.location.reload();
+    } catch (err: any) {
+      showToast(err.message || 'Error al actualizar la oferta', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Guardar Cambios';
+    }
+  });
+
+  // ==========================================
+  // Eliminar Oferta
+  // ==========================================
+  document.querySelectorAll('.delete-offer-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const el = btn as HTMLElement;
+      const id = el.dataset.id!;
+      const name = el.dataset.name!;
+
+      showConfirmDialog(
+        `¿Eliminar la oferta de "${name}"? El producto volverá a su precio original.`,
+        async () => {
+          try {
+            const res = await fetch('/api/offers/update', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ product_id: id }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            showToast('Oferta eliminada correctamente', 'success');
+            setTimeout(() => window.location.reload(), 800);
+          } catch (err: any) {
+            showToast(err.message || 'Error al eliminar la oferta', 'error');
+          }
+        }
+      );
+    });
+  });
+
+  }); // Fin DOMContentLoaded
+</script>

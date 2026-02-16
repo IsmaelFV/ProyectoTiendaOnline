@@ -1,0 +1,15 @@
+node_modules
+dist
+.output
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+*.md
+*.sql
+*.ps1
+.vscode
+.idea
+.DS_Store
+npm-debug.log*

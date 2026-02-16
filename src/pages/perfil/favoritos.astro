@@ -1,0 +1,326 @@
+---
+import PublicLayout from '@layouts/PublicLayout.astro';
+import { createClient } from '@supabase/supabase-js';
+import { formatPrice } from '@lib/utils';
+import { ImagePresets } from '@lib/cloudinary';
+
+// Crear cliente de Supabase con anon key (respeta RLS)
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+if (!accessToken || !refreshToken) {
+  return Astro.redirect('/auth/login');
+}
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+  global: { headers: { Authorization: `Bearer ${accessToken}` } },
+});
+
+const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+
+if (error || !user) {
+  return Astro.redirect('/auth/login');
+}
+
+// Obtener favoritos con datos del producto
+const { data: wishlistItems } = await supabase
+  .from('wishlist_items')
+  .select(`
+    id,
+    created_at,
+    product_id,
+    products:product_id (
+      id, name, slug, price, sale_price, is_on_sale, images, stock, is_active,
+      category:category_id ( name )
+    )
+  `)
+  .eq('user_id', user.id)
+  .order('created_at', { ascending: false });
+
+const items = wishlistItems || [];
+---
+
+<PublicLayout title="Mis Favoritos">
+  <div class="container mx-auto px-4 py-8 max-w-6xl">
+    {/* Header */}
+    <div class="mb-8">
+      <div class="flex items-center gap-2 text-sm text-gray-500 mb-2">
+        <a href="/perfil" class="hover:text-accent-gold transition-colors">Mi Perfil</a>
+        <span>/</span>
+        <span class="text-white">Favoritos</span>
+      </div>
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-3xl font-bold text-white font-serif">Mis Favoritos</h1>
+          <p class="text-gray-400 mt-2">
+            {items.length === 0 
+              ? 'Aún no tienes productos guardados' 
+              : `${items.length} producto${items.length !== 1 ? 's' : ''} guardado${items.length !== 1 ? 's' : ''}`}
+          </p>
+        </div>
+        <a
+          href="/productos"
+          class="px-4 py-2 bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition-colors text-sm"
+        >
+          Explorar productos
+        </a>
+      </div>
+    </div>
+
+    {items.length === 0 ? (
+      /* Estado vacío */
+      <div class="glass-panel p-16 text-center">
+        <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center">
+          <svg class="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </div>
+        <h2 class="text-xl font-semibold text-white mb-2">Tu lista de favoritos está vacía</h2>
+        <p class="text-gray-400 mb-6 max-w-md mx-auto">
+          Pulsa el icono del corazón en cualquier producto para guardarlo aquí. 
+          Solo tú puedes ver tu lista de favoritos.
+        </p>
+        <a
+          href="/productos"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-accent-gold text-dark-bg rounded-lg hover:bg-accent-gold/90 transition-colors font-medium"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          Explorar productos
+        </a>
+      </div>
+    ) : (
+      /* Grid de productos favoritos */
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {items.map((item: any) => {
+          const product = item.products;
+          if (!product) return null;
+          
+          const mainImage = product.images?.[0] || '/placeholder.svg';
+          const optimizedImage = ImagePresets.productCard(mainImage);
+          const hasDiscount = product.is_on_sale && product.sale_price && product.sale_price < product.price;
+          const discountPercent = hasDiscount ? Math.round((1 - product.sale_price / product.price) * 100) : 0;
+          const displayPrice = hasDiscount ? product.sale_price : product.price;
+          const addedDate = new Date(item.created_at).toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: 'short',
+          });
+
+          return (
+            <div class="wishlist-card group" data-wishlist-item-id={item.id} data-product-id={product.id}>
+              <div class="relative">
+                {/* Botón eliminar */}
+                <button 
+                  class="remove-wishlist-btn"
+                  aria-label="Eliminar de favoritos"
+                  data-remove-product-id={product.id}
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+
+                <a href={`/productos/${product.slug}`} class="block">
+                  {/* Imagen */}
+                  <div class="wishlist-image-container">
+                    <img
+                      src={optimizedImage}
+                      alt={product.name}
+                      class="wishlist-image"
+                      loading="lazy"
+                    />
+                    {!product.is_active && (
+                      <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span class="text-white/80 text-sm font-medium">No disponible</span>
+                      </div>
+                    )}
+                    {hasDiscount && (
+                      <span class="absolute top-3 left-3 px-2 py-1 text-[10px] font-bold text-dark-bg bg-accent-gold rounded-md">
+                        -{discountPercent}%
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div class="p-3">
+                    <p class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">
+                      {product.category?.name || 'Moda'}
+                    </p>
+                    <h3 class="text-sm font-medium text-gray-200 group-hover:text-accent-gold transition-colors line-clamp-2 mb-2">
+                      {product.name}
+                    </h3>
+                    <div class="flex items-center gap-2">
+                      {hasDiscount ? (
+                        <>
+                          <span class="text-sm font-bold text-white">{formatPrice(displayPrice)}</span>
+                          <span class="text-xs text-gray-500 line-through">{formatPrice(product.price)}</span>
+                        </>
+                      ) : (
+                        <span class="text-sm font-bold text-white">{formatPrice(product.price)}</span>
+                      )}
+                    </div>
+                    <div class="flex items-center justify-between mt-2">
+                      <div class="flex items-center gap-1.5">
+                        {product.stock > 0 ? (
+                          <>
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span class="text-[11px] text-gray-500">Disponible</span>
+                          </>
+                        ) : (
+                          <>
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                            <span class="text-[11px] text-red-400">Agotado</span>
+                          </>
+                        )}
+                      </div>
+                      <span class="text-[10px] text-gray-600">Guardado {addedDate}</span>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+</PublicLayout>
+
+<style>
+  .wishlist-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: all 0.35s ease;
+  }
+
+  .wishlist-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(212, 175, 55, 0.15);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  }
+
+  .wishlist-image-container {
+    position: relative;
+    aspect-ratio: 4/5;
+    overflow: hidden;
+    background: #111;
+  }
+
+  .wishlist-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .wishlist-card:hover .wishlist-image {
+    transform: scale(1.05);
+  }
+
+  .remove-wishlist-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    color: #9ca3af;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.25s ease;
+    z-index: 10;
+    cursor: pointer;
+  }
+
+  .wishlist-card:hover .remove-wishlist-btn {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .remove-wishlist-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #f87171;
+  }
+
+  .wishlist-card.removing {
+    opacity: 0;
+    transform: scale(0.9);
+    transition: all 0.3s ease;
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>
+
+<script>
+  function initWishlistPage() {
+    const removeButtons = document.querySelectorAll<HTMLButtonElement>('[data-remove-product-id]');
+
+    removeButtons.forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const productId = btn.dataset.removeProductId;
+        if (!productId) return;
+
+        const card = btn.closest('[data-wishlist-item-id]') as HTMLElement;
+
+        // Animación de salida
+        if (card) card.classList.add('removing');
+
+        try {
+          const res = await fetch('/api/wishlist/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId }),
+          });
+
+          if (res.ok) {
+            // Eliminar del DOM tras la animación
+            setTimeout(() => {
+              card?.remove();
+              // Actualizar contador
+              const remaining = document.querySelectorAll('[data-wishlist-item-id]').length;
+              const subtitle = document.querySelector('.text-gray-400.mt-2');
+              if (subtitle) {
+                subtitle.textContent = remaining === 0
+                  ? 'Aún no tienes productos guardados'
+                  : `${remaining} producto${remaining !== 1 ? 's' : ''} guardado${remaining !== 1 ? 's' : ''}`;
+              }
+              // Si no quedan productos, recargar para mostrar estado vacío
+              if (remaining === 0) {
+                window.location.reload();
+              }
+            }, 300);
+          } else {
+            if (card) card.classList.remove('removing');
+          }
+        } catch {
+          if (card) card.classList.remove('removing');
+        }
+      });
+    });
+  }
+
+  initWishlistPage();
+  document.addEventListener('astro:page-load', initWishlistPage);
+</script>

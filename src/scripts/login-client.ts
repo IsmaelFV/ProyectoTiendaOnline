@@ -1,12 +1,30 @@
 import { supabase } from '../lib/supabase';
+import { customAlert } from '../lib/notifications';
 
 // Separa la lógica en un script empaquetado para que los imports funcionen en el navegador
 function setupLogin() {
   const form = document.querySelector<HTMLFormElement>('#login-form');
+  const googleBtn = document.querySelector<HTMLButtonElement>('#google-login-btn');
+  
   if (!form) return;
 
   supabase.auth.onAuthStateChange((event, session) => {
     console.log('🔐 [LOGIN PAGE] onAuthStateChange:', event, 'user:', session?.user?.email || null);
+  });
+
+  // Google OAuth
+  googleBtn?.addEventListener('click', async () => {
+    console.log('🔐 [LOGIN PAGE] Iniciando Google OAuth...');
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      }
+    });
+    
+    if (error) {
+      customAlert('Error al iniciar sesión con Google: ' + error.message, 'error');
+    }
   });
 
   form.addEventListener('submit', async (event) => {
@@ -16,7 +34,7 @@ function setupLogin() {
     const password = form.querySelector<HTMLInputElement>('#password')?.value || '';
 
     if (!email || !password) {
-      alert('Por favor ingresa email y contraseña');
+      customAlert('Por favor ingresa email y contraseña', 'warning');
       return;
     }
 
@@ -25,7 +43,7 @@ function setupLogin() {
     console.log('🔐 [LOGIN PAGE] Resultado login:', { data, error });
 
     if (error) {
-      alert(error.message || 'Error al iniciar sesión');
+      customAlert(error.message || 'Error al iniciar sesión', 'error');
       return;
     }
 
@@ -49,6 +67,30 @@ function setupLogin() {
       if (key && key.startsWith('sb-')) keys.push(key);
     }
     console.log('🔐 [LOGIN PAGE] Claves sb-* tras login:', keys);
+
+    // Verificar si el usuario es admin mediante API server-side (evita RLS)
+    try {
+      const userId = data.user?.id;
+      if (userId) {
+        console.log('🔐 [LOGIN PAGE] Verificando admin para userId:', userId);
+        const res = await fetch('/api/auth/check-admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        });
+        const result = await res.json();
+        console.log('🔐 [LOGIN PAGE] Resultado check-admin:', result);
+        const isAdmin = result.isAdmin;
+
+        if (isAdmin) {
+          console.log('🔐 [LOGIN PAGE] Usuario es ADMIN, redirigiendo a /admin');
+          window.location.href = '/admin';
+          return;
+        }
+      }
+    } catch (adminCheckErr) {
+      console.warn('🔐 [LOGIN PAGE] Error verificando admin (no crítico):', adminCheckErr);
+    }
 
     window.location.href = '/';
   });

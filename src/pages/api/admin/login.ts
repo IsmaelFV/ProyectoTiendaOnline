@@ -16,13 +16,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   // Validación básica
   if (!email || !password) {
-    return redirect('/admin/login?error=missing_credentials');
+    return redirect('/auth/login?error=missing_credentials');
   }
 
   // Validación de formato de email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    return redirect('/admin/login?error=invalid_email');
+    return redirect('/auth/login?error=invalid_email');
   }
 
   try {
@@ -34,7 +34,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
     if (error || !data.session) {
       console.error('[Admin Login] Error de autenticación:', error);
-      return redirect('/admin/login?error=invalid_credentials');
+      return redirect('/auth/login?error=invalid_credentials');
     }
 
     // 2. Verificar que sea administrador
@@ -51,7 +51,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       console.error('[Admin Login] Usuario no es admin:', email, 'Error:', adminError?.message);
       // Cerrar sesión
       await supabase.auth.signOut();
-      return redirect('/admin/login?error=not_admin');
+      return redirect('/auth/login?error=not_admin');
     }
 
     const adminUser = adminUsers[0]; // Tomar el primero si hay múltiples
@@ -86,6 +86,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   } catch (error) {
     console.error('[Admin Login] Error inesperado:', error);
-    return redirect('/admin/login?error=invalid_credentials');
+    return redirect('/auth/login?error=invalid_credentials');
   }
 };

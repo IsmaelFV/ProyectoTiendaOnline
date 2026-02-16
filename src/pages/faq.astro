@@ -1,0 +1,200 @@
+---
+import PublicLayout from '@layouts/PublicLayout.astro';
+
+const faqs = [
+  {
+    category: 'Envíos y entregas',
+    icon: '🚚',
+    questions: [
+      {
+        q: '¿Cuánto cuesta el envío?',
+        a: 'Los envíos son gratuitos en pedidos superiores a 100€. Para pedidos de menor importe, el envío estándar tiene un coste de 4,95€.',
+      },
+      {
+        q: '¿Cuánto tarda en llegar mi pedido?',
+        a: 'Los pedidos en España peninsular se entregan en 2-4 días laborables. Para Baleares y Canarias, el plazo es de 5-7 días laborables. Recibirás un email de confirmación con la información de seguimiento.',
+      },
+      {
+        q: '¿Puedo hacer seguimiento de mi pedido?',
+        a: 'Sí, una vez enviado tu pedido recibirás un email con el número de seguimiento. También puedes consultar el estado desde la sección "Mis Pedidos" en tu perfil.',
+      },
+      {
+        q: '¿Realizáis envíos internacionales?',
+        a: 'Actualmente solo realizamos envíos dentro de España. Estamos trabajando para ampliar nuestras zonas de envío próximamente.',
+      },
+    ],
+  },
+  {
+    category: 'Devoluciones y cambios',
+    icon: '🔄',
+    questions: [
+      {
+        q: '¿Cuál es la política de devoluciones?',
+        a: 'Tienes 30 días desde la recepción del pedido para devolver cualquier artículo. Los productos deben estar en su estado original, sin usar y con las etiquetas puestas.',
+      },
+      {
+        q: '¿Cómo solicito una devolución?',
+        a: 'Accede a "Mis Pedidos" en tu perfil, selecciona el pedido y haz clic en "Solicitar devolución". Te indicaremos los pasos a seguir y recibirás una etiqueta de envío gratuita.',
+      },
+      {
+        q: '¿Cuándo recibiré el reembolso?',
+        a: 'Una vez recibida y revisada la devolución, el reembolso se procesa en 3-5 días laborables. El importe se devolverá al mismo método de pago utilizado en la compra.',
+      },
+      {
+        q: '¿Puedo cambiar una prenda por otra talla?',
+        a: 'Sí, puedes solicitar un cambio de talla desde la sección de devoluciones. Si la talla deseada está disponible, te enviaremos el nuevo artículo sin coste adicional.',
+      },
+    ],
+  },
+  {
+    category: 'Tallas y medidas',
+    icon: '📏',
+    questions: [
+      {
+        q: '¿Cómo puedo saber qué talla me corresponde?',
+        a: 'En cada producto encontrarás un recomendador de tallas interactivo. Introduce tus medidas corporales y te sugeriremos la talla que mejor se adapta a ti.',
+      },
+      {
+        q: '¿Las tallas son estándar?',
+        a: 'Nuestras tallas siguen el tallaje europeo estándar. Sin embargo, te recomendamos utilizar siempre nuestro recomendador de tallas para mayor precisión, ya que cada prenda puede tener un corte diferente.',
+      },
+      {
+        q: '¿Puedo ver las medidas exactas de cada prenda?',
+        a: 'Sí, en la ficha de cada producto están las medidas detalladas (pecho, cintura, cadera, etc.) para cada talla disponible.',
+      },
+    ],
+  },
+  {
+    category: 'Pagos y seguridad',
+    icon: '💳',
+    questions: [
+      {
+        q: '¿Qué métodos de pago aceptáis?',
+        a: 'Aceptamos tarjeta de crédito/débito (Visa, Mastercard, American Express) procesados de forma segura a través de Stripe. También aceptamos Google Pay y Apple Pay.',
+      },
+      {
+        q: '¿Es seguro comprar en vuestra tienda?',
+        a: 'Absolutamente. Todos los pagos se procesan a través de Stripe, una plataforma de pagos certificada PCI DSS Level 1, el nivel más alto de seguridad. Tus datos bancarios nunca pasan por nuestros servidores.',
+      },
+      {
+        q: '¿Puedo utilizar un código de descuento?',
+        a: 'Sí, puedes introducir tu código de descuento en el carrito de compra antes de finalizar el pedido. Solo se puede aplicar un código por pedido.',
+      },
+    ],
+  },
+  {
+    category: 'Mi cuenta',
+    icon: '👤',
+    questions: [
+      {
+        q: '¿Necesito crear una cuenta para comprar?',
+        a: 'Sí, necesitas crear una cuenta para realizar compras. Esto nos permite ofrecerte un mejor servicio: seguimiento de pedidos, historial de compras, lista de favoritos y recomendaciones personalizadas.',
+      },
+      {
+        q: '¿Cómo cambio mi contraseña?',
+        a: 'Accede a tu perfil y ve a la sección "Seguridad". Desde allí podrás cambiar tu contraseña introduciendo la actual y la nueva.',
+      },
+      {
+        q: '¿Puedo eliminar mi cuenta?',
+        a: 'Sí, puedes solicitar la eliminación de tu cuenta contactándonos a través del formulario de contacto. Procesaremos tu solicitud conforme al RGPD en un plazo máximo de 30 días.',
+      },
+    ],
+  },
+  {
+    category: 'Productos y cuidados',
+    icon: '✨',
+    questions: [
+      {
+        q: '¿Cómo debo cuidar mis prendas?',
+        a: 'Cada producto incluye instrucciones de lavado específicas en su etiqueta. En general, recomendamos lavar en agua fría, usar detergente suave y secar al aire libre para mantener la calidad de los tejidos.',
+      },
+      {
+        q: '¿Los colores son iguales a los de las fotos?',
+        a: 'Nos esforzamos por reproducir los colores lo más fielmente posible. Sin embargo, puede haber ligeras variaciones dependiendo del dispositivo y la calibración de tu pantalla.',
+      },
+      {
+        q: '¿Qué hago si mi producto llega defectuoso?',
+        a: 'Si recibes un artículo defectuoso, contacta con nosotros inmediatamente. Te enviaremos un reemplazo sin coste o procesaremos un reembolso completo.',
+      },
+    ],
+  },
+];
+---
+
+<PublicLayout title="Preguntas Frecuentes - Fashion Store" description="Resolvemos tus dudas sobre envíos, devoluciones, tallas, pagos y más.">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-16">
+    <!-- Header -->
+    <div class="text-center mb-12">
+      <nav class="text-xs text-gray-500 mb-4 flex items-center justify-center gap-1">
+        <a href="/" class="hover:text-gold-500 transition-colors">Inicio</a>
+        <span class="text-gray-700">/</span>
+        <span class="text-gray-400">Preguntas frecuentes</span>
+      </nav>
+      <h1 class="font-serif text-3xl sm:text-4xl font-bold text-white mb-3">
+        Preguntas Frecuentes
+      </h1>
+      <p class="text-gray-400 text-sm sm:text-base max-w-xl mx-auto">
+        Encuentra respuestas a las preguntas más comunes sobre pedidos, envíos, devoluciones y más.
+      </p>
+    </div>
+
+    <!-- Índice rápido -->
+    <div class="flex flex-wrap justify-center gap-2 mb-10">
+      {faqs.map((section) => (
+        <a
+          href={`#${section.category.toLowerCase().replace(/\s+/g, '-').normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`}
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-gold-500 hover:border-gold-500/30 transition-all"
+        >
+          <span>{section.icon}</span>
+          {section.category}
+        </a>
+      ))}
+    </div>
+
+    <!-- Secciones FAQ -->
+    <div class="space-y-10">
+      {faqs.map((section) => (
+        <section id={section.category.toLowerCase().replace(/\s+/g, '-').normalize('NFD').replace(/[\u0300-\u036f]/g, '')}>
+          <h2 class="font-serif text-lg font-semibold text-white flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
+            <span class="text-xl">{section.icon}</span>
+            {section.category}
+          </h2>
+          <div class="space-y-2">
+            {section.questions.map((faq, idx) => (
+              <details class="group bg-white/[0.02] rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                <summary class="flex items-center justify-between cursor-pointer px-5 py-4 text-sm font-medium text-gray-300 hover:text-white transition-colors list-none [&::-webkit-details-marker]:hidden">
+                  <span>{faq.q}</span>
+                  <svg class="w-4 h-4 text-gray-600 group-open:rotate-180 transition-transform flex-shrink-0 ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </summary>
+                <div class="px-5 pb-4 text-sm text-gray-400 leading-relaxed border-t border-white/5 pt-3">
+                  {faq.a}
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+
+    <!-- CTA -->
+    <div class="mt-14 text-center bg-white/[0.02] rounded-2xl border border-white/5 p-8">
+      <h3 class="font-serif text-lg font-semibold text-white mb-2">
+        ¿No encuentras lo que buscas?
+      </h3>
+      <p class="text-sm text-gray-400 mb-5">
+        Nuestro equipo está aquí para ayudarte con cualquier duda.
+      </p>
+      <a
+        href="/contacto"
+        class="inline-flex items-center gap-2 px-6 py-3 bg-gold-500 text-gray-900 font-medium text-sm rounded-xl hover:bg-gold-400 transition-all"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+        </svg>
+        Contactar con nosotros
+      </a>
+    </div>
+  </div>
+</PublicLayout>

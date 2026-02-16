@@ -51,7 +51,7 @@ export function generateInvoicePDF(data: InvoiceData): string {
   // ============================================================================
   doc.setFontSize(24);
   doc.setTextColor(30, 58, 138); // brand-navy
-  doc.text('FashionMarket', 20, yPos);
+  doc.text('Fashion Store', 20, yPos);
   
   doc.setFontSize(10);
   doc.setTextColor(107, 114, 128);
@@ -184,7 +184,7 @@ export function generateInvoicePDF(data: InvoiceData): string {
   doc.setTextColor(156, 163, 175);
   const footerY = doc.internal.pageSize.getHeight() - 20;
   doc.text(
-    'FashionMarket | www.fashionmarket.com | info@fashionmarket.com',
+    'Fashion Store | www.fashionstore.com | info@fashionstore.com',
     pageWidth / 2,
     footerY,
     { align: 'center' }

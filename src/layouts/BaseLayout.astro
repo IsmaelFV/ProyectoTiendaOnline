@@ -4,12 +4,24 @@ import '../styles/global.css';
 interface Props {
   title?: string;
   description?: string;
+  ogImage?: string;
+  ogType?: string;
+  canonicalUrl?: string;
+  jsonLd?: Record<string, any>;
 }
 
 const { 
-  title = 'FashionMarket - Moda Masculina Premium',
-  description = 'Descubre nuestra colección exclusiva de moda masculina. Camisas, pantalones y trajes de la más alta calidad.'
+  title = 'Fashion Store - Moda Premium',
+  description = 'Descubre nuestra colección exclusiva de moda masculina. Camisas, pantalones y trajes de la más alta calidad.',
+  ogImage = '/og-default.jpg',
+  ogType = 'website',
+  canonicalUrl,
+  jsonLd,
 } = Astro.props;
+
+const siteUrl = Astro.url.origin || 'https://fashion-store.es';
+const pageUrl = canonicalUrl || Astro.url.href;
+const fullOgImage = ogImage.startsWith('http') ? ogImage : `${siteUrl}${ogImage}`;
 ---
 
 <!doctype html>
@@ -20,9 +32,49 @@ const {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
+
+    <!-- Canonical -->
+    <link rel="canonical" href={pageUrl} />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:image" content={fullOgImage} />
+    <meta property="og:site_name" content="Fashion Store" />
+    <meta property="og:locale" content="es_ES" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={fullOgImage} />
+
+    <!-- Fuentes -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- JSON-LD Schema.org -->
+    {jsonLd && (
+      <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    )}
+
+    <!-- Schema.org Organization (global) -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Fashion Store",
+      "url": siteUrl,
+      "logo": `${siteUrl}/favicon.svg`,
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer service",
+        "availableLanguage": "Spanish"
+      }
+    })} />
+
     <title>{title}</title>
   </head>
   <body>

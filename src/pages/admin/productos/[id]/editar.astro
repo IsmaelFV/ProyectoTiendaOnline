@@ -1,27 +1,18 @@
 ---
 import AdminLayout from '../../../../layouts/AdminLayout.astro';
-import { supabase } from '../../../../lib/supabase';
+import { verifyAdminFromCookies, createServerSupabaseClient } from '../../../../lib/auth';
 
 // Protección: solo admins
 const accessToken = Astro.cookies.get('sb-access-token')?.value;
-if (!accessToken) {
-  return Astro.redirect('/admin/login');
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+if (!userId) {
+  return Astro.redirect('/auth/login');
 }
 
-// Verificar si es admin
-const { data: { user } } = await supabase.auth.getUser(accessToken);
-if (!user) {
-  return Astro.redirect('/admin/login');
-}
-
-const { data: adminUser } = await supabase
-  .from('admin_users')
-  .select('*')
-  .eq('user_id', user.id);
-
-if (!adminUser || adminUser.length === 0) {
-  return Astro.redirect('/admin/login');
-}
+// Usar service_role para consultas de admin
+const supabase = createServerSupabaseClient();
 
 // Obtener el ID del producto
 const { id } = Astro.params;
@@ -37,10 +28,10 @@ if (error || !product) {
   return Astro.redirect('/admin/productos');
 }
 
-// Obtener categorías
+// Obtener categorías con su género asociado
 const { data: categories } = await supabase
   .from('categories')
-  .select('*')
+  .select('*, gender:genders(id, name)')
   .order('name');
 
 // Obtener géneros
@@ -48,6 +39,21 @@ const { data: genders } = await supabase
   .from('genders')
   .select('*')
   .order('name');
+
+// Agrupar categorías por género para el select
+const categoriesByGender: Record<string, { genderName: string; items: typeof categories }> = {};
+if (categories && genders) {
+  for (const g of genders) {
+    categoriesByGender[g.id] = {
+      genderName: g.name,
+      items: categories.filter((c: any) => c.gender_id === g.id),
+    };
+  }
+  const sinGenero = categories.filter((c: any) => !c.gender_id);
+  if (sinGenero.length > 0) {
+    categoriesByGender['sin-genero'] = { genderName: 'General', items: sinGenero };
+  }
+}
 ---
 
 <AdminLayout title={`Editar ${product.name}`}>
@@ -55,22 +61,22 @@ const { data: genders } = await supabase
     <!-- Header -->
     <div class="mb-6">
       <div class="flex items-center gap-2 text-sm text-gray-500 mb-2">
-        <a href="/admin" class="hover:text-gray-700">Dashboard</a>
+        <a href="/admin" class="hover:text-gray-300">Dashboard</a>
         <span>/</span>
-        <a href="/admin/productos" class="hover:text-gray-700">Productos</a>
+        <a href="/admin/productos" class="hover:text-gray-300">Productos</a>
         <span>/</span>
-        <span class="text-gray-900">Editar</span>
+        <span class="text-white">Editar</span>
       </div>
-      <h1 class="text-3xl font-bold text-gray-900">Editar Producto</h1>
-      <p class="mt-1 text-sm text-gray-600">Modifica la información del producto</p>
+      <h1 class="text-3xl font-bold text-white">Editar Producto</h1>
+      <p class="mt-1 text-sm text-gray-400">Modifica la información del producto</p>
     </div>
 
     <!-- Formulario -->
-    <div class="bg-white shadow rounded-lg">
+    <div class="bg-dark-surface rounded-xl border border-white/10">
       <form id="editProductForm" class="p-6 space-y-6">
         <!-- Nombre -->
         <div>
-          <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+          <label for="name" class="block text-sm font-medium text-gray-400 mb-1">
             Nombre del producto *
           </label>
           <input
@@ -79,14 +85,14 @@ const { data: genders } = await supabase
             name="name"
             required
             value={product.name}
-            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-brand-gold focus:border-transparent"
+            class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
             placeholder="Ej: Camisa elegante de algodón"
           />
         </div>
 
         <!-- Descripción -->
         <div>
-          <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+          <label for="description" class="block text-sm font-medium text-gray-400 mb-1">
             Descripción *
           </label>
           <textarea
@@ -94,7 +100,7 @@ const { data: genders } = await supabase
             name="description"
             required
             rows="4"
-            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-brand-gold focus:border-transparent"
+            class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
             placeholder="Describe el producto, materiales, características..."
           >{product.description}</textarea>
         </div>
@@ -102,7 +108,7 @@ const { data: genders } = await supabase
         <!-- Precio y Stock -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label for="price" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="price" class="block text-sm font-medium text-gray-400 mb-1">
               Precio (€) *
             </label>
             <input
@@ -113,13 +119,13 @@ const { data: genders } = await supabase
               step="0.01"
               min="0"
               value={product.price / 100}
-              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-brand-gold focus:border-transparent"
+              class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
               placeholder="29.99"
             />
           </div>
 
           <div>
-            <label for="stock" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="stock" class="block text-sm font-medium text-gray-400 mb-1">
               Stock disponible *
             </label>
             <input
@@ -129,7 +135,7 @@ const { data: genders } = await supabase
               required
               min="0"
               value={product.stock}
-              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-brand-gold focus:border-transparent"
+              class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
               placeholder="50"
             />
           </div>
@@ -138,36 +144,42 @@ const { data: genders } = await supabase
         <!-- Categoría y Género -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label for="category_id" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="category_id" class="block text-sm font-medium text-gray-400 mb-1">
               Categoría *
             </label>
             <select
               id="category_id"
               name="category_id"
               required
-              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-brand-gold focus:border-transparent"
+              class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-accent-gold focus:border-transparent"
             >
               <option value="">Selecciona una categoría</option>
-              {categories?.map((category) => (
-                <option 
-                  value={category.id}
-                  selected={category.id === product.category_id}
-                >
-                  {category.name}
-                </option>
+              {Object.entries(categoriesByGender).map(([genderId, group]: [string, any]) => (
+                group.items && group.items.length > 0 && (
+                  <optgroup label={`── ${group.genderName} ──`}>
+                    {group.items.map((cat: any) => (
+                      <option 
+                        value={cat.id}
+                        selected={cat.id === product.category_id}
+                      >
+                        {cat.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )
               ))}
             </select>
           </div>
 
           <div>
-            <label for="gender_id" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="gender_id" class="block text-sm font-medium text-gray-400 mb-1">
               Género *
             </label>
             <select
               id="gender_id"
               name="gender_id"
               required
-              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-brand-gold focus:border-transparent"
+              class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-accent-gold focus:border-transparent"
             >
               <option value="">Selecciona un género</option>
               {genders?.map((gender) => (
@@ -182,64 +194,189 @@ const { data: genders } = await supabase
           </div>
         </div>
 
-        <!-- Imagen actual -->
+        <!-- Tallas -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            Imagen actual
+          <h2 class="text-lg font-semibold text-white mb-4">Tallas</h2>
+          <label class="block text-sm font-medium text-gray-400 mb-3">
+            Tallas disponibles <span class="text-red-400">*</span>
           </label>
-          <div class="flex items-start gap-4">
-            <img
-              src={product.image_url}
-              alt={product.name}
-              class="w-32 h-32 object-cover rounded-lg border-2 border-gray-200"
-            />
-            <div class="flex-1">
-              <p class="text-sm text-gray-600 mb-2">
-                Sube una nueva imagen si deseas cambiar la actual
-              </p>
+
+          {/* Selector rápido de tipo de tallaje */}
+          <div class="flex flex-wrap gap-2 mb-4">
+            <button type="button" data-preset="letras" class="size-preset-btn px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:border-accent-gold/50 hover:text-accent-gold transition-all bg-white/5">Ropa (XS–XXL)</button>
+            <button type="button" data-preset="pantalon" class="size-preset-btn px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:border-accent-gold/50 hover:text-accent-gold transition-all bg-white/5">Pantalón (34–46)</button>
+            <button type="button" data-preset="zapatos" class="size-preset-btn px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:border-accent-gold/50 hover:text-accent-gold transition-all bg-white/5">Calzado (36–45)</button>
+            <button type="button" data-preset="unica" class="size-preset-btn px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:border-accent-gold/50 hover:text-accent-gold transition-all bg-white/5">Talla única</button>
+          </div>
+
+          {/* Grid de checkboxes de tallas */}
+          <div id="sizes-grid" class="flex flex-wrap gap-2 mb-3"></div>
+
+          {/* Añadir talla personalizada */}
+          <div class="flex gap-2 mb-3">
+            <input type="text" id="custom-size-input" placeholder="Ej: 3XL, 28, XXXS…" class="flex-1 px-3 py-2 text-sm bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold/50 focus:border-transparent" />
+            <button type="button" id="add-custom-size" class="px-4 py-2 text-sm bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition-colors">+ Añadir</button>
+          </div>
+
+          {/* Campo oculto */}
+          <input type="hidden" name="sizes" id="sizes-hidden" />
+
+          {/* Resumen */}
+          <div id="sizes-summary" class="text-xs text-gray-500">Selecciona al menos una talla</div>
+
+          {/* Editor de medidas por talla */}
+          <div id="measurements-section" class="mt-6 hidden">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                <svg class="w-4 h-4 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                </svg>
+                Medidas por talla (cm)
+              </h3>
+              <button type="button" id="fill-default-measurements" class="text-xs text-accent-gold hover:text-accent-gold/80 transition-colors underline">
+                Rellenar con valores estándar
+              </button>
+            </div>
+            <p class="text-xs text-gray-500 mb-3">Selecciona qué medidas quieres definir y establece el rango (mín–máx) para cada talla.</p>
+            
+            {/* Selector de medidas a incluir */}
+            <div class="flex flex-wrap gap-2 mb-4" id="measure-type-selector">
+              <button type="button" data-measure-type="chest" class="measure-type-btn px-3 py-1.5 text-xs rounded-lg border border-accent-gold text-accent-gold bg-accent-gold/10 transition-all">Pecho</button>
+              <button type="button" data-measure-type="waist" class="measure-type-btn px-3 py-1.5 text-xs rounded-lg border border-accent-gold text-accent-gold bg-accent-gold/10 transition-all">Cintura</button>
+              <button type="button" data-measure-type="hip" class="measure-type-btn px-3 py-1.5 text-xs rounded-lg border border-accent-gold text-accent-gold bg-accent-gold/10 transition-all">Cadera</button>
+              <button type="button" data-measure-type="length" class="measure-type-btn px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:border-accent-gold/50 bg-white/5 transition-all">Largo total</button>
+              <button type="button" data-measure-type="sleeve" class="measure-type-btn px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:border-accent-gold/50 bg-white/5 transition-all">Manga</button>
+              <button type="button" data-measure-type="shoulder" class="measure-type-btn px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:border-accent-gold/50 bg-white/5 transition-all">Hombro</button>
+              <button type="button" data-measure-type="inseam" class="measure-type-btn px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:border-accent-gold/50 bg-white/5 transition-all">Entrepierna</button>
+              <button type="button" data-measure-type="foot" class="measure-type-btn px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:border-accent-gold/50 bg-white/5 transition-all">Pie (cm)</button>
+            </div>
+
+            <div id="measurements-editor" class="space-y-3"></div>
+          </div>
+
+          <input type="hidden" name="size_measurements" id="measurements-hidden" />
+        </div>
+
+        <!-- Oferta / Descuento -->
+        <div>
+          <h2 class="text-lg font-semibold text-white mb-4">Oferta / Descuento</h2>
+          <div class="space-y-4">
+            <label class="flex items-center space-x-3 cursor-pointer">
               <input
-                type="file"
-                id="image"
-                name="image"
-                accept="image/*"
-                class="block w-full text-sm text-gray-500
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-md file:border-0
-                  file:text-sm file:font-semibold
-                  file:bg-brand-gold file:text-white
-                  hover:file:bg-yellow-600
-                  file:cursor-pointer cursor-pointer"
+                type="checkbox"
+                name="is_on_sale"
+                id="is_on_sale"
+                checked={product.is_on_sale}
+                class="w-4 h-4 text-accent-gold border-white/20 bg-dark-card rounded focus:ring-accent-gold"
               />
-              <p class="mt-1 text-xs text-gray-500">
-                PNG, JPG, WEBP hasta 5MB
-              </p>
+              <div>
+                <span class="text-sm font-medium text-gray-300">Este producto tiene oferta</span>
+                <p class="text-xs text-gray-500">Activa para mostrar precio con descuento</p>
+              </div>
+            </label>
+
+            <div id="sale-fields" class={`${product.is_on_sale ? 'grid' : 'hidden'} grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-dark-card/50 rounded-lg border border-white/5`}>
+              <div>
+                <label for="discount_percentage" class="block text-sm font-medium text-gray-400 mb-2">
+                  Porcentaje de descuento (%)
+                </label>
+                <div class="relative">
+                  <input
+                    type="number"
+                    name="discount_percentage"
+                    id="discount_percentage"
+                    min="1"
+                    max="99"
+                    step="1"
+                    value={product.is_on_sale && product.sale_price && product.price > 0 ? Math.round((1 - product.sale_price / product.price) * 100) : ''}
+                    placeholder="20"
+                    class="w-full px-4 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                  />
+                  <span class="absolute right-3 top-2 text-gray-500">%</span>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Entre 1% y 99%</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-400 mb-2">
+                  Precio con descuento (vista previa)
+                </label>
+                <div class="flex items-center h-[42px] px-4 bg-dark-card border border-white/10 rounded-lg">
+                  <span id="sale-price-preview" class="text-accent-gold font-semibold">
+                    {product.is_on_sale && product.sale_price 
+                      ? `€${(product.sale_price / 100).toFixed(2)} (antes €${(product.price / 100).toFixed(2)})` 
+                      : '—'}
+                  </span>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Se calcula automáticamente según el precio base</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- URL de imagen alternativa -->
+        <!-- Imágenes -->
         <div>
-          <label for="image_url" class="block text-sm font-medium text-gray-700 mb-1">
-            O ingresa una URL de imagen
+          <h2 class="text-lg font-semibold text-white mb-4">Imágenes</h2>
+          <label class="block text-sm font-medium text-gray-400 mb-3">
+            Imágenes del producto <span class="text-red-400">*</span>
           </label>
-          <input
-            type="url"
-            id="image_url"
-            name="image_url"
-            value={product.image_url}
-            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-brand-gold focus:border-transparent"
-            placeholder="https://ejemplo.com/imagen.jpg"
-          />
-          <p class="mt-1 text-xs text-gray-500">
-            Si subes un archivo, esta URL se reemplazará
-          </p>
+
+          {/* Zona de drop / selección de archivos */}
+          <div
+            id="drop-zone"
+            class="border-2 border-dashed border-white/10 rounded-xl p-6 text-center transition-all hover:border-accent-gold/30 cursor-pointer"
+          >
+            <input type="file" id="file-input" multiple accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/avif,image/svg+xml" class="hidden" />
+            <div class="pointer-events-none">
+              <svg class="mx-auto h-10 w-10 text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+              <p class="text-sm text-gray-400">Arrastra imágenes aquí o <span class="text-accent-gold underline">selecciona archivos</span></p>
+              <p class="mt-1 text-xs text-gray-600">JPG, PNG, WebP, GIF, AVIF, SVG · Máx. 10MB por imagen</p>
+            </div>
+          </div>
+
+          {/* Barra de progreso */}
+          <div id="upload-progress" class="hidden mt-3">
+            <div class="flex items-center gap-3">
+              <div class="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <div id="upload-bar" class="h-full bg-accent-gold rounded-full transition-all duration-300" style="width: 0%"></div>
+              </div>
+              <span id="upload-text" class="text-xs text-gray-400">Subiendo...</span>
+            </div>
+          </div>
+
+          {/* Añadir URL manual */}
+          <div class="mt-3 flex gap-2">
+            <input
+              type="url"
+              id="url-input"
+              placeholder="O pega una URL de imagen: https://..."
+              class="flex-1 px-3 py-2 text-sm bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold/50 focus:border-transparent"
+            />
+            <button type="button" id="add-url-btn" class="px-4 py-2 text-sm bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition-colors whitespace-nowrap">
+              + URL
+            </button>
+          </div>
+
+          {/* Grid de previews */}
+          <div id="images-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-4"></div>
+
+          {/* Resumen y campo oculto */}
+          <div id="images-summary" class="text-xs text-gray-500 mt-2">Añade al menos una imagen</div>
+          <input type="hidden" name="images" id="images-hidden" required />
+
+          {/* Error */}
+          <div id="images-error" class="hidden mt-2 text-xs text-red-400 items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
+            <span id="images-error-text"></span>
+          </div>
         </div>
 
         <!-- Botones -->
-        <div class="flex items-center justify-between pt-6 border-t border-gray-200">
+        <div class="flex items-center justify-between pt-6 border-t border-white/10">
           <a
             href="/admin/productos"
-            class="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+            class="px-6 py-2 text-gray-400 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
           >
             Cancelar
           </a>
@@ -248,13 +385,13 @@ const { data: genders } = await supabase
             <button
               type="button"
               id="deleteBtn"
-              class="px-6 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+              class="px-6 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
             >
               Eliminar
             </button>
             <button
               type="submit"
-              class="px-6 py-2 text-white bg-brand-gold rounded-md hover:bg-yellow-600 transition-colors"
+              class="px-6 py-2 text-dark-bg bg-accent-gold rounded-lg hover:bg-accent-gold/90 transition-colors font-medium"
             >
               Guardar cambios
             </button>
@@ -268,15 +405,49 @@ const { data: genders } = await supabase
   </div>
 </AdminLayout>
 
-<script define:vars={{ productId: product.id }}>
+<script define:vars={{ productId: product.id, productSizesJson: JSON.stringify(product.sizes || []), productMeasurementsJson: JSON.stringify(product.size_measurements || {}), productImagesJson: JSON.stringify(product.images || []) }}>
+  import { customConfirm, customAlert } from '../../../../lib/notifications';
+  
   const form = document.getElementById('editProductForm');
   const message = document.getElementById('message');
   const deleteBtn = document.getElementById('deleteBtn');
 
+  // === Oferta: Toggle y cálculo ===
+  const saleCheckbox = document.getElementById('is_on_sale');
+  const saleFields = document.getElementById('sale-fields');
+  const discountInput = document.getElementById('discount_percentage');
+  const priceInput = document.getElementById('price');
+  const salePreview = document.getElementById('sale-price-preview');
+
+  function toggleSaleFields() {
+    if (saleCheckbox.checked) {
+      saleFields?.classList.remove('hidden');
+      saleFields?.classList.add('grid');
+    } else {
+      saleFields?.classList.add('hidden');
+      saleFields?.classList.remove('grid');
+    }
+  }
+
+  function updateSalePreview() {
+    const price = parseFloat(priceInput?.value || '0');
+    const discount = parseInt(discountInput?.value || '0');
+    if (price > 0 && discount > 0 && discount < 100) {
+      const salePrice = price * (1 - discount / 100);
+      if (salePreview) salePreview.textContent = `€${salePrice.toFixed(2)} (antes €${price.toFixed(2)})`;
+    } else {
+      if (salePreview) salePreview.textContent = '—';
+    }
+  }
+
+  saleCheckbox?.addEventListener('change', toggleSaleFields);
+  discountInput?.addEventListener('input', updateSalePreview);
+  priceInput?.addEventListener('input', updateSalePreview);
+
   // Función para mostrar mensajes
   function showMessage(text, isError = false) {
     message.textContent = text;
-    message.className = `p-4 rounded-md ${isError ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-green-50 text-green-800 border border-green-200'}`;
+    message.className = `p-4 rounded-lg ${isError ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'}`;
     message.classList.remove('hidden');
     
     setTimeout(() => {
@@ -324,7 +495,17 @@ const { data: genders } = await supabase
 
   // Manejar eliminación
   deleteBtn.addEventListener('click', async () => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer.')) {
+    const confirmed = await customConfirm(
+      '¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer.',
+      {
+        title: 'Eliminar producto',
+        confirmText: 'Sí, eliminar',
+        cancelText: 'Cancelar',
+        type: 'danger'
+      }
+    );
+    
+    if (!confirmed) {
       return;
     }
 
@@ -360,4 +541,466 @@ const { data: genders } = await supabase
       deleteBtn.textContent = 'Eliminar';
     }
   });
+
+  // ═══════════════════════════════════════════════════════════
+  // SELECTOR DE TALLAS (edición)
+  // ═══════════════════════════════════════════════════════════
+  const SIZE_PRESETS = {
+    letras:   ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+    pantalon: ['34', '36', '38', '40', '42', '44', '46'],
+    zapatos:  ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'],
+    unica:    ['Única'],
+  };
+
+  // Tallas actuales del producto (inyectadas desde Astro)
+  const currentSizes = typeof productSizesJson === 'string' ? JSON.parse(productSizesJson) : (Array.isArray(productSizesJson) ? productSizesJson : []);
+  let selectedSizes = new Set(currentSizes);
+  let currentPreset = '';
+  const sizesGrid = document.getElementById('sizes-grid');
+  const sizesHidden = document.getElementById('sizes-hidden');
+  const sizesSummary = document.getElementById('sizes-summary');
+  const customInput = document.getElementById('custom-size-input');
+  const addCustomBtn = document.getElementById('add-custom-size');
+
+  function detectPreset(sizes) {
+    for (const [key, presetSizes] of Object.entries(SIZE_PRESETS)) {
+      if (sizes.every(s => presetSizes.includes(s))) return key;
+    }
+    return 'letras';
+  }
+
+  function renderSizeButtons(preset) {
+    const sizes = SIZE_PRESETS[preset] || [];
+    sizesGrid.innerHTML = '';
+    // Primero poner los del preset
+    sizes.forEach(size => addSizeButton(size));
+    // Luego las custom que no están en el preset
+    selectedSizes.forEach(size => {
+      if (!sizes.includes(size)) addSizeButton(size);
+    });
+  }
+
+  function addSizeButton(size) {
+    if (sizesGrid.querySelector(`[data-size="${size}"]`)) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = size;
+    btn.dataset.size = size;
+    const isActive = selectedSizes.has(size);
+    btn.className = `size-toggle-btn px-4 py-2 text-sm rounded-lg border-2 font-medium transition-all cursor-pointer ${
+      isActive
+        ? 'border-accent-gold bg-accent-gold/20 text-white'
+        : 'border-white/10 text-gray-400 hover:border-white/30 bg-white/[0.02]'
+    }`;
+    btn.addEventListener('click', () => {
+      if (selectedSizes.has(size)) { selectedSizes.delete(size); } else { selectedSizes.add(size); }
+      updateSizesUI();
+    });
+    sizesGrid.appendChild(btn);
+  }
+
+  function updateSizesUI() {
+    const arr = Array.from(selectedSizes);
+    sizesHidden.value = arr.join(',');
+    sizesGrid.querySelectorAll('.size-toggle-btn').forEach(btn => {
+      const s = btn.dataset.size;
+      if (selectedSizes.has(s)) {
+        btn.className = 'size-toggle-btn px-4 py-2 text-sm rounded-lg border-2 font-medium transition-all cursor-pointer border-accent-gold bg-accent-gold/20 text-white';
+      } else {
+        btn.className = 'size-toggle-btn px-4 py-2 text-sm rounded-lg border-2 font-medium transition-all cursor-pointer border-white/10 text-gray-400 hover:border-white/30 bg-white/[0.02]';
+      }
+    });
+    if (arr.length > 0) {
+      sizesSummary.innerHTML = `<span class="text-accent-gold font-medium">${arr.length} talla${arr.length > 1 ? 's' : ''}</span> seleccionada${arr.length > 1 ? 's' : ''}: <span class="text-gray-300">${arr.join(', ')}</span>`;
+    } else {
+      sizesSummary.textContent = 'Selecciona al menos una talla';
+    }
+  }
+
+  document.querySelectorAll('.size-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const preset = btn.dataset.preset;
+      document.querySelectorAll('.size-preset-btn').forEach(b => {
+        b.className = 'size-preset-btn px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:border-accent-gold/50 hover:text-accent-gold transition-all bg-white/5';
+      });
+      btn.className = 'size-preset-btn px-3 py-1.5 text-xs rounded-lg border border-accent-gold text-accent-gold transition-all bg-accent-gold/10';
+      currentPreset = preset;
+      if (preset === 'unica') {
+        selectedSizes.clear();
+        selectedSizes.add('Única');
+      } else {
+        const presetSizes = SIZE_PRESETS[preset];
+        const keep = new Set();
+        selectedSizes.forEach(s => { if (presetSizes.includes(s)) keep.add(s); });
+        selectedSizes = keep;
+      }
+      renderSizeButtons(preset);
+      updateSizesUI();
+    });
+  });
+
+  addCustomBtn?.addEventListener('click', () => {
+    const val = customInput?.value?.trim().toUpperCase();
+    if (val && !selectedSizes.has(val)) {
+      selectedSizes.add(val);
+      addSizeButton(val);
+      updateSizesUI();
+      customInput.value = '';
+    }
+  });
+
+  customInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addCustomBtn?.click(); }
+  });
+
+  // Inicializar: detectar preset y renderizar
+  const detectedPreset = detectPreset(currentSizes);
+  renderSizeButtons(detectedPreset);
+  const presetBtn = document.querySelector(`[data-preset="${detectedPreset}"]`);
+  if (presetBtn) presetBtn.className = 'size-preset-btn px-3 py-1.5 text-xs rounded-lg border border-accent-gold text-accent-gold transition-all bg-accent-gold/10';
+  updateSizesUI();
+
+  // ═══════════════════════════════════════════════════════════
+  // EDITOR DE MEDIDAS POR TALLA (edición)
+  // ═══════════════════════════════════════════════════════════
+  const MEASURE_LABELS: Record<string, string> = {
+    chest: 'Pecho',
+    waist: 'Cintura',
+    hip: 'Cadera',
+    length: 'Largo total',
+    sleeve: 'Manga',
+    shoulder: 'Hombro',
+    inseam: 'Entrepierna',
+    foot: 'Pie',
+  };
+
+  const DEFAULT_MEASUREMENTS: Record<string, Record<string, Record<string, [number, number]>>> = {
+    mujer: {
+      XS:  { chest: [78, 82],  waist: [60, 64],  hip: [86, 90],  length: [60, 62], sleeve: [58, 60], shoulder: [36, 38] },
+      S:   { chest: [82, 88],  waist: [64, 70],  hip: [90, 96],  length: [62, 64], sleeve: [59, 61], shoulder: [37, 39] },
+      M:   { chest: [88, 94],  waist: [70, 76],  hip: [96, 102], length: [64, 66], sleeve: [60, 62], shoulder: [38, 40] },
+      L:   { chest: [94, 100], waist: [76, 82],  hip: [102, 108], length: [66, 68], sleeve: [61, 63], shoulder: [39, 41] },
+      XL:  { chest: [100, 108], waist: [82, 90],  hip: [108, 116], length: [68, 70], sleeve: [62, 64], shoulder: [40, 42] },
+      XXL: { chest: [108, 118], waist: [90, 100], hip: [116, 126], length: [70, 72], sleeve: [63, 65], shoulder: [41, 43] },
+    },
+    hombre: {
+      XS:  { chest: [84, 88],  waist: [70, 74],  hip: [86, 90],  length: [66, 68], sleeve: [61, 63], shoulder: [40, 42] },
+      S:   { chest: [88, 94],  waist: [74, 80],  hip: [90, 96],  length: [68, 70], sleeve: [62, 64], shoulder: [42, 44] },
+      M:   { chest: [94, 100], waist: [80, 86],  hip: [96, 102], length: [70, 72], sleeve: [63, 65], shoulder: [44, 46] },
+      L:   { chest: [100, 108], waist: [86, 94],  hip: [102, 108], length: [72, 74], sleeve: [64, 66], shoulder: [46, 48] },
+      XL:  { chest: [108, 116], waist: [94, 102], hip: [108, 116], length: [74, 76], sleeve: [65, 67], shoulder: [48, 50] },
+      XXL: { chest: [116, 126], waist: [102, 112], hip: [116, 126], length: [76, 78], sleeve: [66, 68], shoulder: [50, 52] },
+    }
+  };
+
+  type MeasureRange = [number | null, number | null] | [string, string];
+  type SizeMeasurement = Record<string, MeasureRange>;
+  type SizeMeasurementsMap = Record<string, SizeMeasurement>;
+
+  const measurementsSection = document.getElementById('measurements-section');
+  const measurementsEditor = document.getElementById('measurements-editor') as HTMLDivElement;
+  const measurementsHidden = document.getElementById('measurements-hidden') as HTMLInputElement;
+  const fillDefaultBtn = document.getElementById('fill-default-measurements');
+
+  // Cargar medidas existentes del producto
+  let sizeMeasurements: SizeMeasurementsMap = {};
+  try {
+    const parsed = typeof productMeasurementsJson === 'string' ? JSON.parse(productMeasurementsJson) : (productMeasurementsJson || {});
+    sizeMeasurements = parsed;
+  } catch { sizeMeasurements = {}; }
+
+  // Detectar tipos de medida activos a partir de las medidas existentes del producto
+  let activeMeasureTypes = new Set<string>(['chest', 'waist', 'hip']);
+  // Si el producto ya tiene medidas, detectar qué tipos usa
+  const existingMeasureTypes = new Set<string>();
+  for (const sizeData of Object.values(sizeMeasurements)) {
+    for (const key of Object.keys(sizeData as Record<string, any>)) {
+      existingMeasureTypes.add(key);
+    }
+  }
+  if (existingMeasureTypes.size > 0) {
+    activeMeasureTypes = existingMeasureTypes;
+  }
+
+  // Inicializar aspecto visual de los botones de tipo de medida según las medidas existentes
+  document.querySelectorAll<HTMLButtonElement>('.measure-type-btn').forEach((btn) => {
+    const type = btn.dataset.measureType || '';
+    if (activeMeasureTypes.has(type)) {
+      btn.className = 'measure-type-btn px-3 py-1.5 text-xs rounded-lg border border-accent-gold text-accent-gold bg-accent-gold/10 transition-all';
+    } else {
+      btn.className = 'measure-type-btn px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:border-accent-gold/50 bg-white/5 transition-all';
+    }
+  });
+
+  // Toggle de tipos de medida
+  document.querySelectorAll<HTMLButtonElement>('.measure-type-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const type = btn.dataset.measureType || '';
+      if (activeMeasureTypes.has(type)) {
+        activeMeasureTypes.delete(type);
+        btn.className = 'measure-type-btn px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:border-accent-gold/50 bg-white/5 transition-all';
+      } else {
+        activeMeasureTypes.add(type);
+        btn.className = 'measure-type-btn px-3 py-1.5 text-xs rounded-lg border border-accent-gold text-accent-gold bg-accent-gold/10 transition-all';
+      }
+      renderMeasurementsEditor();
+    });
+  });
+
+  function renderMeasurementsEditor() {
+    const sizes = Array.from(selectedSizes);
+    if (sizes.length === 0 || (sizes.length === 1 && sizes[0] === 'Única') || activeMeasureTypes.size === 0) {
+      if (sizes.length === 0 || (sizes.length === 1 && sizes[0] === 'Única')) {
+        measurementsSection?.classList.add('hidden');
+      }
+      measurementsHidden.value = '';
+      measurementsEditor.innerHTML = '';
+      return;
+    }
+    measurementsSection?.classList.remove('hidden');
+    measurementsEditor.innerHTML = '';
+
+    const activeTypes = Array.from(activeMeasureTypes);
+
+    sizes.forEach((size: string) => {
+      const m = sizeMeasurements[size] || {};
+      const row = document.createElement('div');
+      row.className = 'bg-dark-card/50 rounded-lg border border-white/5 p-3';
+      row.dataset.measureSize = size;
+
+      const fieldsHtml = activeTypes.map((type) => {
+        const val = m[type] || ['', ''];
+        return `
+          <div>
+            <label class="text-[10px] text-gray-500 mb-1 block">${MEASURE_LABELS[type] || type} (cm)</label>
+            <div class="flex items-center gap-1">
+              <input type="number" data-size="${size}" data-measure="${type}" data-bound="0" value="${val[0]}" min="20" max="200" placeholder="min" class="measure-input w-full px-2 py-1.5 text-xs bg-dark-card border border-white/10 rounded text-white placeholder-gray-600 focus:ring-1 focus:ring-accent-gold/50" />
+              <span class="text-gray-600 text-xs">–</span>
+              <input type="number" data-size="${size}" data-measure="${type}" data-bound="1" value="${val[1]}" min="20" max="200" placeholder="max" class="measure-input w-full px-2 py-1.5 text-xs bg-dark-card border border-white/10 rounded text-white placeholder-gray-600 focus:ring-1 focus:ring-accent-gold/50" />
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Calcular grid cols según la cantidad de medidas activas
+      const cols = activeTypes.length <= 3 ? activeTypes.length : Math.min(activeTypes.length, 4);
+
+      row.innerHTML = `
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs font-bold text-accent-gold bg-accent-gold/10 px-2 py-0.5 rounded">${size}</span>
+          <span class="text-[10px] text-gray-600">Rango mín – máx en cm</span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-${cols} gap-3">
+          ${fieldsHtml}
+        </div>
+      `;
+      measurementsEditor.appendChild(row);
+    });
+
+    // Escuchar cambios en todos los inputs de medidas
+    measurementsEditor.querySelectorAll<HTMLInputElement>('.measure-input').forEach((input) => {
+      input.addEventListener('input', updateMeasurementsHidden);
+    });
+    updateMeasurementsHidden();
+  }
+
+  function updateMeasurementsHidden() {
+    const data: SizeMeasurementsMap = {};
+    measurementsEditor.querySelectorAll<HTMLInputElement>('.measure-input').forEach((input) => {
+      const size = input.dataset.size || '';
+      const measure = input.dataset.measure || '';
+      const bound = parseInt(input.dataset.bound || '0');
+      const val = input.value ? parseInt(input.value) : null;
+      if (!data[size]) data[size] = {};
+      if (!data[size][measure]) data[size][measure] = [null, null];
+      (data[size][measure] as (number | null)[])[bound] = val;
+    });
+    // Limpiar entradas vacías
+    const clean: SizeMeasurementsMap = {};
+    for (const [size, measures] of Object.entries(data)) {
+      const hasAny = Object.values(measures).some(arr => arr[0] !== null || arr[1] !== null);
+      if (hasAny) clean[size] = measures;
+    }
+    sizeMeasurements = { ...sizeMeasurements, ...data };
+    measurementsHidden.value = Object.keys(clean).length > 0 ? JSON.stringify(clean) : '';
+  }
+
+  fillDefaultBtn?.addEventListener('click', () => {
+    // Detectar género según la categoría seleccionada
+    const catSelect = document.getElementById('category_id') as HTMLSelectElement | null;
+    const selectedOption = catSelect?.options?.[catSelect.selectedIndex];
+    const optgroupLabel = (selectedOption?.parentElement as HTMLOptGroupElement)?.label || '';
+    const gender = optgroupLabel.toLowerCase().includes('hombre') ? 'hombre' : 'mujer';
+    const defaults = DEFAULT_MEASUREMENTS[gender] || DEFAULT_MEASUREMENTS['mujer'];
+
+    const sizes = Array.from(selectedSizes);
+    sizes.forEach((size: string) => {
+      const sizeDefaults = defaults[size as keyof typeof defaults];
+      if (sizeDefaults) {
+        if (!sizeMeasurements[size]) sizeMeasurements[size] = {};
+        // Solo rellenar las medidas activas que tengan valores por defecto
+        activeMeasureTypes.forEach((type) => {
+          if (sizeDefaults[type]) {
+            sizeMeasurements[size][type] = [...sizeDefaults[type]] as [number, number];
+          }
+        });
+      }
+    });
+    renderMeasurementsEditor();
+  });
+
+  // Hook: actualizar editor de medidas cuando cambian las tallas
+  const _origUpdateSizesUI = updateSizesUI;
+  updateSizesUI = function() {
+    _origUpdateSizesUI();
+    renderMeasurementsEditor();
+  };
+
+  // Renderizar editor inicial con medidas existentes
+  renderMeasurementsEditor();
+
+  // ═══════════════════════════════════════════════════════════
+  // UPLOADER DE IMÁGENES (edición)
+  // ═══════════════════════════════════════════════════════════
+  const existingImages: string[] = typeof productImagesJson === 'string' ? JSON.parse(productImagesJson) : (Array.isArray(productImagesJson) ? productImagesJson : []);
+  const imageUrls: string[] = [...existingImages];
+  const dropZone = document.getElementById('drop-zone') as HTMLDivElement;
+  const fileInput = document.getElementById('file-input') as HTMLInputElement;
+  const urlInput = document.getElementById('url-input') as HTMLInputElement;
+  const addUrlBtn = document.getElementById('add-url-btn') as HTMLButtonElement;
+  const imagesGrid = document.getElementById('images-grid') as HTMLDivElement;
+  const imagesHidden = document.getElementById('images-hidden') as HTMLInputElement;
+  const imagesSummary = document.getElementById('images-summary') as HTMLDivElement;
+  const uploadProgressEl = document.getElementById('upload-progress') as HTMLDivElement;
+  const uploadBar = document.getElementById('upload-bar') as HTMLDivElement;
+  const uploadTextEl = document.getElementById('upload-text') as HTMLSpanElement;
+  const imagesError = document.getElementById('images-error') as HTMLDivElement;
+  const imagesErrorText = document.getElementById('images-error-text') as HTMLSpanElement;
+
+  function showImageError(msg: string) {
+    imagesErrorText.textContent = msg;
+    imagesError.style.display = 'flex';
+    imagesError.classList.remove('hidden');
+    setTimeout(() => { imagesError.classList.add('hidden'); imagesError.style.display = ''; }, 5000);
+  }
+
+  function updateImagesUI() {
+    imagesHidden.value = imageUrls.join('\n');
+    if (imageUrls.length > 0) {
+      imagesSummary.innerHTML = `<span class="text-accent-gold font-medium">${imageUrls.length} imagen${imageUrls.length > 1 ? 'es' : ''}</span> · La primera es la principal`;
+    } else {
+      imagesSummary.textContent = 'Añade al menos una imagen';
+    }
+    renderImagesGrid();
+  }
+
+  function renderImagesGrid() {
+    imagesGrid.innerHTML = '';
+    imageUrls.forEach((url: string, i: number) => {
+      const card = document.createElement('div');
+      card.className = 'relative group rounded-lg overflow-hidden border-2 border-white/10 aspect-square bg-dark-card';
+      card.innerHTML = `
+        <img src="${url}" alt="Imagen ${i + 1}" class="w-full h-full object-cover" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2210%22>Error</text></svg>'" />
+        ${i === 0 ? '<span class="absolute top-1 left-1 bg-accent-gold text-dark-bg text-[9px] font-bold px-1.5 py-0.5 rounded">Principal</span>' : ''}
+        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+          ${i > 0 ? `<button type="button" data-action="move-first" data-idx="${i}" class="p-1.5 bg-white/20 rounded-lg hover:bg-white/30 text-white" title="Hacer principal"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg></button>` : ''}
+          <button type="button" data-action="remove" data-idx="${i}" class="p-1.5 bg-red-500/60 rounded-lg hover:bg-red-500/80 text-white" title="Eliminar"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+        </div>
+      `;
+      imagesGrid.appendChild(card);
+    });
+
+    imagesGrid.querySelectorAll<HTMLButtonElement>('[data-action="remove"]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        imageUrls.splice(parseInt(btn.dataset.idx || '0'), 1);
+        updateImagesUI();
+      });
+    });
+    imagesGrid.querySelectorAll<HTMLButtonElement>('[data-action="move-first"]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.idx || '0');
+        const [moved] = imageUrls.splice(idx, 1);
+        imageUrls.unshift(moved);
+        updateImagesUI();
+      });
+    });
+  }
+
+  async function uploadFiles(files: FileList | null) {
+    if (!files) return;
+    const validFiles = Array.from(files).filter((f: File) => {
+      if (f.size > 10 * 1024 * 1024) { showImageError(`${f.name} supera 10MB`); return false; }
+      if (!f.type.startsWith('image/')) { showImageError(`${f.name} no es una imagen`); return false; }
+      return true;
+    });
+    if (!validFiles.length) return;
+
+    uploadProgressEl.classList.remove('hidden');
+    let uploaded = 0;
+
+    for (const file of validFiles) {
+      uploadTextEl.textContent = `Subiendo ${uploaded + 1}/${validFiles.length}...`;
+      uploadBar.style.width = `${(uploaded / validFiles.length) * 100}%`;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/admin/upload-image', { 
+          method: 'POST', 
+          body: formData,
+          credentials: 'same-origin',
+        });
+        const data = await res.json();
+        console.log('[Upload] Response:', res.status, data);
+        if (res.ok && data.url) {
+          imageUrls.push(data.url);
+        } else {
+          showImageError(data.error || `Error subiendo ${file.name}`);
+        }
+      } catch (err) {
+        showImageError(`Error de red subiendo ${file.name}`);
+      }
+      uploaded++;
+      uploadBar.style.width = `${(uploaded / validFiles.length) * 100}%`;
+    }
+
+    uploadTextEl.textContent = '¡Listo!';
+    setTimeout(() => uploadProgressEl.classList.add('hidden'), 1500);
+    updateImagesUI();
+  }
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => uploadFiles(fileInput.files));
+
+  ['dragenter', 'dragover'].forEach(ev => {
+    dropZone.addEventListener(ev, (e) => { e.preventDefault(); dropZone.classList.add('border-accent-gold/50', 'bg-accent-gold/5'); });
+  });
+  ['dragleave', 'drop'].forEach(ev => {
+    dropZone.addEventListener(ev, (e) => { e.preventDefault(); dropZone.classList.remove('border-accent-gold/50', 'bg-accent-gold/5'); });
+  });
+  dropZone.addEventListener('drop', (e: DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer?.files;
+    if (files?.length) uploadFiles(files);
+  });
+
+  addUrlBtn.addEventListener('click', () => {
+    const url = urlInput.value.trim();
+    if (!url) return;
+    try {
+      new URL(url);
+      imageUrls.push(url);
+      updateImagesUI();
+      urlInput.value = '';
+    } catch {
+      showImageError('URL no válida');
+    }
+  });
+  urlInput.addEventListener('keydown', (e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); addUrlBtn.click(); } });
+
+  // Inicializar con imágenes existentes
+  updateImagesUI();
 </script>

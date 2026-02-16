@@ -131,7 +131,7 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
                   if (subcategories.length > 0) {
                     toggleCategory(main.id);
                   } else {
-                    window.location.href = `/${currentGender}/${main.slug}`;
+                    window.location.href = `/productos?genero=${currentGender}&categoria=${main.slug}`;
                   }
                 }}
                 className={`w-full flex items-center justify-between px-6 py-3 text-left transition-all duration-200 ease-in-out group ${
@@ -182,7 +182,7 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
                     {subcategories.map(sub => (
                       <li key={sub.id}>
                         <a
-                          href={`/${currentGender}/${main.slug}/${sub.slug}`}
+                          href={`/productos?genero=${currentGender}&categoria=${sub.slug}`}
                           className={`block px-10 py-2.5 text-sm transition-all duration-200 ${
                             isActive(sub.slug)
                               ? 'text-accent-gold font-medium bg-accent-gold/10 border-l-2 border-accent-gold'

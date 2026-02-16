@@ -46,23 +46,23 @@ const formatDate = (date: string) => {
 
 // Estados disponibles
 const statusOptions = [
-  { value: 'pending', label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'confirmed', label: 'Confirmado', color: 'bg-blue-100 text-blue-800' },
-  { value: 'processing', label: 'Procesando', color: 'bg-indigo-100 text-indigo-800' },
-  { value: 'shipped', label: 'Enviado', color: 'bg-purple-100 text-purple-800' },
-  { value: 'delivered', label: 'Entregado', color: 'bg-green-100 text-green-800' },
-  { value: 'cancelled', label: 'Cancelado', color: 'bg-red-100 text-red-800' },
-  { value: 'refunded', label: 'Reembolsado', color: 'bg-gray-100 text-gray-800' }
+  { value: 'pending', label: 'Pendiente', color: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' },
+  { value: 'confirmed', label: 'Confirmado', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
+  { value: 'processing', label: 'Procesando', color: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' },
+  { value: 'shipped', label: 'Enviado', color: 'bg-purple-500/20 text-purple-400 border border-purple-500/30' },
+  { value: 'delivered', label: 'Entregado', color: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' },
+  { value: 'cancelled', label: 'Cancelado', color: 'bg-red-500/20 text-red-400 border border-red-500/30' },
+  { value: 'refunded', label: 'Reembolsado', color: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' }
 ];
 
 const currentStatus = statusOptions.find(s => s.value === order.status) || statusOptions[0];
 
 // Estados de pago
 const paymentStatusOptions = [
-  { value: 'pending', label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'paid', label: 'Pagado', color: 'bg-green-100 text-green-800' },
-  { value: 'failed', label: 'Fallido', color: 'bg-red-100 text-red-800' },
-  { value: 'refunded', label: 'Reembolsado', color: 'bg-gray-100 text-gray-800' }
+  { value: 'pending', label: 'Pendiente', color: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' },
+  { value: 'paid', label: 'Pagado', color: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' },
+  { value: 'failed', label: 'Fallido', color: 'bg-red-500/20 text-red-400 border border-red-500/30' },
+  { value: 'refunded', label: 'Reembolsado', color: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' }
 ];
 
 const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.payment_status) || paymentStatusOptions[0];
@@ -75,14 +75,14 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
       <div class="flex items-center space-x-4">
         <a
           href="/admin/pedidos"
-          class="text-gray-600 hover:text-gray-900 transition-colors"
+          class="text-gray-400 hover:text-white transition-colors"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
         </a>
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Pedido {order.order_number}</h1>
+          <h1 class="text-3xl font-bold text-white">Pedido {order.order_number}</h1>
           <p class="text-sm text-gray-500 mt-1">Creado el {formatDate(order.created_at)}</p>
         </div>
       </div>
@@ -102,12 +102,12 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
       {/* Columna izquierda - Productos */}
       <div class="lg:col-span-2 space-y-6">
         {/* Items del pedido */}
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-          <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Productos ({orderItems?.length || 0})</h2>
+        <div class="bg-dark-surface rounded-xl border border-white/10 overflow-hidden">
+          <div class="px-6 py-4 border-b border-white/10">
+            <h2 class="text-lg font-semibold text-white">Productos ({orderItems?.length || 0})</h2>
           </div>
           
-          <div class="divide-y divide-gray-200">
+          <div class="divide-y divide-white/5">
             {orderItems && orderItems.map((item) => (
               <div class="px-6 py-4 flex items-center space-x-4">
                 {/* Imagen */}
@@ -121,7 +121,7 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
                 
                 {/* Info del producto */}
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-900 truncate">
+                  <p class="text-sm font-medium text-white truncate">
                     {item.product_name}
                   </p>
                   <p class="text-sm text-gray-500">
@@ -131,10 +131,10 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
                 
                 {/* Cantidad y precio */}
                 <div class="text-right">
-                  <p class="text-sm text-gray-900">
+                  <p class="text-sm text-gray-400">
                     {item.quantity} × {formatCurrency(item.price_per_unit)}
                   </p>
-                  <p class="text-sm font-medium text-gray-900">
+                  <p class="text-sm font-medium text-accent-gold">
                     {formatCurrency(item.total_price)}
                   </p>
                 </div>
@@ -143,56 +143,56 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
           </div>
           
           {/* Totales */}
-          <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 space-y-2">
+          <div class="px-6 py-4 bg-dark-card/50 border-t border-white/10 space-y-2">
             <div class="flex justify-between text-sm">
-              <span class="text-gray-600">Subtotal:</span>
-              <span class="text-gray-900">{formatCurrency(order.subtotal)}</span>
+              <span class="text-gray-400">Subtotal:</span>
+              <span class="text-white">{formatCurrency(order.subtotal)}</span>
             </div>
             {order.shipping_cost > 0 && (
               <div class="flex justify-between text-sm">
-                <span class="text-gray-600">Envío:</span>
-                <span class="text-gray-900">{formatCurrency(order.shipping_cost)}</span>
+                <span class="text-gray-400">Envío:</span>
+                <span class="text-white">{formatCurrency(order.shipping_cost)}</span>
               </div>
             )}
             {order.tax > 0 && (
               <div class="flex justify-between text-sm">
-                <span class="text-gray-600">IVA:</span>
-                <span class="text-gray-900">{formatCurrency(order.tax)}</span>
+                <span class="text-gray-400">IVA:</span>
+                <span class="text-white">{formatCurrency(order.tax)}</span>
               </div>
             )}
             {order.discount > 0 && (
               <div class="flex justify-between text-sm">
-                <span class="text-gray-600">Descuento:</span>
-                <span class="text-red-600">-{formatCurrency(order.discount)}</span>
+                <span class="text-gray-400">Descuento:</span>
+                <span class="text-red-400">-{formatCurrency(order.discount)}</span>
               </div>
             )}
-            <div class="flex justify-between text-base font-semibold pt-2 border-t border-gray-300">
-              <span class="text-gray-900">Total:</span>
-              <span class="text-gray-900">{formatCurrency(order.total)}</span>
+            <div class="flex justify-between text-base font-semibold pt-2 border-t border-white/10">
+              <span class="text-white">Total:</span>
+              <span class="text-accent-gold">{formatCurrency(order.total)}</span>
             </div>
           </div>
         </div>
 
         {/* Información de pago */}
-        <div class="bg-white rounded-lg shadow">
-          <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Información de Pago</h2>
+        <div class="bg-dark-surface rounded-xl border border-white/10">
+          <div class="px-6 py-4 border-b border-white/10">
+            <h2 class="text-lg font-semibold text-white">Información de Pago</h2>
           </div>
           <div class="px-6 py-4 space-y-3">
             <div class="flex justify-between">
-              <span class="text-sm text-gray-600">Método de pago:</span>
-              <span class="text-sm text-gray-900 capitalize">{order.payment_method}</span>
+              <span class="text-sm text-gray-400">Método de pago:</span>
+              <span class="text-sm text-white capitalize">{order.payment_method}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-sm text-gray-600">Estado del pago:</span>
+              <span class="text-sm text-gray-400">Estado del pago:</span>
               <span class={`text-sm px-2 py-1 rounded ${currentPaymentStatus.color}`}>
                 {currentPaymentStatus.label}
               </span>
             </div>
             {order.payment_id && (
               <div class="flex justify-between">
-                <span class="text-sm text-gray-600">ID de pago:</span>
-                <span class="text-sm text-gray-900 font-mono">{order.payment_id}</span>
+                <span class="text-sm text-gray-400">ID de pago:</span>
+                <span class="text-sm text-white font-mono">{order.payment_id}</span>
               </div>
             )}
           </div>
@@ -202,20 +202,20 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
       {/* Columna derecha - Información del cliente y gestión */}
       <div class="space-y-6">
         {/* Actualizar estado */}
-        <div class="bg-white rounded-lg shadow">
-          <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Gestión del Pedido</h2>
+        <div class="bg-dark-surface rounded-xl border border-white/10">
+          <div class="px-6 py-4 border-b border-white/10">
+            <h2 class="text-lg font-semibold text-white">Gestión del Pedido</h2>
           </div>
           <div class="px-6 py-4">
             <form id="update-status-form" class="space-y-4">
               <div>
-                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="status" class="block text-sm font-medium text-gray-400 mb-1">
                   Estado del pedido
                 </label>
                 <select
                   id="status"
                   name="status"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  class="w-full px-3 py-2 bg-dark-card border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-accent-gold focus:border-transparent"
                 >
                   {statusOptions.map(option => (
                     <option value={option.value} selected={option.value === order.status}>
@@ -226,7 +226,7 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
               </div>
 
               <div>
-                <label for="shipping_method" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="shipping_method" class="block text-sm font-medium text-gray-400 mb-1">
                   Método de envío
                 </label>
                 <input
@@ -235,12 +235,12 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
                   name="shipping_method"
                   value={order.shipping_method || ''}
                   placeholder="Ej: SEUR, Correos Express"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  class="w-full px-3 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label for="tracking_number" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="tracking_number" class="block text-sm font-medium text-gray-400 mb-1">
                   Número de seguimiento
                 </label>
                 <input
@@ -249,26 +249,26 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
                   name="tracking_number"
                   value={order.tracking_number || ''}
                   placeholder="Código de tracking"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  class="w-full px-3 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label for="admin_notes" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="admin_notes" class="block text-sm font-medium text-gray-400 mb-1">
                   Notas internas
                 </label>
                 <textarea
                   id="admin_notes"
                   name="admin_notes"
                   rows="3"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  class="w-full px-3 py-2 bg-dark-card border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-gold focus:border-transparent"
                   placeholder="Notas privadas del administrador"
                 >{order.admin_notes || ''}</textarea>
               </div>
 
               <button
                 type="submit"
-                class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                class="w-full bg-accent-gold text-dark-bg px-4 py-2 rounded-lg hover:bg-accent-gold/90 transition-colors font-medium"
               >
                 Guardar cambios
               </button>
@@ -278,12 +278,12 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
 
         {/* Zona de peligro - Reembolso */}
         {(order.payment_status === 'paid' && order.status !== 'refunded') && (
-          <div class="bg-white rounded-lg shadow border-2 border-red-200">
-            <div class="px-6 py-4 border-b border-red-200 bg-red-50">
-              <h2 class="text-lg font-semibold text-red-900">Zona de Peligro</h2>
+          <div class="bg-dark-surface rounded-xl border-2 border-red-500/30">
+            <div class="px-6 py-4 border-b border-red-500/30 bg-red-500/10">
+              <h2 class="text-lg font-semibold text-red-400">Zona de Peligro</h2>
             </div>
             <div class="px-6 py-4">
-              <p class="text-sm text-gray-600 mb-4">
+              <p class="text-sm text-gray-400 mb-4">
                 El reembolso devolverá el dinero al cliente mediante Stripe y recuperará el stock de los productos. Esta acción no se puede deshacer.
               </p>
               <button
@@ -299,15 +299,15 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
 
         {/* Estado de reembolso */}
         {(order.status === 'refunded' || order.payment_status === 'refunded') && (
-          <div class="bg-white rounded-lg shadow border-2 border-gray-200">
-            <div class="px-6 py-4 bg-gray-50">
+          <div class="bg-dark-surface rounded-xl border border-white/10">
+            <div class="px-6 py-4 bg-emerald-500/10">
               <div class="flex items-center space-x-2">
-                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <h2 class="text-lg font-semibold text-gray-900">Pedido Reembolsado</h2>
+                <h2 class="text-lg font-semibold text-white">Pedido Reembolsado</h2>
               </div>
-              <p class="text-sm text-gray-600 mt-2">
+              <p class="text-sm text-gray-400 mt-2">
                 Este pedido ha sido reembolsado. El dinero fue devuelto al cliente y el stock recuperado.
               </p>
             </div>
@@ -315,37 +315,37 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
         )}
 
         {/* Información del cliente */}
-        <div class="bg-white rounded-lg shadow">
-          <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Cliente</h2>
+        <div class="bg-dark-surface rounded-xl border border-white/10">
+          <div class="px-6 py-4 border-b border-white/10">
+            <h2 class="text-lg font-semibold text-white">Cliente</h2>
           </div>
           <div class="px-6 py-4 space-y-3">
             <div>
-              <p class="text-sm text-gray-600">Nombre:</p>
-              <p class="text-sm font-medium text-gray-900">{order.shipping_full_name}</p>
+              <p class="text-sm text-gray-400">Nombre:</p>
+              <p class="text-sm font-medium text-white">{order.shipping_full_name}</p>
             </div>
             {order.shipping_phone && (
               <div>
-                <p class="text-sm text-gray-600">Teléfono:</p>
-                <p class="text-sm text-gray-900">{order.shipping_phone}</p>
+                <p class="text-sm text-gray-400">Teléfono:</p>
+                <p class="text-sm text-white">{order.shipping_phone}</p>
               </div>
             )}
             {order.user_id && (
               <div>
-                <p class="text-sm text-gray-600">ID Usuario:</p>
-                <p class="text-sm text-gray-900 font-mono text-xs">{order.user_id}</p>
+                <p class="text-sm text-gray-400">ID Usuario:</p>
+                <p class="text-sm text-gray-500 font-mono text-xs">{order.user_id}</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Dirección de envío */}
-        <div class="bg-white rounded-lg shadow">
-          <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Dirección de Envío</h2>
+        <div class="bg-dark-surface rounded-xl border border-white/10">
+          <div class="px-6 py-4 border-b border-white/10">
+            <h2 class="text-lg font-semibold text-white">Dirección de Envío</h2>
           </div>
           <div class="px-6 py-4">
-            <address class="text-sm text-gray-900 not-italic space-y-1">
+            <address class="text-sm text-gray-300 not-italic space-y-1">
               <p class="font-medium">{order.shipping_full_name}</p>
               <p>{order.shipping_address_line1}</p>
               {order.shipping_address_line2 && <p>{order.shipping_address_line2}</p>}
@@ -358,42 +358,42 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
 
         {/* Notas del cliente */}
         {order.customer_notes && (
-          <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h2 class="text-lg font-semibold text-gray-900">Notas del Cliente</h2>
+          <div class="bg-dark-surface rounded-xl border border-white/10">
+            <div class="px-6 py-4 border-b border-white/10">
+              <h2 class="text-lg font-semibold text-white">Notas del Cliente</h2>
             </div>
             <div class="px-6 py-4">
-              <p class="text-sm text-gray-700">{order.customer_notes}</p>
+              <p class="text-sm text-gray-300">{order.customer_notes}</p>
             </div>
           </div>
         )}
 
         {/* Timestamps */}
-        <div class="bg-white rounded-lg shadow">
-          <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Historial</h2>
+        <div class="bg-dark-surface rounded-xl border border-white/10">
+          <div class="px-6 py-4 border-b border-white/10">
+            <h2 class="text-lg font-semibold text-white">Historial</h2>
           </div>
           <div class="px-6 py-4 space-y-2 text-xs">
             <div class="flex justify-between">
-              <span class="text-gray-600">Creado:</span>
-              <span class="text-gray-900">{formatDate(order.created_at)}</span>
+              <span class="text-gray-400">Creado:</span>
+              <span class="text-white">{formatDate(order.created_at)}</span>
             </div>
             {order.updated_at && order.updated_at !== order.created_at && (
               <div class="flex justify-between">
-                <span class="text-gray-600">Actualizado:</span>
-                <span class="text-gray-900">{formatDate(order.updated_at)}</span>
+                <span class="text-gray-400">Actualizado:</span>
+                <span class="text-white">{formatDate(order.updated_at)}</span>
               </div>
             )}
             {order.shipped_at && (
               <div class="flex justify-between">
-                <span class="text-gray-600">Enviado:</span>
-                <span class="text-gray-900">{formatDate(order.shipped_at)}</span>
+                <span class="text-gray-400">Enviado:</span>
+                <span class="text-white">{formatDate(order.shipped_at)}</span>
               </div>
             )}
             {order.delivered_at && (
               <div class="flex justify-between">
-                <span class="text-gray-600">Entregado:</span>
-                <span class="text-gray-900">{formatDate(order.delivered_at)}</span>
+                <span class="text-gray-400">Entregado:</span>
+                <span class="text-white">{formatDate(order.delivered_at)}</span>
               </div>
             )}
           </div>
@@ -403,6 +403,8 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
   </div>
 
   <script>
+    import { customConfirm, customAlert } from '../../../lib/notifications';
+    
     // Actualizar estado del pedido
     document.getElementById('update-status-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -436,13 +438,13 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
           // Recargar página para ver cambios
           window.location.reload();
         } else {
-          alert('Error al actualizar: ' + result.error);
+          customAlert('Error al actualizar: ' + result.error, 'error');
           button.disabled = false;
           button.textContent = originalText;
         }
       } catch (error) {
         console.error('Error:', error);
-        alert('Error al actualizar el pedido');
+        customAlert('Error al actualizar el pedido', 'error');
         button.disabled = false;
         button.textContent = originalText;
       }
@@ -453,13 +455,19 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
       const button = e.target as HTMLButtonElement;
       
       // Confirmación
-      const confirmRefund = confirm(
+      const confirmRefund = await customConfirm(
         '⚠️ ¿Estás seguro de que quieres reembolsar este pedido?\n\n' +
         'Esta acción:\n' +
         '• Devolverá el dinero al cliente mediante Stripe\n' +
         '• Recuperará el stock de los productos\n' +
         '• NO se puede deshacer\n\n' +
-        '¿Deseas continuar?'
+        '¿Deseas continuar?',
+        {
+          title: 'Procesar reembolso',
+          confirmText: 'Sí, reembolsar',
+          cancelText: 'Cancelar',
+          type: 'danger'
+        }
       );
       
       if (!confirmRefund) return;
@@ -480,17 +488,17 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
         const result = await response.json();
         
         if (result.success) {
-          alert(`✅ Reembolso procesado correctamente\n\nID: ${result.refund.id}\nMonto: €${result.refund.amount}`);
+          customAlert(`✅ Reembolso procesado correctamente\n\nID: ${result.refund.id}\nMonto: €${result.refund.amount}`, 'success');
           // Recargar página para ver cambios
-          window.location.reload();
+          setTimeout(() => window.location.reload(), 2000);
         } else {
-          alert('❌ Error al procesar reembolso:\n\n' + result.error);
+          customAlert('❌ Error al procesar reembolso:\n\n' + result.error, 'error');
           button.disabled = false;
           button.textContent = originalText;
         }
       } catch (error) {
         console.error('Error:', error);
-        alert('❌ Error al procesar el reembolso');
+        customAlert('❌ Error al procesar el reembolso', 'error');
         button.disabled = false;
         button.textContent = originalText;
       }

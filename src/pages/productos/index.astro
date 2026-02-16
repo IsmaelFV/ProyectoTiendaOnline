@@ -1,16 +1,10 @@
 ---
-/**
- * ============================================================================
- * Página: Productos con Filtros Avanzados
- * ============================================================================
- */
-
 import PublicLayout from '@layouts/PublicLayout.astro';
 import ProductCard from '@components/product/ProductCard.astro';
 import { supabase } from '@lib/supabase';
 import type { Product } from '@lib/supabase';
 
-// Parámetros de filtros desde URL
+// ─── Parámetros ───
 const url = new URL(Astro.request.url);
 const categorySlug = url.searchParams.get('categoria');
 const genderSlug = url.searchParams.get('genero');
@@ -26,454 +20,1036 @@ const colorSlug = url.searchParams.get('color');
 const size = url.searchParams.get('talla');
 const material = url.searchParams.get('material');
 
-// Si hay filtro de categoría, obtener IDs de productos usando product_categories
-let productIdsFromCategory: string[] | null = null;
-if (categorySlug) {
-  const { data: cat } = await supabase.from('categories').select('id').eq('slug', categorySlug).single();
-  if (cat) {
-    const { data: relations } = await supabase
-      .from('product_categories')
-      .select('product_id')
-      .eq('category_id', cat.id);
-    productIdsFromCategory = (relations || []).map(rel => rel.product_id);
-  }
-}
-
-// Construir query con filtros
-let query = supabase
-  .from('products')
-  .select('*')
-  .eq('is_active', true); // Solo productos activos
-
-// Aplicar filtro de categoría si existe
-if (productIdsFromCategory !== null) {
-  if (productIdsFromCategory.length > 0) {
-    query = query.in('id', productIdsFromCategory);
-  } else {
-    // Si no hay productos en la categoría, devolver vacío
-    query = query.eq('id', '00000000-0000-0000-0000-000000000000'); // UUID inexistente
-  }
-}
-
-if (genderSlug) {
-  const { data: gen } = await supabase.from('genders').select('id').eq('slug', genderSlug).single();
-  if (gen) query = query.eq('gender_id', gen.id);
-}
-
-if (minPrice) query = query.gte('price', parseInt(minPrice) * 100);
-if (maxPrice) query = query.lte('price', parseInt(maxPrice) * 100);
-if (isOnSale) query = query.eq('is_on_sale', true);
-if (isNew) query = query.eq('is_new', true);
-if (size) query = query.contains('sizes', [size]);
-if (material) query = query.ilike('description', `%${material}%`);
-if (colorSlug) {
-  const { data: colorData } = await supabase.from('colors').select('name').eq('slug', colorSlug).single();
-  if (colorData) {
-    query = query.contains('colors', [colorData.name]);
-  }
-}
-
-// Ordenar
-if (sortBy === 'price_asc') query = query.order('price', { ascending: true });
-else if (sortBy === 'price_desc') query = query.order('price', { ascending: false });
-else if (sortBy === 'name') query = query.order('name');
-else query = query.order('created_at', { ascending: false });
-
-// Contar total de productos para paginación
-const countQuery = supabase
-  .from('products')
-  .select('id', { count: 'exact', head: true })
-  .eq('is_active', true); // Solo productos activos
-
-// Aplicar los mismos filtros al contador
-if (productIdsFromCategory !== null && productIdsFromCategory.length > 0) {
-  countQuery.in('id', productIdsFromCategory);
-}
-if (genderSlug) {
-  const { data: gen } = await supabase.from('genders').select('id').eq('slug', genderSlug).single();
-  if (gen) countQuery.eq('gender_id', gen.id);
-}
-if (minPrice) countQuery.gte('price', parseInt(minPrice) * 100);
-if (maxPrice) countQuery.lte('price', parseInt(maxPrice) * 100);
-if (isOnSale) countQuery.eq('is_on_sale', true);
-if (isNew) countQuery.eq('is_new', true);
-if (size) countQuery.contains('sizes', [size]);
-if (material) countQuery.ilike('description', `%${material}%`);
-if (colorSlug) {
-  const { data: colorData } = await supabase.from('colors').select('name').eq('slug', colorSlug).single();
-  if (colorData) {
-    countQuery.contains('colors', [colorData.name]);
-  }
-}
-
-const { count: totalProducts } = await countQuery;
-const totalPages = Math.ceil((totalProducts || 0) / itemsPerPage);
-
-// Aplicar paginación
-const { data: products } = await query.range(offset, offset + itemsPerPage - 1);
-const productsArray = (products || []) as Product[];
-
-// Datos para filtros - obtener todas las categorías (nivel 1, 2 y 3)
+// ─── Datos base ───
+const { data: genders } = await supabase.from('genders').select('*').eq('is_active', true).order('display_order');
 const { data: allCategories } = await supabase
   .from('categories')
   .select('id, name, slug, level, parent_id, gender_id')
   .eq('is_active', true)
   .order('display_order');
+const { data: colors } = await supabase.from('colors').select('*').eq('is_active', true).order('display_order');
 
-const { data: genders } = await supabase
-  .from('genders')
-  .select('*')
-  .eq('is_active', true)
-  .order('display_order');
+// ─── Resolver género ───
+let genderId: string | null = null;
+const selectedGender = genderSlug ? genders?.find(g => g.slug === genderSlug) : null;
+if (selectedGender) genderId = selectedGender.id;
 
-const { data: colors } = await supabase
-  .from('colors')
-  .select('*')
-  .eq('is_active', true)
-  .order('display_order');
+// ─── Helper de limpieza (mover arriba para usar en dedup) ───
+const clean = (name: string) => name.replace(/\s+(Mujer|Hombre)$/i, '');
 
-// Filtrar categorías según el género seleccionado
-let categories = allCategories || null;
-if (genderSlug) {
-  const selectedGender = genders?.find(g => g.slug === genderSlug);
-  if (selectedGender) {
-    categories = allCategories?.filter(c => c.gender_id === selectedGender.id) || null;
+// ─── Categorías filtradas por género ───
+const genderCategories = genderId
+  ? (allCategories || []).filter(c => c.gender_id === genderId)
+  : (allCategories || []);
+
+const isAllMode = !genderId;
+
+// Nivel 1 y nivel 2
+const level1 = genderCategories.filter((c: any) => c.level === 1);
+const level2 = genderCategories.filter((c: any) => c.level === 2);
+
+// ─── Deduplicación para modo "Todo" (sin género) ───
+function dedup(cats: any[]): any[] {
+  if (!isAllMode) return cats;
+  const seen = new Map<string, any>();
+  for (const c of cats) {
+    const baseName = clean(c.name).toLowerCase();
+    if (!seen.has(baseName)) {
+      seen.set(baseName, c);
+    }
+  }
+  return Array.from(seen.values());
+}
+
+// Categorías para mostrar en la navegación (sin duplicados en modo Todo)
+const displayLevel1 = dedup(level1);
+
+// Encontrar categoría seleccionada y su contexto jerárquico
+const selectedCat = categorySlug ? genderCategories.find((c: any) => c.slug === categorySlug) : null;
+const selectedIsLevel1 = selectedCat?.level === 1;
+const selectedIsLevel2 = selectedCat?.level === 2;
+const parentOfSelected = selectedIsLevel2
+  ? level1.find((c: any) => c.id === selectedCat?.parent_id)
+  : selectedIsLevel1 ? selectedCat : null;
+
+// Subcategorías visibles (deduplicadas en modo Todo)
+let visibleSubs: any[] = [];
+if (parentOfSelected) {
+  if (isAllMode) {
+    const parentBase = clean(parentOfSelected.name).toLowerCase();
+    const equivalentParents = (allCategories || []).filter((c: any) =>
+      c.level === 1 && clean(c.name).toLowerCase() === parentBase
+    );
+    const allChildren = (allCategories || []).filter((c: any) =>
+      c.level === 2 && equivalentParents.some((p: any) => p.id === c.parent_id)
+    );
+    visibleSubs = dedup(allChildren);
+  } else {
+    visibleSubs = level2.filter((c: any) => c.parent_id === parentOfSelected.id);
   }
 }
 
-// Tallas estándar
-const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+// Helpers para estado activo en modo Todo (comparar por nombre base)
+const isCatActive = (displayCat: any) => {
+  if (!selectedCat) return false;
+  if (!isAllMode) return categorySlug === displayCat.slug || parentOfSelected?.id === displayCat.id;
+  const displayBase = clean(displayCat.name).toLowerCase();
+  return clean(selectedCat.name).toLowerCase() === displayBase ||
+    (parentOfSelected ? clean(parentOfSelected.name).toLowerCase() === displayBase : false);
+};
+const isSubActive = (displaySub: any) => {
+  if (!selectedCat) return false;
+  if (!isAllMode) return categorySlug === displaySub.slug;
+  return selectedIsLevel2 && clean(selectedCat.name).toLowerCase() === clean(displaySub.name).toLowerCase();
+};
+const isParentLinkActive = () => {
+  if (!parentOfSelected || !selectedCat) return false;
+  if (!isAllMode) return categorySlug === parentOfSelected.slug;
+  return selectedIsLevel1;
+};
 
-// Materiales comunes
+// ─── Filtro por categoría ───
+let categoryIds: string[] = [];
+if (selectedCat) {
+  if (isAllMode) {
+    // En modo Todo, incluir TODAS las categorías equivalentes de ambos géneros
+    const baseName = clean(selectedCat.name).toLowerCase();
+    const equivalents = (allCategories || []).filter((c: any) =>
+      c.level === selectedCat.level && clean(c.name).toLowerCase() === baseName
+    );
+    categoryIds.push(...equivalents.map((c: any) => c.id));
+    if (selectedIsLevel1) {
+      for (const eq of equivalents) {
+        const children = (allCategories || []).filter((c: any) => c.level === 2 && c.parent_id === eq.id);
+        categoryIds.push(...children.map((c: any) => c.id));
+      }
+    }
+  } else {
+    categoryIds.push(selectedCat.id);
+    if (selectedIsLevel1) {
+      const children = level2.filter((c: any) => c.parent_id === selectedCat.id);
+      categoryIds.push(...children.map((c: any) => c.id));
+    }
+  }
+}
+
+// ─── Resolver color ───
+let colorName: string | null = null;
+if (colorSlug) {
+  const { data: colorData } = await supabase.from('colors').select('name').eq('slug', colorSlug).single();
+  if (colorData) colorName = colorData.name;
+}
+
+// ─── Filtros comunes ───
+function applyFilters(q: any) {
+  if (categoryIds.length > 0) q = q.in('category_id', categoryIds);
+  if (genderId) q = q.eq('gender_id', genderId);
+  if (minPrice) q = q.gte('price', parseInt(minPrice) * 100);
+  if (maxPrice) q = q.lte('price', parseInt(maxPrice) * 100);
+  if (isOnSale) q = q.eq('is_on_sale', true);
+  if (isNew) q = q.eq('is_new', true);
+  if (size) q = q.contains('sizes', [size]);
+  if (material) q = q.ilike('description', `%${material}%`);
+  if (colorName) q = q.contains('colors', [colorName]);
+  return q;
+}
+
+// ─── Queries ───
+let query = applyFilters(supabase.from('products').select('*').eq('is_active', true));
+if (sortBy === 'price_asc') query = query.order('price', { ascending: true });
+else if (sortBy === 'price_desc') query = query.order('price', { ascending: false });
+else if (sortBy === 'name') query = query.order('name');
+else query = query.order('created_at', { ascending: false });
+
+const countQuery = applyFilters(supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true));
+const { count: totalProducts } = await countQuery;
+const totalPages = Math.ceil((totalProducts || 0) / itemsPerPage);
+const { data: products } = await query.range(offset, offset + itemsPerPage - 1);
+const productsArray = (products || []) as Product[];
+
+// ─── Helpers ───
+const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const availableMaterials = ['Algodón', 'Poliéster', 'Lana', 'Seda', 'Lino', 'Denim', 'Cuero'];
+const hasAdvancedFilters = !!(minPrice || maxPrice || colorSlug || size || material);
+
+const buildUrl = (params: Record<string, string | null>) => {
+  const p = new URLSearchParams();
+  const current: Record<string, string> = {};
+  url.searchParams.forEach((v, k) => { current[k] = v; });
+  const merged = { ...current, ...params };
+  Object.entries(merged).forEach(([k, v]) => { if (v) p.set(k, v); });
+  p.delete('pagina');
+  const s = p.toString();
+  return s ? `/productos?${s}` : '/productos';
+};
+
+const buildPageUrl = (n: number) => {
+  const p = new URLSearchParams(url.searchParams);
+  p.set('pagina', String(n));
+  return `/productos?${p.toString()}`;
+};
+
+const getPageNumbers = () => {
+  const pages: number[] = [];
+  let start = Math.max(1, page - 2);
+  let end = Math.min(totalPages, start + 4);
+  start = Math.max(1, end - 4);
+  for (let i = start; i <= end; i++) pages.push(i);
+  return pages;
+};
+
+// Título dinámico
+const pageTitle = selectedCat
+  ? clean(selectedCat.name)
+  : selectedGender
+    ? selectedGender.name
+    : 'Todos los productos';
 ---
 
-<PublicLayout title="Productos con Filtros - FashionMarket">
-  <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <h1 class="text-3xl font-bold text-white font-serif mb-2">Todos los Productos</h1>
-    <p class="text-gray-400 mb-4">{totalProducts || 0} productos encontrados</p>
+<PublicLayout title={`${pageTitle} - Fashion Store`}>
+  <main class="catalog">
 
-    {/* Filtros activos */}
-    {(genderSlug || categorySlug || minPrice || maxPrice || isOnSale || isNew || colorSlug || size || material) && (
-      <div class="mb-6 flex flex-wrap gap-2 items-center">
-        <span class="text-sm font-medium text-gray-400">Filtros activos:</span>
-        {genderSlug && (
-          <a href={`/productos?${new URLSearchParams({...Object.fromEntries(url.searchParams), genero: ''}).toString().replace('genero=&', '').replace('genero=', '')}`} 
-             class="inline-flex items-center gap-1 px-3 py-1 bg-accent-emerald/20 text-accent-glow text-sm rounded-full hover:bg-accent-emerald/30 border border-accent-emerald/30">
-            Género: {genders?.find(g => g.slug === genderSlug)?.name}
-            <span>×</span>
-          </a>
-        )}
-        {categorySlug && (
-          <a href={`/productos?${new URLSearchParams({...Object.fromEntries(url.searchParams), categoria: ''}).toString().replace('categoria=&', '').replace('categoria=', '')}`}
-             class="inline-flex items-center gap-1 px-3 py-1 bg-accent-emerald/20 text-accent-glow text-sm rounded-full hover:bg-accent-emerald/30 border border-accent-emerald/30">
-            Categoría: {categories?.find(c => c.slug === categorySlug)?.name}
-            <span>×</span>
-          </a>
-        )}
-        {(minPrice || maxPrice) && (
-          <a href={`/productos?${new URLSearchParams(Object.fromEntries(Array.from(url.searchParams).filter(([k]) => k !== 'precio_min' && k !== 'precio_max'))).toString()}`}
-             class="inline-flex items-center gap-1 px-3 py-1 bg-accent-emerald/20 text-accent-glow text-sm rounded-full hover:bg-accent-emerald/30 border border-accent-emerald/30">
-            Precio: {minPrice || '0'}€ - {maxPrice || '∞'}€
-            <span>×</span>
-          </a>
-        )}
-        {isOnSale && (
-          <a href={`/productos?${new URLSearchParams({...Object.fromEntries(url.searchParams), rebaja: ''}).toString().replace('rebaja=&', '').replace('rebaja=', '')}`}
-             class="inline-flex items-center gap-1 px-3 py-1 bg-accent-emerald/20 text-accent-glow text-sm rounded-full hover:bg-accent-emerald/30 border border-accent-emerald/30">
-            En rebaja
-            <span>×</span>
-          </a>
-        )}
-        {isNew && (
-          <a href={`/productos?${new URLSearchParams({...Object.fromEntries(url.searchParams), nuevo: ''}).toString().replace('nuevo=&', '').replace('nuevo=', '')}`}
-             class="inline-flex items-center gap-1 px-3 py-1 bg-accent-emerald/20 text-accent-glow text-sm rounded-full hover:bg-accent-emerald/30 border border-accent-emerald/30">
-            Nuevo
-            <span>×</span>
-          </a>
-        )}
-        <a href="/productos" class="text-sm text-red-400 hover:text-red-300 font-medium ml-2">
-          Limpiar todos
-        </a>
+    <!-- ═══ TOP BAR: Género ═══ -->
+    <nav class="gender-bar">
+      <div class="gender-bar-inner">
+        <a href="/productos" class:list={["g-link", { active: !genderSlug }]}>Todo</a>
+        {genders?.filter(g => g.slug !== 'unisex').map(g => (
+          <a href={`/productos?genero=${g.slug}`} class:list={["g-link", { active: genderSlug === g.slug }]}>{g.name}</a>
+        ))}
       </div>
+    </nav>
+
+    <!-- ═══ CATEGORY NAV ═══ -->
+    <nav class="cat-nav">
+      <div class="cat-nav-inner">
+        {/* Categorías especiales: Novedades y Rebajas (deduplicadas en modo Todo) */}
+        {displayLevel1.filter((c: any) => clean(c.name).toLowerCase().includes('novedades')).map((c: any) => (
+          <a href={buildUrl({ categoria: c.slug })}
+             class:list={["cat-link cat-link--new", { active: isCatActive(c) }]}>
+            Novedades
+          </a>
+        ))}
+        {displayLevel1.filter((c: any) => clean(c.name).toLowerCase().includes('rebajas')).map((c: any) => (
+          <a href={buildUrl({ categoria: c.slug })}
+             class:list={["cat-link cat-link--sale", { active: isCatActive(c) }]}>
+            Rebajas
+          </a>
+        ))}
+
+        {/* Separador visual */}
+        {displayLevel1.some((c: any) => clean(c.name).toLowerCase().includes('novedades') || clean(c.name).toLowerCase().includes('rebajas')) && (
+          <span class="cat-sep"></span>
+        )}
+
+        {/* Categorías principales */}
+        {displayLevel1.filter((c: any) => !clean(c.name).toLowerCase().includes('rebajas') && !clean(c.name).toLowerCase().includes('novedades')).map((c: any) => (
+          <a href={buildUrl({ categoria: c.slug })}
+             class:list={["cat-link", { active: isCatActive(c) }]}>
+            {clean(c.name)}
+          </a>
+        ))}
+      </div>
+    </nav>
+
+    <!-- ═══ SUBCATEGORÍAS (aparecen al seleccionar una categoría principal) ═══ -->
+    {visibleSubs.length > 0 && (
+      <nav class="sub-nav">
+        <div class="sub-nav-inner">
+          <a href={buildUrl({ categoria: parentOfSelected?.slug || null })}
+             class:list={["sub-link", { active: isParentLinkActive() }]}>
+            Todo {clean(parentOfSelected?.name || '')}
+          </a>
+          {visibleSubs.map((c: any) => (
+            <a href={buildUrl({ categoria: c.slug })}
+               class:list={["sub-link", { active: isSubActive(c) }]}>
+              {clean(c.name)}
+            </a>
+          ))}
+        </div>
+      </nav>
     )}
 
-    <div class="flex flex-col lg:flex-row gap-8">
-      <!-- Sidebar Filtros -->
-      <aside class="lg:w-64">
-        <div class="glass-panel p-6 sticky top-20">
-          <h2 class="font-bold mb-4 text-white">Filtros</h2>
-          <form method="get" id="filter-form">
-            <div class="mb-6">
-              <h3 class="font-semibold text-sm mb-2 uppercase text-gray-400">1. Selecciona Género</h3>
-              {genders?.map(g => (
-                <label class="flex items-center mb-2 cursor-pointer text-gray-300 hover:text-white transition-colors">
-                  <input 
-                    type="radio" 
-                    name="genero" 
-                    value={g.slug} 
-                    checked={genderSlug === g.slug} 
-                    class="mr-2 gender-radio accent-accent-gold" 
-                    onchange="this.form.submit()"
-                  />
-                  {g.name}
+    <!-- ═══ TOOLBAR ═══ -->
+    <div class="toolbar">
+      <div class="toolbar-inner">
+        <div class="toolbar-left">
+          <span class="toolbar-count">{totalProducts || 0} producto{(totalProducts || 0) !== 1 ? 's' : ''}</span>
+
+          {/* Filtros activos como tags removibles */}
+          {isOnSale && (
+            <a href={buildUrl({ rebaja: null })} class="tag tag--sale">
+              Rebajas <span class="tag-x">&times;</span>
+            </a>
+          )}
+          {isNew && (
+            <a href={buildUrl({ nuevo: null })} class="tag tag--new">
+              Nuevo <span class="tag-x">&times;</span>
+            </a>
+          )}
+          {colorSlug && (
+            <a href={buildUrl({ color: null })} class="tag">
+              {colors?.find(c => c.slug === colorSlug)?.name || colorSlug} <span class="tag-x">&times;</span>
+            </a>
+          )}
+          {size && (
+            <a href={buildUrl({ talla: null })} class="tag">
+              {size} <span class="tag-x">&times;</span>
+            </a>
+          )}
+          {(minPrice || maxPrice) && (
+            <a href={buildUrl({ precio_min: null, precio_max: null })} class="tag">
+              {minPrice || '0'}€–{maxPrice || '∞'}€ <span class="tag-x">&times;</span>
+            </a>
+          )}
+          {material && (
+            <a href={buildUrl({ material: null })} class="tag">
+              {material} <span class="tag-x">&times;</span>
+            </a>
+          )}
+          {hasAdvancedFilters && (
+            <a href={buildUrl({ precio_min: null, precio_max: null, color: null, talla: null, material: null })} class="clear-link">
+              Limpiar filtros
+            </a>
+          )}
+        </div>
+
+        <div class="toolbar-right">
+          <button id="filter-toggle" class="toolbar-btn" type="button">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+            </svg>
+            Filtrar
+            {hasAdvancedFilters && <span class="toolbar-dot"></span>}
+          </button>
+
+          <div class="toolbar-sort">
+            <select id="sort-select" class="sort-select">
+              <option value="newest" selected={sortBy === 'newest'}>Más recientes</option>
+              <option value="price_asc" selected={sortBy === 'price_asc'}>Precio: menor a mayor</option>
+              <option value="price_desc" selected={sortBy === 'price_desc'}>Precio: mayor a menor</option>
+              <option value="name" selected={sortBy === 'name'}>Nombre A–Z</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ FILTER PANEL (desplegable) ═══ -->
+    <div id="filter-panel" class="filter-panel">
+      <form id="filter-form" method="get" class="filter-panel-inner">
+        {genderSlug && <input type="hidden" name="genero" value={genderSlug} />}
+        {categorySlug && <input type="hidden" name="categoria" value={categorySlug} />}
+        <input type="hidden" name="ordenar" value={sortBy} />
+
+        <!-- Precio -->
+        <div class="fp-group">
+          <span class="fp-label">Precio</span>
+          <div class="fp-price">
+            <input type="number" name="precio_min" value={minPrice || ''} placeholder="Min" class="fp-input" />
+            <span class="fp-sep">–</span>
+            <input type="number" name="precio_max" value={maxPrice || ''} placeholder="Max" class="fp-input" />
+          </div>
+        </div>
+
+        <!-- Talla -->
+        <div class="fp-group">
+          <span class="fp-label">Talla</span>
+          <div class="fp-sizes">
+            {availableSizes.map(s => (
+              <label class="fp-size">
+                <input type="radio" name="talla" value={s} checked={size === s} class="sr-only" />
+                <span class:list={["fp-size-box", { active: size === s }]}>{s}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <!-- Color -->
+        {colors && colors.length > 0 && (
+          <div class="fp-group">
+            <span class="fp-label">Color</span>
+            <div class="fp-colors">
+              {colors.map(c => (
+                <label class="fp-color" title={c.name}>
+                  <input type="radio" name="color" value={c.slug} checked={colorSlug === c.slug} class="sr-only" />
+                  <span class:list={["fp-dot", { active: colorSlug === c.slug }]} style={`background:${c.hex_code}`}></span>
                 </label>
               ))}
-              {genderSlug && (
-                <button 
-                  type="button" 
-                  onclick="window.location.href='/productos'" 
-                  class="text-xs text-red-400 hover:text-red-300 mt-1"
-                >
-                  Quitar filtro
-                </button>
-              )}
             </div>
-            <hr class="my-4 border-white/10" />
-            <div class="mb-6">
-              <h3 class="font-semibold text-sm mb-3 uppercase text-gray-400">2. Categoría</h3>
-              {!genderSlug ? (
-                <div class="bg-dark-card/50 border border-white/10 rounded-xl p-4 text-center">
-                  <svg class="w-8 h-8 mx-auto mb-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p class="text-sm text-gray-400 font-medium mb-1">Selecciona un género primero</p>
-                  <p class="text-xs text-gray-500">Para ver las categorías disponibles</p>
-                </div>
-              ) : categories && categories.length > 0 ? (
-                <div class="max-h-64 overflow-y-auto space-y-1 custom-scrollbar">
-                  {categories
-                    ?.filter(c => c.level === 1) // Solo categorías principales
-                    .map(c => (
-                      <div>
-                        <label class="flex items-center mb-2 cursor-pointer text-sm font-medium text-gray-300 hover:text-white transition-colors">
-                          <input type="radio" name="categoria" value={c.slug} checked={categorySlug === c.slug} class="mr-2 accent-accent-gold" />
-                          {c.name}
-                        </label>
-                        {/* Subcategorías */}
-                        {categories
-                          ?.filter(sub => sub.parent_id === c.id)
-                          .map(sub => (
-                            <label class="flex items-center mb-1 cursor-pointer text-sm ml-4 text-gray-400 hover:text-gray-200 transition-colors">
-                              <input type="radio" name="categoria" value={sub.slug} checked={categorySlug === sub.slug} class="mr-2 accent-accent-gold" />
-                              <span>{sub.name}</span>
-                            </label>
-                          ))
-                        }
-                      </div>
-                    ))
-                  }
-                </div>
-              ) : (
-                <p class="text-sm text-gray-500 italic">No hay categorías para este género</p>
-              )}
-            </div>
-            <hr class="my-4 border-white/10" />
-            <div class="mb-6">
-              <h3 class="font-semibold text-sm mb-2 uppercase text-gray-400">Precio (€)</h3>
-              <input type="number" name="precio_min" value={minPrice || ''} placeholder="Mín" class="input-field mb-2" />
-              <input type="number" name="precio_max" value={maxPrice || ''} placeholder="Máx" class="input-field" />
-            </div>
-            <hr class="my-4 border-white/10" />
-            <div class="mb-6">
-              <label class="flex items-center mb-2 cursor-pointer group">
-                <input type="checkbox" name="rebaja" value="true" checked={isOnSale} class="mr-2" />
-                <svg class="w-4 h-4 mr-1 text-red-500 group-hover:text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
-                </svg>
-                <span>En rebaja</span>
-              </label>
-              <label class="flex items-center cursor-pointer group">
-                <input type="checkbox" name="nuevo" value="true" checked={isNew} class="mr-2" />
-                <svg class="w-4 h-4 mr-1 text-yellow-500 group-hover:text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                </svg>
-                <span>Nuevo</span>
-              </label>
-            </div>
-            <hr class="my-4" />
-            <div class="mb-6">
-              <h3 class="font-semibold text-sm mb-2 uppercase">Colores</h3>
-              <div class="flex flex-wrap gap-2">
-                {colors?.map(c => (
-                  <label class="cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="color" 
-                      value={c.slug} 
-                      checked={colorSlug === c.slug} 
-                      class="sr-only peer"
-                      aria-label={c.name}
-                    />
-                    <div 
-                      class={`w-8 h-8 rounded-full border-2 transition-all ${colorSlug === c.slug ? 'border-accent-gold ring-2 ring-accent-gold/50' : 'border-white/20 hover:border-white/40'}`}
-                      style={`background-color: ${c.hex_code}`}
-                    ></div>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <hr class="my-4 border-white/10" />
-            <div class="mb-6">
-              <h3 class="font-semibold text-sm mb-2 uppercase text-gray-400">Tallas</h3>
-              <div class="grid grid-cols-3 gap-2">
-                {availableSizes.map(s => (
-                  <label class="cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="talla" 
-                      value={s} 
-                      checked={size === s} 
-                      class="sr-only peer"
-                    />
-                    <div class={`px-3 py-2 text-center border rounded-lg transition-all ${size === s ? 'bg-accent-emerald text-white border-accent-emerald' : 'border-white/20 text-gray-300 hover:border-accent-gold/50 hover:text-white'}`}>
-                      {s}
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <hr class="my-4 border-white/10" />
-            <div class="mb-6">
-              <h3 class="font-semibold text-sm mb-2 uppercase text-gray-400">Material</h3>
-              <select name="material" class="input-field">
-                <option value="">Todos</option>
-                {availableMaterials.map(m => (
-                  <option value={m} selected={material === m}>{m}</option>
-                ))}
-              </select>
-            </div>
-            <button type="submit" class="btn-primary w-full mb-2">Aplicar</button>
-            <a href="/productos" class="btn-secondary block w-full text-center">Limpiar</a>
-          </form>
-        </div>
-      </aside>
-
-      <!-- Grid Productos -->
-      <main class="flex-1">
-        <div class="flex justify-between items-center mb-4">
-          <p class="text-sm text-gray-400">{productsArray.length} productos</p>
-          <form method="get" class="flex items-center gap-2">
-            {categorySlug && <input type="hidden" name="categoria" value={categorySlug} />}
-            {genderSlug && <input type="hidden" name="genero" value={genderSlug} />}
-            <select name="ordenar" onchange="this.form.submit()" class="bg-dark-card/60 text-gray-300 border border-white/10 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-accent-emerald/50 focus:border-accent-emerald/50">
-              <option value="newest" selected={sortBy === 'newest'}>Más recientes</option>
-              <option value="price_asc" selected={sortBy === 'price_asc'}>Precio ↑</option>
-              <option value="price_desc" selected={sortBy === 'price_desc'}>Precio ↓</option>
-              <option value="name" selected={sortBy === 'name'}>Nombre</option>
-            </select>
-          </form>
-        </div>
-
-        {productsArray.length > 0 ? (
-          <div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {productsArray.map(p => <ProductCard product={p} />)}
-            </div>
-
-            <!-- Paginación -->
-            {totalPages > 1 && (
-              <div class="mt-8 flex justify-center items-center gap-2">
-                {page > 1 && (
-                  <a 
-                    href={`?${new URLSearchParams({
-                      ...(categorySlug && { categoria: categorySlug }),
-                      ...(genderSlug && { genero: genderSlug }),
-                      ...(minPrice && { precio_min: minPrice }),
-                      ...(maxPrice && { precio_max: maxPrice }),
-                      ...(isOnSale && { rebaja: 'true' }),
-                      ...(isNew && { nuevo: 'true' }),
-                      ...(colorSlug && { color: colorSlug }),
-                      ...(size && { talla: size }),
-                      ...(material && { material: material }),
-                      ordenar: sortBy,
-                      pagina: String(page - 1)
-                    }).toString()}`}
-                    class="px-4 py-2 border border-white/10 rounded-lg text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
-                  >
-                    Anterior
-                  </a>
-                )}
-
-                <div class="flex gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_unused, i) => {
-                    let pageNum = i + 1;
-                    
-                    // Calcular número de página según posición
-                    const pagesCount = totalPages;
-                    const currentPage = page;
-                    
-                    if (pagesCount > 5) {
-                      if (currentPage > 3) {
-                        if (currentPage + 2 < pagesCount) {
-                          pageNum = currentPage - 2 + i;
-                        } else {
-                          pageNum = pagesCount - 4 + i;
-                        }
-                      }
-                    }
-                    
-                    return (
-                      <a
-                        href={`?${new URLSearchParams({
-                          ...(categorySlug && { categoria: categorySlug }),
-                          ...(genderSlug && { genero: genderSlug }),
-                          ...(minPrice && { precio_min: minPrice }),
-                          ...(maxPrice && { precio_max: maxPrice }),
-                          ...(isOnSale && { rebaja: 'true' }),
-                          ...(isNew && { nuevo: 'true' }),
-                          ...(colorSlug && { color: colorSlug }),
-                          ...(size && { talla: size }),
-                          ...(material && { material: material }),
-                          ordenar: sortBy,
-                          pagina: String(pageNum)
-                        }).toString()}`}
-                        class={`px-3 py-2 border rounded-lg transition-colors ${pageNum === page ? 'bg-accent-emerald text-white border-accent-emerald' : 'border-white/10 text-gray-300 hover:bg-white/5 hover:text-white'}`}
-                      >
-                        {pageNum}
-                      </a>
-                    );
-                  })}
-                </div>
-
-                {page < totalPages && (
-                  <a 
-                    href={`?${new URLSearchParams({
-                      ...(categorySlug && { categoria: categorySlug }),
-                      ...(genderSlug && { genero: genderSlug }),
-                      ...(minPrice && { precio_min: minPrice }),
-                      ...(maxPrice && { precio_max: maxPrice }),
-                      ...(isOnSale && { rebaja: 'true' }),
-                      ...(isNew && { nuevo: 'true' }),
-                      ...(colorSlug && { color: colorSlug }),
-                      ...(size && { talla: size }),
-                      ...(material && { material: material }),
-                      ordenar: sortBy,
-                      pagina: String(page + 1)
-                    }).toString()}`}
-                    class="px-4 py-2 border border-white/10 rounded-lg text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
-                  >
-                    Siguiente
-                  </a>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div class="text-center py-16">
-            <p class="text-gray-400 mb-4">No se encontraron productos con estos filtros</p>
-            <a href="/productos" class="text-accent-gold hover:text-accent-gold-soft transition-colors">Ver todos los productos →</a>
           </div>
         )}
-      </main>
+
+        <!-- Material -->
+        <div class="fp-group">
+          <span class="fp-label">Material</span>
+          <select name="material" class="fp-select">
+            <option value="">Todos</option>
+            {availableMaterials.map(m => (
+              <option value={m} selected={material === m}>{m}</option>
+            ))}
+          </select>
+        </div>
+
+        <!-- Especial -->
+        <div class="fp-group">
+          <span class="fp-label">Especial</span>
+          <div class="fp-checks">
+            <label class="fp-check">
+              <input type="checkbox" name="rebaja" value="true" checked={isOnSale} />
+              <span>Rebajas</span>
+            </label>
+            <label class="fp-check">
+              <input type="checkbox" name="nuevo" value="true" checked={isNew} />
+              <span>Novedades</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="fp-actions">
+          <button type="submit" class="fp-apply">Aplicar</button>
+          <a href={buildUrl({ precio_min: null, precio_max: null, color: null, talla: null, material: null, rebaja: null, nuevo: null })} class="fp-clear">Limpiar</a>
+        </div>
+      </form>
     </div>
-  </div>
+
+    <!-- ═══ PRODUCT GRID ═══ -->
+    {productsArray.length > 0 ? (
+      <section class="grid-section">
+        <div class="product-grid">
+          {productsArray.map(p => <ProductCard product={p} />)}
+        </div>
+
+        {totalPages > 1 && (
+          <nav class="pagination">
+            {page > 1 && (
+              <a href={buildPageUrl(page - 1)} class="pg-btn" aria-label="Anterior">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+              </a>
+            )}
+            {getPageNumbers().map(n => (
+              <a href={buildPageUrl(n)} class:list={["pg-num", { active: n === page }]}>{n}</a>
+            ))}
+            {page < totalPages && (
+              <a href={buildPageUrl(page + 1)} class="pg-btn" aria-label="Siguiente">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </a>
+            )}
+          </nav>
+        )}
+      </section>
+    ) : (
+      <section class="empty">
+        <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="0.8" class="empty-icon">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+        <p class="empty-title">No se encontraron productos</p>
+        <p class="empty-sub">Prueba con otros filtros o categorías</p>
+        <a href="/productos" class="empty-link">Ver todos →</a>
+      </section>
+    )}
+
+  </main>
 </PublicLayout>
 
+<style>
+  /* ═══ BASE ═══ */
+  .catalog {
+    max-width: 80rem;
+    margin: 0 auto;
+  }
+
+  /* ═══ GENDER BAR ═══ */
+  .gender-bar {
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .gender-bar-inner {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    padding: 0 1rem;
+  }
+
+  .g-link {
+    position: relative;
+    padding: 14px 20px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #737373;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .g-link:hover { color: #e5e5e5; }
+
+  .g-link.active {
+    color: #ffffff;
+  }
+
+  .g-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 20px;
+    right: 20px;
+    height: 2px;
+    background: #d4af37;
+  }
+
+  /* ═══ CATEGORY NAV ═══ */
+  .cat-nav {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .cat-nav-inner {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 1.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .cat-nav-inner::-webkit-scrollbar { display: none; }
+
+  .cat-link {
+    position: relative;
+    padding: 12px 14px;
+    font-size: 13px;
+    font-weight: 400;
+    color: #a3a3a3;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.2s;
+  }
+
+  .cat-link:hover { color: #ffffff; }
+
+  .cat-link.active {
+    color: #ffffff;
+    font-weight: 500;
+  }
+
+  .cat-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 14px;
+    right: 14px;
+    height: 1px;
+    background: #ffffff;
+  }
+
+  .cat-link--sale { color: #f87171; }
+  .cat-link--sale:hover { color: #fca5a5; }
+  .cat-link--sale.active { color: #fca5a5; }
+  .cat-link--sale.active::after { background: #f87171; }
+
+  .cat-link--new { color: #34d399; }
+  .cat-link--new:hover { color: #6ee7b7; }
+  .cat-link--new.active { color: #6ee7b7; }
+  .cat-link--new.active::after { background: #34d399; }
+
+  .cat-sep {
+    width: 1px;
+    height: 16px;
+    background: rgba(255,255,255,0.08);
+    margin: 0 4px;
+    flex-shrink: 0;
+  }
+
+  /* ═══ SUB NAV ═══ */
+  .sub-nav {
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .sub-nav-inner {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 1.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .sub-nav-inner::-webkit-scrollbar { display: none; }
+
+  .sub-link {
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #737373;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.2s;
+  }
+
+  .sub-link:hover { color: #d4d4d4; }
+
+  .sub-link.active {
+    color: #d4af37;
+    font-weight: 500;
+  }
+
+  /* ═══ TOOLBAR ═══ */
+  .toolbar {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    position: sticky;
+    top: 56px;
+    z-index: 20;
+    background: #0a0a0a;
+  }
+
+  .toolbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 1.5rem;
+    gap: 12px;
+  }
+
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .toolbar-count {
+    font-size: 12px;
+    color: #525252;
+    white-space: nowrap;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    color: #a3a3a3;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px;
+    text-decoration: none;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .tag:hover { border-color: rgba(255,255,255,0.2); color: #e5e5e5; }
+  .tag--sale { color: #f87171; border-color: rgba(239,68,68,0.15); }
+  .tag--new { color: #34d399; border-color: rgba(16,185,129,0.15); }
+  .tag-x { font-size: 14px; line-height: 1; opacity: 0.5; }
+  .tag:hover .tag-x { opacity: 1; }
+
+  .clear-link {
+    font-size: 11px;
+    color: #525252;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color 0.15s;
+    white-space: nowrap;
+  }
+
+  .clear-link:hover { color: #a3a3a3; }
+
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #a3a3a3;
+    background: none;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .toolbar-btn:hover { color: #e5e5e5; border-color: rgba(255,255,255,0.15); }
+
+  .toolbar-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 6px;
+    height: 6px;
+    background: #d4af37;
+    border-radius: 50%;
+  }
+
+  .toolbar-sort { display: none; }
+
+  @media (min-width: 640px) {
+    .toolbar-sort { display: block; }
+  }
+
+  .sort-select {
+    padding: 7px 28px 7px 10px;
+    font-size: 12px;
+    color: #a3a3a3;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23737373' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+  }
+
+  .sort-select:focus { border-color: rgba(212,175,55,0.3); }
+  .sort-select option { background: #171717; color: #d4d4d4; }
+
+  /* ═══ FILTER PANEL ═══ */
+  .filter-panel {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+    opacity: 0;
+    border-bottom: 1px solid transparent;
+    background: rgba(255,255,255,0.015);
+  }
+
+  .filter-panel.open {
+    max-height: 400px;
+    opacity: 1;
+    border-bottom-color: rgba(255,255,255,0.04);
+  }
+
+  .filter-panel-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px 32px;
+    padding: 20px 1.5rem;
+    align-items: flex-start;
+  }
+
+  .fp-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 120px;
+  }
+
+  .fp-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #525252;
+  }
+
+  .fp-price {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .fp-input {
+    width: 72px;
+    padding: 6px 8px;
+    font-size: 12px;
+    color: #e5e5e5;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px;
+    outline: none;
+  }
+
+  .fp-input:focus { border-color: rgba(212,175,55,0.3); }
+  .fp-input::placeholder { color: #404040; }
+  .fp-sep { color: #404040; font-size: 12px; }
+
+  .fp-sizes {
+    display: flex;
+    gap: 4px;
+  }
+
+  .fp-size { cursor: pointer; }
+
+  .fp-size-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 30px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #737373;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px;
+    transition: all 0.15s;
+  }
+
+  .fp-size-box:hover { color: #e5e5e5; border-color: rgba(255,255,255,0.15); }
+
+  .fp-size-box.active {
+    color: #0a0a0a;
+    background: #d4af37;
+    border-color: #d4af37;
+    font-weight: 600;
+  }
+
+  .fp-colors {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .fp-color { cursor: pointer; }
+
+  .fp-dot {
+    display: block;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.1);
+    transition: all 0.15s;
+  }
+
+  .fp-dot:hover { border-color: rgba(255,255,255,0.3); transform: scale(1.1); }
+
+  .fp-dot.active {
+    border-color: #d4af37;
+    box-shadow: 0 0 0 2px rgba(212,175,55,0.25);
+  }
+
+  .fp-select {
+    padding: 6px 8px;
+    font-size: 12px;
+    color: #a3a3a3;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .fp-select:focus { border-color: rgba(212,175,55,0.3); }
+  .fp-select option { background: #171717; color: #d4d4d4; }
+
+  .fp-checks {
+    display: flex;
+    gap: 12px;
+  }
+
+  .fp-check {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #a3a3a3;
+    cursor: pointer;
+  }
+
+  .fp-check input { accent-color: #d4af37; cursor: pointer; }
+
+  .fp-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+    align-self: flex-end;
+  }
+
+  .fp-apply {
+    padding: 7px 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #0a0a0a;
+    background: #d4af37;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .fp-apply:hover { background: #e8c96d; }
+
+  .fp-clear {
+    font-size: 11px;
+    color: #525252;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color 0.15s;
+  }
+
+  .fp-clear:hover { color: #a3a3a3; }
+
+  /* ═══ GRID ═══ */
+  .grid-section {
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  @media (min-width: 640px) {
+    .grid-section { padding: 1.5rem 1.5rem 3rem; }
+  }
+
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+  }
+
+  @media (min-width: 640px) {
+    .product-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .product-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  /* ═══ PAGINATION ═══ */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    margin-top: 3rem;
+  }
+
+  .pg-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: #737373;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .pg-btn:hover { color: #e5e5e5; }
+
+  .pg-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+    color: #737373;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+
+  .pg-num:hover { color: #e5e5e5; }
+
+  .pg-num.active {
+    color: #ffffff;
+    font-weight: 600;
+    border-bottom: 2px solid #d4af37;
+  }
+
+  /* ═══ EMPTY ═══ */
+  .empty {
+    text-align: center;
+    padding: 6rem 1rem;
+  }
+
+  .empty-icon {
+    color: #262626;
+    margin: 0 auto 1rem;
+  }
+
+  .empty-title {
+    font-size: 15px;
+    color: #a3a3a3;
+    margin-bottom: 4px;
+  }
+
+  .empty-sub {
+    font-size: 13px;
+    color: #525252;
+    margin-bottom: 1.5rem;
+  }
+
+  .empty-link {
+    font-size: 13px;
+    color: #d4af37;
+    text-decoration: none;
+    text-underline-offset: 3px;
+  }
+
+  .empty-link:hover { text-decoration: underline; }
+
+  /* ═══ RESPONSIVE ═══ */
+  @media (max-width: 639px) {
+    .gender-bar-inner { justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
+    .gender-bar-inner::-webkit-scrollbar { display: none; }
+    .g-link { padding: 12px 16px; font-size: 11px; }
+    .cat-link { padding: 10px 12px; font-size: 12px; }
+    .sub-link { padding: 8px 10px; font-size: 11px; }
+    .filter-panel-inner { flex-direction: column; gap: 16px; }
+    .fp-actions { margin-left: 0; align-self: stretch; }
+    .fp-apply { flex: 1; text-align: center; }
+  }
+</style>
+
 <script>
-  document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(input => {
-    input.addEventListener('change', function(this: HTMLInputElement) {
-      this.closest('form')?.submit();
+  // Toggle filter panel
+  const toggleBtn = document.getElementById('filter-toggle');
+  const filterPanel = document.getElementById('filter-panel');
+
+  toggleBtn?.addEventListener('click', () => {
+    filterPanel?.classList.toggle('open');
+  });
+
+  // Sort
+  document.getElementById('sort-select')?.addEventListener('change', function(this: HTMLSelectElement) {
+    const params = new URLSearchParams(window.location.search);
+    params.set('ordenar', this.value);
+    params.delete('pagina');
+    window.location.href = `/productos?${params.toString()}`;
+  });
+
+  // Auto-submit radios/checkboxes
+  document.querySelectorAll('#filter-form input[type="radio"], #filter-form input[type="checkbox"]').forEach(input => {
+    input.addEventListener('change', () => {
+      const form = document.getElementById('filter-form') as HTMLFormElement;
+      form?.querySelectorAll('input, select').forEach((el: any) => {
+        if (el.type !== 'hidden' && el.type !== 'checkbox' && el.type !== 'radio' && !el.value) el.disabled = true;
+        if (el.type === 'checkbox' && !el.checked) el.disabled = true;
+      });
+      form?.submit();
+    });
+  });
+
+  // Clean empty on submit
+  document.getElementById('filter-form')?.addEventListener('submit', (e) => {
+    const form = e.target as HTMLFormElement;
+    form.querySelectorAll('input, select').forEach((el: any) => {
+      if (!el.value) el.disabled = true;
+      if (el.type === 'hidden' && el.name === 'ordenar' && el.value === 'newest') el.disabled = true;
+      if (el.type === 'checkbox' && !el.checked) el.disabled = true;
     });
   });
 </script>

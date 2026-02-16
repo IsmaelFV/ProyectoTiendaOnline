@@ -1,27 +1,18 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { supabase } from '../../../lib/supabase';
+import { verifyAdminFromCookies, createServerSupabaseClient } from '../../../lib/auth';
 
 // Protección: solo admins
 const accessToken = Astro.cookies.get('sb-access-token')?.value;
-if (!accessToken) {
-  return Astro.redirect('/admin/login');
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+if (!userId) {
+  return Astro.redirect('/auth/login');
 }
 
-// Verificar si es admin
-const { data: { user } } = await supabase.auth.getUser(accessToken);
-if (!user) {
-  return Astro.redirect('/admin/login');
-}
-
-const { data: adminUser } = await supabase
-  .from('admin_users')
-  .select('*')
-  .eq('user_id', user.id);
-
-if (!adminUser || adminUser.length === 0) {
-  return Astro.redirect('/admin/login');
-}
+// Usar service_role para consultas de admin
+const supabase = createServerSupabaseClient();
 
 // Obtener devoluciones
 const { data: returns, error } = await supabase
@@ -56,14 +47,14 @@ function formatDate(date: string) {
 // Función para obtener el color del estado
 function getStatusColor(status: string) {
   const colors: { [key: string]: string } = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    approved: 'bg-blue-100 text-blue-800',
-    rejected: 'bg-red-100 text-red-800',
-    received: 'bg-purple-100 text-purple-800',
-    refunded: 'bg-green-100 text-green-800',
-    cancelled: 'bg-gray-100 text-gray-800'
+    pending: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
+    approved: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+    rejected: 'bg-red-500/20 text-red-400 border border-red-500/30',
+    received: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+    refunded: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+    cancelled: 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
   };
-  return colors[status] || 'bg-gray-100 text-gray-800';
+  return colors[status] || 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
 }
 
 // Función para traducir estados
@@ -98,73 +89,73 @@ function translateReason(reason: string) {
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Devoluciones</h1>
-        <p class="mt-1 text-sm text-gray-600">Gestiona las solicitudes de devolución</p>
+        <h1 class="text-3xl font-bold text-white">Devoluciones</h1>
+        <p class="mt-1 text-sm text-gray-400">Gestiona las solicitudes de devolución</p>
       </div>
     </div>
 
     <!-- Tabla de devoluciones -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="bg-dark-surface rounded-xl border border-white/10 overflow-hidden">
       {error ? (
-        <div class="p-6 text-center text-red-600">
+        <div class="p-6 text-center text-red-400">
           Error al cargar las devoluciones: {error.message}
         </div>
       ) : !returns || returns.length === 0 ? (
-        <div class="p-12 text-center text-gray-500">
-          <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="p-12 text-center text-gray-400">
+          <svg class="mx-auto h-12 w-12 text-gray-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
           </svg>
-          <p class="text-lg font-medium">No hay devoluciones</p>
+          <p class="text-lg font-medium text-white">No hay devoluciones</p>
           <p class="text-sm mt-1">Las solicitudes de devolución aparecerán aquí.</p>
         </div>
       ) : (
         <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+          <table class="min-w-full divide-y divide-white/10">
+            <thead class="bg-dark-card/50">
               <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Nº Devolución
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Pedido
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Cliente
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Razón
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Monto
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Fecha
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Estado
                 </th>
-                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody class="divide-y divide-white/5">
               {returns.map((ret) => (
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-white/5 transition-colors">
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">{ret.return_number}</div>
+                    <div class="text-sm font-medium text-white">{ret.return_number}</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {ret.orders?.order_number || 'N/A'}
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
                     {ret.orders?.shipping_full_name || 'Cliente'}
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                     {translateReason(ret.reason)}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">{formatCurrency(ret.refund_amount)}</div>
+                    <div class="text-sm font-medium text-accent-gold">{formatCurrency(ret.refund_amount)}</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(ret.created_at)}
@@ -177,7 +168,7 @@ function translateReason(reason: string) {
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <a
                       href={`/admin/devoluciones/${ret.id}`}
-                      class="text-brand-gold hover:text-yellow-600 transition-colors"
+                      class="text-accent-gold hover:text-accent-gold/80 transition-colors"
                     >
                       Ver detalles
                     </a>
@@ -193,25 +184,25 @@ function translateReason(reason: string) {
     <!-- Estadísticas rápidas -->
     {returns && returns.length > 0 && (
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="bg-white rounded-lg shadow p-4">
-          <div class="text-sm text-gray-600">Total devoluciones</div>
-          <div class="text-2xl font-bold text-gray-900">{returns.length}</div>
+        <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+          <div class="text-sm text-gray-400">Total devoluciones</div>
+          <div class="text-2xl font-bold text-white">{returns.length}</div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4">
-          <div class="text-sm text-gray-600">Pendientes</div>
-          <div class="text-2xl font-bold text-yellow-600">
+        <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+          <div class="text-sm text-gray-400">Pendientes</div>
+          <div class="text-2xl font-bold text-yellow-400">
             {returns.filter(r => r.status === 'pending').length}
           </div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4">
-          <div class="text-sm text-gray-600">Aprobadas</div>
-          <div class="text-2xl font-bold text-blue-600">
+        <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+          <div class="text-sm text-gray-400">Aprobadas</div>
+          <div class="text-2xl font-bold text-blue-400">
             {returns.filter(r => r.status === 'approved').length}
           </div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4">
-          <div class="text-sm text-gray-600">Reembolsadas</div>
-          <div class="text-2xl font-bold text-green-600">
+        <div class="bg-dark-surface rounded-xl border border-white/10 p-4">
+          <div class="text-sm text-gray-400">Reembolsadas</div>
+          <div class="text-2xl font-bold text-emerald-400">
             {returns.filter(r => r.status === 'refunded').length}
           </div>
         </div>

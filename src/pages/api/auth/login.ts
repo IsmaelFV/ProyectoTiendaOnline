@@ -87,7 +87,30 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     console.log('[Login] Usuario autenticado:', email);
     console.log('[Login] Session data guardada para cliente');
 
-    // Redirigir a la página principal
+    // Verificar si el usuario es administrador (usar service_role para evitar RLS)
+    try {
+      const { createClient: createAdminClient } = await import('@supabase/supabase-js');
+      const supabaseAdmin = createAdminClient(
+        import.meta.env.PUBLIC_SUPABASE_URL,
+        import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
+        { auth: { autoRefreshToken: false, persistSession: false } }
+      );
+
+      const { data: adminData } = await supabaseAdmin
+        .from('admin_users')
+        .select('id, user_id, email')
+        .eq('user_id', data.session.user.id)
+        .maybeSingle();
+
+      if (adminData) {
+        console.log('[Login] Usuario es ADMIN, redirigiendo a /admin');
+        return redirect('/admin');
+      }
+    } catch (adminCheckErr) {
+      console.warn('[Login] Error verificando admin (no crítico):', adminCheckErr);
+    }
+
+    // Redirigir a la página principal (usuario normal)
     return redirect('/');
 
   } catch (error) {

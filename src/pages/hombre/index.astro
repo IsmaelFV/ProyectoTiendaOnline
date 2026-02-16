@@ -50,7 +50,7 @@ if (products && products.length > 0) {
 const productsArray = (products || []) as Product[];
 ---
 
-<PublicLayout title="Hombre - FashionMarket" description="Descubre la última moda masculina">
+<PublicLayout title="Hombre - Fashion Store" description="Descubre la última moda masculina">
   <div class="flex flex-col lg:flex-row min-h-screen">
     <!-- Navegación lateral -->
     <aside class="lg:sticky lg:top-20 lg:self-start">
@@ -79,7 +79,7 @@ const productsArray = (products || []) as Product[];
         <div class="max-w-7xl mx-auto">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <a 
-              href="/hombre/novedades-hombre" 
+              href="/productos?genero=hombre&categoria=novedades-hombre" 
               class="group relative h-48 bg-cover bg-center rounded-xl overflow-hidden border border-white/10"
               style="background-image: url('https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?w=400&h=300&fit=crop')"
             >
@@ -89,7 +89,7 @@ const productsArray = (products || []) as Product[];
             </a>
 
             <a 
-              href="/hombre/rebajas-hombre" 
+              href="/productos?genero=hombre&categoria=rebajas-hombre" 
               class="group relative h-48 bg-cover bg-center rounded-xl overflow-hidden border border-white/10"
               style="background-image: url('https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=400&h=300&fit=crop')"
             >
@@ -99,7 +99,7 @@ const productsArray = (products || []) as Product[];
             </a>
 
             <a 
-              href="/hombre/ropa-hombre" 
+              href="/productos?genero=hombre&categoria=ropa-hombre" 
               class="group relative h-48 bg-cover bg-center rounded-xl overflow-hidden border border-white/10"
               style="background-image: url('https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?w=400&h=300&fit=crop')"
             >
@@ -109,7 +109,7 @@ const productsArray = (products || []) as Product[];
             </a>
 
             <a 
-              href="/hombre/zapatos-hombre" 
+              href="/productos?genero=hombre&categoria=zapatos-hombre" 
               class="group relative h-48 bg-cover bg-center rounded-xl overflow-hidden border border-white/10"
               style="background-image: url('https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=300&fit=crop')"
             >

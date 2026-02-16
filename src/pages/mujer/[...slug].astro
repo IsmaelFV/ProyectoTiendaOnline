@@ -1,0 +1,15 @@
+---
+/**
+ * Catch-all route for /mujer/{category-slug}
+ * Redirects to /productos with the right filters
+ */
+const { slug } = Astro.params;
+const segments = slug ? slug.split('/') : [];
+const categorySlug = segments[segments.length - 1] || '';
+
+const params = new URLSearchParams();
+params.set('genero', 'mujer');
+if (categorySlug) params.set('categoria', categorySlug);
+
+return Astro.redirect(`/productos?${params.toString()}`, 302);
+---

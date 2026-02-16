@@ -83,8 +83,7 @@ export async function getAdminUser(userId: string): Promise<AdminUser | null> {
   const { data, error } = await supabase
     .from('admin_users')
     .select('*')
-    .eq('id', userId)
-    .eq('is_active', true)
+    .eq('user_id', userId)
     .single();
 
   if (error || !data) {
@@ -290,7 +289,7 @@ export async function updateAdminLastLogin(userId: string): Promise<void> {
   await supabase
     .from('admin_users')
     .update({ last_login_at: new Date().toISOString() })
-    .eq('id', userId);
+    .eq('user_id', userId);
 }
 
 /**
@@ -364,3 +363,44 @@ export const AUTH_ERRORS = {
   INSUFFICIENT_PERMISSIONS: 'Permisos insuficientes para esta acción.',
   ACCOUNT_DISABLED: 'Tu cuenta ha sido desactivada. Contacta al administrador.',
 } as const;
+
+/**
+ * Verificar si un usuario es admin desde una página de Astro (SSR)
+ * Usa service_role para evitar problemas de RLS
+ * @param accessToken - Token de acceso desde cookies
+ * @returns Usuario ID si es admin, null si no lo es
+ */
+export async function verifyAdminFromCookies(
+  accessToken: string | undefined,
+  refreshToken: string | undefined
+): Promise<string | null> {
+  console.log('[verifyAdminFromCookies] accessToken:', accessToken ? 'present' : 'missing');
+  console.log('[verifyAdminFromCookies] refreshToken:', refreshToken ? 'present' : 'missing');
+  
+  if (!accessToken || !refreshToken) {
+    console.log('[verifyAdminFromCookies] Tokens missing, returning null');
+    return null;
+  }
+
+  // Obtener el usuario desde los tokens
+  const user = await getUserFromSession(accessToken, refreshToken);
+  console.log('[verifyAdminFromCookies] user:', user ? user.id : 'null');
+  
+  if (!user) {
+    console.log('[verifyAdminFromCookies] No user from session, returning null');
+    return null;
+  }
+
+  // Verificar admin con service_role
+  const supabase = createServerSupabaseClient();
+  const { data: adminData, error } = await supabase
+    .from('admin_users')
+    .select('id, user_id, email')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  console.log('[verifyAdminFromCookies] adminData:', adminData);
+  console.log('[verifyAdminFromCookies] error:', error);
+
+  return adminData ? user.id : null;
+}

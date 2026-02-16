@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { generateInvoicePDF } from '../../../lib/invoice-pdf';
 import { sendInvoiceEmail } from '../../../lib/brevo';
+import { checkAndNotifyLowStock } from '../../../lib/wishlist-notifications';
 
 // Cliente de Supabase con SERVICE ROLE para bypasear RLS (solo para webhooks server-side)
 const supabaseAdmin = createClient(
@@ -200,7 +201,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       // Buscar producto por nombre para obtener ID y detalles
       const { data: product, error: productError } = await supabaseAdmin
         .from('products')
-        .select('id, slug, sku, images')
+        .select('id, slug, sku, images, stock')
         .eq('name', productName)
         .maybeSingle();
 
@@ -231,6 +232,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
         }
 
         // Decrementar stock de forma atómica usando la función SQL
+        const stockBefore = product.stock || 0;
         const { error: stockError } = await supabaseAdmin.rpc('decrement_stock', {
           product_id: product.id,
           quantity: quantity
@@ -246,6 +248,11 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
               admin_notes: `Stock update failed: ${stockError.message}` 
             })
             .eq('id', order.id);
+        } else {
+          // Comprobar si el stock ha bajado del umbral y notificar a wishlist
+          const stockAfter = stockBefore - quantity;
+          checkAndNotifyLowStock(product.id, stockBefore, stockAfter)
+            .catch(err => console.error('[Webhook] Error notificando stock bajo:', err));
         }
       } else {
         console.warn(`⚠️ Product "${productName}" not found in database, skipping order item (product_id required)`);

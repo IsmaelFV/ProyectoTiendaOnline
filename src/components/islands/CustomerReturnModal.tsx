@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { customAlert } from '../../lib/notifications';
 
 interface ReturnInfo {
   orderId: string;
@@ -140,7 +141,7 @@ export default function CustomerReturnModal({
                   onClick={() => {
                     const address = `${returnInfo.returnAddress.name}\n${returnInfo.returnAddress.street}\n${returnInfo.returnAddress.postalCode} ${returnInfo.returnAddress.city}\n${returnInfo.returnAddress.country}`;
                     navigator.clipboard.writeText(address);
-                    alert('Dirección copiada al portapapeles');
+                    customAlert('Dirección copiada al portapapeles', 'success');
                   }}
                   className="mt-3 text-sm text-brand-navy hover:text-brand-gold flex items-center"
                 >

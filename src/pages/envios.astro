@@ -1,0 +1,178 @@
+---
+/**
+ * ============================================================================
+ * Página: Envíos y Entregas - Dark Theme
+ * ============================================================================
+ */
+
+import PublicLayout from '../layouts/PublicLayout.astro';
+---
+
+<PublicLayout 
+  title="Envíos y Entregas - Fashion Store" 
+  description="Información sobre nuestros métodos de envío, plazos de entrega y costes."
+>
+  <div class="bg-black min-h-screen">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="text-center mb-12">
+        <h1 class="text-4xl font-bold text-white mb-4">Envíos y Entregas</h1>
+        <p class="text-xl text-gray-300">
+          Toda la información sobre nuestros métodos de envío
+        </p>
+      </div>
+
+      <!-- Métodos de envío -->
+      <div class="mb-12">
+        <h2 class="text-2xl font-bold text-white mb-6">Métodos de Envío</h2>
+        
+        <div class="space-y-4">
+          <div class="bg-gray-900 rounded-xl border border-gold-500/50 p-6">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 bg-gold-500/10 rounded-lg flex items-center justify-center flex-shrink-0 border border-gold-500/20">
+                <svg class="w-6 h-6 text-gold-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h3 class="font-semibold text-white mb-2">Envío Express (24-48h)</h3>
+                <p class="text-gray-400 mb-2">
+                  Recibe tu pedido en 24-48 horas laborables. Disponible para pedidos realizados antes de las 14:00h.
+                </p>
+                <p class="font-semibold text-gold-500">5,95€ - GRATIS en pedidos superiores a 50€</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gray-900 rounded-xl border border-gray-700 p-6">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 bg-gray-700/50 rounded-lg flex items-center justify-center flex-shrink-0 border border-gray-700">
+                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h3 class="font-semibold text-white mb-2">Envío Estándar (3-5 días)</h3>
+                <p class="text-gray-400 mb-2">
+                  Método de envío económico. Recibe tu pedido en 3-5 días laborables.
+                </p>
+                <p class="font-semibold text-gray-300">3,95€ - GRATIS en pedidos superiores a 30€</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gray-900 rounded-xl border border-gray-700 p-6">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 bg-gray-700/50 rounded-lg flex items-center justify-center flex-shrink-0 border border-gray-700">
+                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h3 class="font-semibold text-white mb-2">Recogida en Punto de Conveniencia</h3>
+                <p class="text-gray-400 mb-2">
+                  Recoge tu pedido en más de 2.500 puntos de recogida. Disponible en 2-4 días laborables.
+                </p>
+                <p class="font-semibold text-gray-300">2,95€</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zonas de envío -->
+      <div class="mb-12">
+        <h2 class="text-2xl font-bold text-white mb-6">Zonas de Envío</h2>
+        <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+          <div class="space-y-4">
+            <div class="flex justify-between items-center pb-4 border-b border-gray-800">
+              <div>
+                <h3 class="font-semibold text-white">España Península</h3>
+                <p class="text-sm text-gray-400">Envío estándar y express disponibles</p>
+              </div>
+              <span class="text-green-500 font-semibold">✓ Disponible</span>
+            </div>
+            
+            <div class="flex justify-between items-center pb-4 border-b border-gray-800">
+              <div>
+                <h3 class="font-semibold text-white">Islas Baleares</h3>
+                <p class="text-sm text-gray-400">Plazo adicional de 1-2 días</p>
+              </div>
+              <span class="text-green-500 font-semibold">✓ Disponible</span>
+            </div>
+            
+            <div class="flex justify-between items-center pb-4 border-b border-gray-800">
+              <div>
+                <h3 class="font-semibold text-white">Islas Canarias</h3>
+                <p class="text-sm text-gray-400">Consultar gastos de envío adicionales</p>
+              </div>
+              <span class="text-orange-500 font-semibold">! Condiciones especiales</span>
+            </div>
+            
+            <div class="flex justify-between items-center">
+              <div>
+                <h3 class="font-semibold text-white">Ceuta y Melilla</h3>
+                <p class="text-sm text-gray-400">Consultar disponibilidad</p>
+              </div>
+              <span class="text-orange-500 font-semibold">! Condiciones especiales</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Proceso de envío -->
+      <div class="mb-12">
+        <h2 class="text-2xl font-bold text-white mb-6">Proceso de Envío</h2>
+        <div class="grid md:grid-cols-4 gap-6">
+          <div class="text-center">
+            <div class="w-16 h-16 bg-gold-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-gold-500/20">
+              <span class="text-2xl font-bold text-gold-500">1</span>
+            </div>
+            <h3 class="font-semibold text-white mb-2">Procesamos</h3>
+            <p class="text-sm text-gray-400">Preparamos tu pedido con cuidado</p>
+          </div>
+
+          <div class="text-center">
+            <div class="w-16 h-16 bg-gold-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-gold-500/20">
+              <span class="text-2xl font-bold text-gold-500">2</span>
+            </div>
+            <h3 class="font-semibold text-white mb-2">Empaquetamos</h3>
+            <p class="text-sm text-gray-400">Embalaje sostenible y seguro</p>
+          </div>
+
+          <div class="text-center">
+            <div class="w-16 h-16 bg-gold-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-gold-500/20">
+              <span class="text-2xl font-bold text-gold-500">3</span>
+            </div>
+            <h3 class="font-semibold text-white mb-2">Enviamos</h3>
+            <p class="text-sm text-gray-400">Con transportistas de confianza</p>
+          </div>
+
+          <div class="text-center">
+            <div class="w-16 h-16 bg-gold-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-gold-500/20">
+              <span class="text-2xl font-bold text-gold-500">4</span>
+            </div>
+            <h3 class="font-semibold text-white mb-2">Recibes</h3>
+            <p class="text-sm text-gray-400">En la dirección indicada</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seguimiento -->
+      <div class="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-800 rounded-xl p-8">
+        <h2 class="text-2xl font-bold text-white mb-4">Seguimiento de Pedido</h2>
+        <p class="text-gray-300 mb-6">
+          Una vez enviado tu pedido, recibirás un email con el número de seguimiento. También puedes consultar el estado de tu pedido en tu área de cliente.
+        </p>
+        <a 
+          href="/perfil/mis-pedidos" 
+          class="inline-flex items-center gap-2 bg-gold-500 text-black font-semibold px-6 py-3 rounded-lg hover:bg-gold-600 transition-colors"
+        >
+          Ver mis pedidos
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</PublicLayout>

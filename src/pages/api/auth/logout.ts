@@ -44,5 +44,5 @@ export const POST: APIRoute = async ({ cookies, redirect, locals, request }) => 
   cookies.delete('sb-access-token', { path: '/' });
   cookies.delete('sb-refresh-token', { path: '/' });
 
-  return redirect('/admin/login?message=logged_out');
+  return redirect('/auth/login');
 };

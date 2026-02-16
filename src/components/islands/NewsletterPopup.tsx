@@ -6,6 +6,7 @@
  * Ofrece un código de descuento a cambio del email
  */
 import { useState, useEffect } from 'react';
+import { customAlert } from '../../lib/notifications';
 
 interface NewsletterPopupProps {
   promoCode?: string;
@@ -83,7 +84,7 @@ export default function NewsletterPopup({
 
   const copyCode = () => {
     navigator.clipboard.writeText(promoCode);
-    alert('¡Código copiado al portapapeles!');
+    customAlert('¡Código copiado al portapapeles!', 'success');
   };
 
   if (!isOpen) return null;
@@ -134,7 +135,7 @@ export default function NewsletterPopup({
                 </div>
 
                 <h3 className="text-2xl font-serif font-bold text-brand-navy mb-2">
-                  ¡Bienvenido/a a FashionMarket!
+                  ¡Bienvenido/a a Fashion Store!
                 </h3>
                 <p className="text-gray-600 mb-6">
                   Suscríbete a nuestra newsletter y obtén un <strong>{discountPercentage}% de descuento</strong> en tu primera compra.

@@ -1,27 +1,18 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { supabase } from '../../../lib/supabase';
+import { verifyAdminFromCookies, createServerSupabaseClient } from '../../../lib/auth';
 
 // Protección: solo admins
 const accessToken = Astro.cookies.get('sb-access-token')?.value;
-if (!accessToken) {
-  return Astro.redirect('/admin/login');
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+if (!userId) {
+  return Astro.redirect('/auth/login');
 }
 
-// Verificar si es admin
-const { data: { user } } = await supabase.auth.getUser(accessToken);
-if (!user) {
-  return Astro.redirect('/admin/login');
-}
-
-const { data: adminUser } = await supabase
-  .from('admin_users')
-  .select('*')
-  .eq('user_id', user.id);
-
-if (!adminUser || adminUser.length === 0) {
-  return Astro.redirect('/admin/login');
-}
+// Usar service_role para consultas de admin
+const supabase = createServerSupabaseClient();
 
 // Obtener filtros de la URL
 const url = new URL(Astro.request.url);

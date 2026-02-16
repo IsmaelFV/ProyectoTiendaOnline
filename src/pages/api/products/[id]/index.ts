@@ -1,10 +1,13 @@
 import type { APIRoute } from 'astro';
-import { supabase } from '../../../../lib/supabase';
+import { createServerSupabaseClient, verifyAdminFromCookies } from '../../../../lib/auth';
+import { notifyWishlistSale } from '../../../../lib/wishlist-notifications';
 
 export const PUT: APIRoute = async ({ request, cookies, params }) => {
   try {
-    // Verificar autenticación
+    // Verificar autenticación de admin
     const accessToken = cookies.get('sb-access-token')?.value;
+    const refreshToken = cookies.get('sb-refresh-token')?.value;
+
     if (!accessToken) {
       return new Response(JSON.stringify({ error: 'No autorizado' }), {
         status: 401,
@@ -12,26 +15,16 @@ export const PUT: APIRoute = async ({ request, cookies, params }) => {
       });
     }
 
-    // Verificar que es admin
-    const { data: { user } } = await supabase.auth.getUser(accessToken);
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Usuario no válido' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const { data: adminUser } = await supabase
-      .from('admin_users')
-      .select('*')
-      .eq('user_id', user.id);
-
-    if (!adminUser || adminUser.length === 0) {
+    const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+    if (!userId) {
       return new Response(JSON.stringify({ error: 'No tienes permisos de administrador' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }
       });
     }
+
+    // Usar service_role para operaciones de admin
+    const supabase = createServerSupabaseClient();
 
     // Obtener ID del producto
     const { id } = params;
@@ -64,8 +57,11 @@ export const PUT: APIRoute = async ({ request, cookies, params }) => {
     const stock = formData.get('stock')?.toString();
     const category_id = formData.get('category_id')?.toString();
     const gender_id = formData.get('gender_id')?.toString();
-    let image_url = formData.get('image_url')?.toString() || existingProduct.image_url;
-    const imageFile = formData.get('image');
+    const imagesString = formData.get('images')?.toString();
+    const sizesString = formData.get('sizes')?.toString();
+    const sizeMeasurementsString = formData.get('size_measurements')?.toString();
+    const isOnSale = formData.get('is_on_sale') === 'on';
+    const discountPercentageInput = formData.get('discount_percentage')?.toString();
 
     // Validaciones
     if (!name || !description || !price || !stock || !category_id || !gender_id) {
@@ -92,42 +88,27 @@ export const PUT: APIRoute = async ({ request, cookies, params }) => {
       });
     }
 
-    // Manejar imagen si se subió un archivo
-    if (imageFile && imageFile instanceof File && imageFile.size > 0) {
-      const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `products/${fileName}`;
+    // Procesar imágenes desde el textarea (una URL por línea)
+    const images = imagesString
+      ? imagesString
+          .split('\n')
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+          .filter((url: string) => {
+            try {
+              const parsed = new URL(url);
+              return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+            } catch {
+              return false;
+            }
+          })
+      : existingProduct.images || [];
 
-      // Subir imagen a Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, imageFile, {
-          contentType: imageFile.type,
-          upsert: false
-        });
-
-      if (uploadError) {
-        console.error('Error al subir imagen:', uploadError);
-        return new Response(JSON.stringify({ error: 'Error al subir la imagen' }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-
-      // Obtener URL pública
-      const { data: urlData } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
-
-      image_url = urlData.publicUrl;
-
-      // Opcional: eliminar la imagen antigua si existe y es de Supabase
-      if (existingProduct.image_url && existingProduct.image_url.includes('supabase')) {
-        const oldPath = existingProduct.image_url.split('/').slice(-2).join('/');
-        await supabase.storage
-          .from('product-images')
-          .remove([oldPath]);
-      }
+    if (images.length === 0) {
+      return new Response(JSON.stringify({ error: 'Debes agregar al menos una imagen válida' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     // Crear slug del nombre
@@ -138,6 +119,34 @@ export const PUT: APIRoute = async ({ request, cookies, params }) => {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
 
+    // Calcular precio de oferta si aplica
+    const priceInCents = Math.round(priceNum * 100);
+    let salePriceInCents: number | null = null;
+    if (isOnSale && discountPercentageInput) {
+      const discountPercentage = parseInt(discountPercentageInput);
+      if (!isNaN(discountPercentage) && discountPercentage > 0 && discountPercentage < 100) {
+        salePriceInCents = Math.round(priceInCents * (1 - discountPercentage / 100));
+      }
+    }
+
+    // Procesar tallas
+    const sizes = sizesString
+      ? sizesString.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : existingProduct.sizes || [];
+
+    // Procesar medidas de tallas
+    let sizeMeasurements = existingProduct.size_measurements || null;
+    if (sizeMeasurementsString && sizeMeasurementsString.trim() !== '') {
+      try {
+        const parsed = JSON.parse(sizeMeasurementsString);
+        sizeMeasurements = Object.keys(parsed).length > 0 ? parsed : null;
+      } catch {
+        sizeMeasurements = existingProduct.size_measurements || null;
+      }
+    } else if (sizeMeasurementsString === '') {
+      sizeMeasurements = null;
+    }
+
     // Actualizar producto
     const { data: updatedProduct, error: updateError } = await supabase
       .from('products')
@@ -145,11 +154,15 @@ export const PUT: APIRoute = async ({ request, cookies, params }) => {
         name,
         slug,
         description,
-        price: Math.round(priceNum * 100), // Convertir a centavos
-        stock: stockNum, // ✅ CORREGIDO: Ahora sí se actualiza el stock
-        image_url,
+        price: priceInCents,
+        stock: stockNum,
+        images,
+        sizes,
+        size_measurements: sizeMeasurements,
         category_id,
         gender_id,
+        is_on_sale: isOnSale && salePriceInCents !== null,
+        sale_price: salePriceInCents,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -162,6 +175,20 @@ export const PUT: APIRoute = async ({ request, cookies, params }) => {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
+    }
+
+    // Notificar wishlist si se acaba de activar una oferta (no estaba en oferta antes)
+    if (isOnSale && salePriceInCents !== null && !existingProduct.is_on_sale) {
+      const discountPct = discountPercentageInput ? parseInt(discountPercentageInput) : 0;
+      notifyWishlistSale({
+        productId: id,
+        productName: name,
+        productSlug: slug,
+        productImage: images[0],
+        originalPrice: priceInCents,
+        salePrice: salePriceInCents,
+        discountPercentage: discountPct,
+      }).catch(err => console.error('[Product Edit] Error notificando wishlist:', err));
     }
 
     return new Response(JSON.stringify({ 

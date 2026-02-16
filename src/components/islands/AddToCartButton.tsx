@@ -11,6 +11,7 @@ interface AddToCartButtonProps {
     slug: string;
     image?: string;
     sizes: string[];
+    size_measurements?: Record<string, { chest: [number, number]; waist: [number, number]; hip: [number, number] }>;
     category?: {
       name: string;
       slug: string;
@@ -86,6 +87,7 @@ export default function AddToCartButton({ product }: AddToCartButtonProps) {
               </label>
               <SizeRecommender 
                 productSizes={product.sizes} 
+                sizeMeasurements={product.size_measurements}
                 onSelectSize={(size) => setSelectedSize(size)} 
               />
             </div>

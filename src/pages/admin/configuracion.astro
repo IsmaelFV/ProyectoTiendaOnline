@@ -1,29 +1,27 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { supabase } from '../../lib/supabase';
+import { verifyAdminFromCookies, createServerSupabaseClient } from '../../lib/auth';
 
 // Protección: solo admins
 const accessToken = Astro.cookies.get('sb-access-token')?.value;
-if (!accessToken) {
-  return Astro.redirect('/admin/login');
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+if (!userId) {
+  return Astro.redirect('/auth/login');
 }
 
-// Verificar si es admin
-const { data: { user } } = await supabase.auth.getUser(accessToken);
-if (!user) {
-  return Astro.redirect('/admin/login');
-}
+// Usar service_role para consultas de admin
+const supabase = createServerSupabaseClient();
 
-const { data: adminUser } = await supabase
+// Obtener información del admin actual
+const { data: currentAdminData } = await supabase
   .from('admin_users')
   .select('*')
-  .eq('user_id', user.id);
+  .eq('user_id', userId)
+  .single();
 
-if (!adminUser || adminUser.length === 0) {
-  return Astro.redirect('/admin/login');
-}
-
-const currentAdmin = adminUser[0];
+const currentAdmin = currentAdminData;
 
 // Obtener todos los admins
 const { data: allAdmins } = await supabase
@@ -37,30 +35,30 @@ const { data: allAdmins } = await supabase
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Configuración</h1>
-        <p class="mt-1 text-sm text-gray-600">Gestiona la configuración del sistema</p>
+        <h1 class="text-3xl font-bold text-white">Configuración</h1>
+        <p class="mt-1 text-sm text-gray-400">Gestiona la configuración del sistema</p>
       </div>
     </div>
 
     <!-- Información del admin actual -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-xl font-semibold text-gray-900 mb-4">Tu Cuenta</h2>
+    <div class="bg-dark-surface rounded-xl border border-white/10 p-6">
+      <h2 class="text-xl font-semibold text-white mb-4">Tu Cuenta</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">Email</label>
-          <p class="text-gray-900">{currentAdmin.email}</p>
+          <label class="block text-sm font-medium text-gray-400 mb-1">Email</label>
+          <p class="text-white">{currentAdmin.email}</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">Nombre</label>
-          <p class="text-gray-900">{currentAdmin.full_name}</p>
+          <label class="block text-sm font-medium text-gray-400 mb-1">Nombre</label>
+          <p class="text-white">{currentAdmin.full_name}</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">ID de Usuario</label>
-          <p class="text-xs text-gray-600 font-mono">{currentAdmin.user_id}</p>
+          <label class="block text-sm font-medium text-gray-400 mb-1">ID de Usuario</label>
+          <p class="text-xs text-gray-500 font-mono">{currentAdmin.user_id}</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">Registrado</label>
-          <p class="text-gray-900">
+          <label class="block text-sm font-medium text-gray-400 mb-1">Registrado</label>
+          <p class="text-white">
             {new Date(currentAdmin.created_at).toLocaleDateString('es-ES', {
               day: '2-digit',
               month: 'long',
@@ -71,11 +69,11 @@ const { data: allAdmins } = await supabase
       </div>
       
       <!-- Cambiar Contraseña -->
-      <div class="mt-6 pt-6 border-t border-gray-200">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">Cambiar Contraseña</h3>
+      <div class="mt-6 pt-6 border-t border-white/10">
+        <h3 class="text-lg font-medium text-white mb-4">Cambiar Contraseña</h3>
         <form id="password-form" class="space-y-4 max-w-md">
           <div>
-            <label for="current-password" class="block text-sm font-medium text-gray-700">
+            <label for="current-password" class="block text-sm font-medium text-gray-400">
               Contraseña actual
             </label>
             <input
@@ -83,11 +81,11 @@ const { data: allAdmins } = await supabase
               id="current-password"
               name="currentPassword"
               required
-              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-navy focus:border-brand-navy"
+              class="mt-1 block w-full bg-dark-card border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-accent-gold focus:border-accent-gold"
             />
           </div>
           <div>
-            <label for="new-password" class="block text-sm font-medium text-gray-700">
+            <label for="new-password" class="block text-sm font-medium text-gray-400">
               Nueva contraseña
             </label>
             <input
@@ -96,11 +94,11 @@ const { data: allAdmins } = await supabase
               name="newPassword"
               required
               minlength="6"
-              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-navy focus:border-brand-navy"
+              class="mt-1 block w-full bg-dark-card border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-accent-gold focus:border-accent-gold"
             />
           </div>
           <div>
-            <label for="confirm-password" class="block text-sm font-medium text-gray-700">
+            <label for="confirm-password" class="block text-sm font-medium text-gray-400">
               Confirmar nueva contraseña
             </label>
             <input
@@ -109,13 +107,13 @@ const { data: allAdmins } = await supabase
               name="confirmPassword"
               required
               minlength="6"
-              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-navy focus:border-brand-navy"
+              class="mt-1 block w-full bg-dark-card border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-accent-gold focus:border-accent-gold"
             />
           </div>
           <div id="password-message" class="hidden text-sm"></div>
           <button
             type="submit"
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-navy hover:bg-brand-navy/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy"
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-dark-bg bg-accent-gold hover:bg-accent-gold/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-bg focus:ring-accent-gold"
           >
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
@@ -127,68 +125,68 @@ const { data: allAdmins } = await supabase
     </div>
 
     <!-- Configuración de Ofertas Flash -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-xl font-semibold text-gray-900 mb-4">Ofertas Flash</h2>
-      <p class="text-sm text-gray-600 mb-4">
+    <div class="bg-dark-surface rounded-xl border border-white/10 p-6">
+      <h2 class="text-xl font-semibold text-white mb-4">Ofertas Flash</h2>
+      <p class="text-sm text-gray-400 mb-4">
         Activa o desactiva las ofertas flash globales. Cuando están activas, los productos en oferta mostrarán un contador regresivo.
       </p>
-      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+      <div class="flex items-center justify-between p-4 bg-white/5 rounded-lg">
         <div class="flex items-center space-x-3">
-          <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
           <div>
-            <p class="font-medium text-gray-900">Estado de Ofertas Flash</p>
+            <p class="font-medium text-white">Estado de Ofertas Flash</p>
             <p class="text-sm text-gray-500" id="flash-status-text">Cargando...</p>
           </div>
         </div>
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="flash-toggle" class="sr-only peer" />
-          <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-navy/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-gold"></div>
+          <div class="w-14 h-7 bg-white/10 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-accent-gold/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-600 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-accent-gold"></div>
         </label>
       </div>
     </div>
 
     <!-- Lista de administradores -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">Administradores</h2>
-        <p class="text-sm text-gray-600 mt-1">Usuarios con acceso al panel de administración</p>
+    <div class="bg-dark-surface rounded-xl border border-white/10 overflow-hidden">
+      <div class="px-6 py-4 border-b border-white/10">
+        <h2 class="text-xl font-semibold text-white">Administradores</h2>
+        <p class="text-sm text-gray-400 mt-1">Usuarios con acceso al panel de administración</p>
       </div>
       
       {allAdmins && allAdmins.length > 0 ? (
         <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+          <table class="min-w-full divide-y divide-white/10">
+            <thead class="bg-dark-card/50">
               <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Nombre
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Email
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Fecha de Registro
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Estado
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody class="divide-y divide-white/5">
               {allAdmins.map((admin) => (
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-white/5 transition-colors">
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">{admin.full_name}</div>
+                    <div class="text-sm font-medium text-white">{admin.full_name}</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-500">{admin.email}</div>
+                    <div class="text-sm text-gray-400">{admin.email}</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(admin.created_at).toLocaleDateString('es-ES')}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                       Activo
                     </span>
                   </td>
@@ -198,65 +196,65 @@ const { data: allAdmins } = await supabase
           </table>
         </div>
       ) : (
-        <div class="p-6 text-center text-gray-500">
+        <div class="p-6 text-center text-gray-400">
           <p>No hay administradores registrados</p>
         </div>
       )}
     </div>
 
     <!-- Información del sistema -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-xl font-semibold text-gray-900 mb-4">Información del Sistema</h2>
+    <div class="bg-dark-surface rounded-xl border border-white/10 p-6">
+      <h2 class="text-xl font-semibold text-white mb-4">Información del Sistema</h2>
       <div class="space-y-3">
         <div class="flex justify-between">
-          <span class="text-gray-600">Versión</span>
-          <span class="font-medium text-gray-900">1.0.0</span>
+          <span class="text-gray-400">Versión</span>
+          <span class="font-medium text-white">1.0.0</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-gray-600">Base de Datos</span>
-          <span class="font-medium text-gray-900">Supabase PostgreSQL</span>
+          <span class="text-gray-400">Base de Datos</span>
+          <span class="font-medium text-white">Supabase PostgreSQL</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-gray-600">Framework</span>
-          <span class="font-medium text-gray-900">Astro v5</span>
+          <span class="text-gray-400">Framework</span>
+          <span class="font-medium text-white">Astro v5</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-gray-600">Total Administradores</span>
-          <span class="font-medium text-gray-900">{allAdmins?.length || 0}</span>
+          <span class="text-gray-400">Total Administradores</span>
+          <span class="font-medium text-white">{allAdmins?.length || 0}</span>
         </div>
       </div>
     </div>
 
     <!-- Acciones rápidas -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-xl font-semibold text-gray-900 mb-4">Acciones Rápidas</h2>
+    <div class="bg-dark-surface rounded-xl border border-white/10 p-6">
+      <h2 class="text-xl font-semibold text-white mb-4">Acciones Rápidas</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <a
           href="/admin/productos/nuevo"
-          class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-brand-gold hover:bg-gray-50 transition-colors"
+          class="flex items-center justify-between p-4 border border-white/10 rounded-lg hover:border-accent-gold/50 hover:bg-white/5 transition-colors"
         >
           <div class="flex items-center space-x-3">
-            <svg class="w-6 h-6 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            <span class="font-medium text-gray-900">Nuevo Producto</span>
+            <span class="font-medium text-white">Nuevo Producto</span>
           </div>
-          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
           </svg>
         </a>
 
         <a
           href="/admin/pedidos"
-          class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-brand-gold hover:bg-gray-50 transition-colors"
+          class="flex items-center justify-between p-4 border border-white/10 rounded-lg hover:border-accent-gold/50 hover:bg-white/5 transition-colors"
         >
           <div class="flex items-center space-x-3">
-            <svg class="w-6 h-6 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
-            <span class="font-medium text-gray-900">Ver Pedidos</span>
+            <span class="font-medium text-white">Ver Pedidos</span>
           </div>
-          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
           </svg>
         </a>
@@ -266,6 +264,8 @@ const { data: allAdmins } = await supabase
 </AdminLayout>
 
 <script>
+  import { customAlert } from '../../lib/notifications';
+  
   // ========== Cambio de Contraseña ==========
   const passwordForm = document.getElementById('password-form') as HTMLFormElement;
   const passwordMessage = document.getElementById('password-message') as HTMLElement;
@@ -359,11 +359,11 @@ const { data: allAdmins } = await supabase
       } else {
         // Revertir el toggle si hubo error
         flashToggle.checked = !enabled;
-        alert('Error al actualizar la configuración');
+        customAlert('Error al actualizar la configuración', 'error');
       }
     } catch (error) {
       flashToggle.checked = !enabled;
-      alert('Error de conexión');
+      customAlert('Error de conexión', 'error');
     }
   });
   

@@ -176,6 +176,15 @@ function translateStatus(status: string) {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
             </a>
+            <a
+              href="/perfil/favoritos"
+              class="w-full text-left px-4 py-3 text-gray-300 hover:bg-white/5 hover:text-accent-gold rounded-xl transition-colors flex items-center justify-between border border-transparent hover:border-white/10"
+            >
+              <span>Mis favoritos</span>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </a>
             <button
               id="logout-btn"
               class="w-full text-left px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors flex items-center justify-between border border-transparent hover:border-red-500/20"
@@ -274,9 +283,21 @@ function translateStatus(status: string) {
   </div>
 
   <script>
+    import { customConfirm, customAlert } from '../../lib/notifications';
+    
     // Cerrar sesión
     document.getElementById('logout-btn')?.addEventListener('click', async () => {
-      if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+      const confirmed = await customConfirm(
+        '¿Estás seguro de que quieres cerrar sesión?',
+        {
+          title: 'Cerrar sesión',
+          confirmText: 'Sí, cerrar sesión',
+          cancelText: 'Cancelar',
+          type: 'warning'
+        }
+      );
+      
+      if (confirmed) {
         try {
           const response = await fetch('/api/auth/logout', {
             method: 'POST',
@@ -293,7 +314,7 @@ function translateStatus(status: string) {
 
     // Editar perfil
     document.getElementById('edit-profile-btn')?.addEventListener('click', () => {
-      alert('Funcionalidad de editar perfil en desarrollo');
+      customAlert('Funcionalidad de editar perfil en desarrollo', 'info');
       // TODO: Implementar modal o página de edición de perfil
     });
   </script>

@@ -1,0 +1,66 @@
+---
+import PublicLayout from '@layouts/PublicLayout.astro';
+---
+
+<PublicLayout title="Página no encontrada - Fashion Store" description="La página que buscas no existe o ha sido movida.">
+  <div class="min-h-[70vh] flex items-center justify-center px-4">
+    <div class="text-center max-w-lg">
+      <!-- Número 404 decorativo -->
+      <div class="relative mb-8">
+        <span class="text-[10rem] sm:text-[12rem] font-serif font-bold text-white/[0.03] leading-none select-none block">404</span>
+        <div class="absolute inset-0 flex items-center justify-center">
+          <div class="text-center">
+            <svg class="w-16 h-16 text-gold-500/40 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+            </svg>
+            <h1 class="text-2xl sm:text-3xl font-serif font-bold text-white mb-2">
+              Página no encontrada
+            </h1>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-gray-400 text-sm sm:text-base mb-8 leading-relaxed">
+        Lo sentimos, la página que buscas no existe, ha sido movida o ya no está disponible.
+      </p>
+
+      <!-- Acciones -->
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-12">
+        <a
+          href="/"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-gold-500 text-gray-900 font-medium text-sm rounded-xl hover:bg-gold-400 transition-all"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+          </svg>
+          Ir al inicio
+        </a>
+        <a
+          href="/productos"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-white/10 text-white font-medium text-sm rounded-xl hover:bg-white/20 transition-all"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+          </svg>
+          Ver productos
+        </a>
+      </div>
+
+      <!-- Links útiles -->
+      <div class="border-t border-white/5 pt-8">
+        <p class="text-xs text-gray-600 mb-4 uppercase tracking-wider">Enlaces útiles</p>
+        <div class="flex flex-wrap justify-center gap-4 text-sm">
+          <a href="/novedades" class="text-gray-400 hover:text-gold-500 transition-colors">Novedades</a>
+          <span class="text-gray-800">·</span>
+          <a href="/ofertas" class="text-gray-400 hover:text-gold-500 transition-colors">Ofertas</a>
+          <span class="text-gray-800">·</span>
+          <a href="/mujer" class="text-gray-400 hover:text-gold-500 transition-colors">Mujer</a>
+          <span class="text-gray-800">·</span>
+          <a href="/hombre" class="text-gray-400 hover:text-gold-500 transition-colors">Hombre</a>
+          <span class="text-gray-800">·</span>
+          <a href="/contacto" class="text-gray-400 hover:text-gold-500 transition-colors">Contacto</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</PublicLayout>
