@@ -96,6 +96,12 @@ const productJsonLd = JSON.stringify({
   },
   ...(product.brand ? { "brand": { "@type": "Brand", "name": product.brand } } : {}),
 });
+
+// Calcular stock real desde stock_by_size para evitar desincronización con campo stock
+const stockBySize = product.stock_by_size as Record<string, number> | null;
+const realStock = stockBySize && typeof stockBySize === 'object' && Object.keys(stockBySize).length > 0
+  ? Object.values(stockBySize).reduce((sum, v) => sum + (Number(v) || 0), 0)
+  : (product.stock ?? 0);
 ---
 
 <PublicLayout 
@@ -220,14 +226,14 @@ const productJsonLd = JSON.stringify({
 
         <!-- Tallas + Botón o Agotado -->
         <div>
-          {(product.stock ?? 0) > 0 ? (
+          {realStock > 0 ? (
             <>
               <div class="mb-4 flex items-center gap-3">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-medium rounded-md border border-emerald-500/20">
                   <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
                   En stock
                 </span>
-                <span class="text-xs text-gray-600">{product.stock} uds. totales</span>
+                <span class="text-xs text-gray-600">{realStock} uds. totales</span>
               </div>
               <AddToCartButton 
                 client:load
