@@ -23,6 +23,29 @@ export default function CartSlideOver() {
     }
   }, [total, appliedDiscount]);
 
+  // Resetear estado de procesamiento cuando el usuario vuelve atrás del checkout de Stripe
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      // persisted = true cuando la página se restaura del bfcache (botón atrás)
+      if (e.persisted) {
+        setIsProcessing(false);
+        setError('');
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isProcessing) {
+        // Si la página vuelve a ser visible y estábamos procesando, resetear
+        setIsProcessing(false);
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isProcessing]);
+
   const handleDiscountApplied = (discountData: any) => {
     setAppliedDiscount(discountData);
     if (discountData && discountData.final_total !== undefined) {

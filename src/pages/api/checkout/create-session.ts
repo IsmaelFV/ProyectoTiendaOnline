@@ -70,6 +70,20 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const tempSessionId = `temp_${Date.now()}_${user?.id || 'guest'}`;
     let reservationSystemAvailable = true;
 
+    // Cancelar reservas activas previas del mismo usuario (evita acumulación si retrocede y vuelve)
+    if (user?.id) {
+      try {
+        await supabaseAdmin
+          .from('stock_reservations')
+          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+          .eq('user_id', user.id)
+          .eq('status', 'active');
+        console.log('[CHECKOUT] Reservas previas del usuario canceladas');
+      } catch (e) {
+        console.warn('[CHECKOUT] No se pudieron cancelar reservas previas:', e);
+      }
+    }
+
     for (const item of items) {
       const product = productMap.get(item.id);
       
