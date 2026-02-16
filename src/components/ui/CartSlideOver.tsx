@@ -37,10 +37,11 @@ export default function CartSlideOver() {
     setError('');
 
     try {
-      // Preparar items para el checkout (solo ID y cantidad)
+      // Preparar items para el checkout (ID, cantidad Y talla)
       const checkoutItems = itemsArray.map(item => ({
         id: item.id,
-        quantity: item.quantity
+        quantity: item.quantity,
+        size: item.size || 'Única'
       }));
 
       // Llamar al endpoint de checkout
@@ -69,7 +70,13 @@ export default function CartSlideOver() {
 
     } catch (err: any) {
       console.error('Error en checkout:', err);
-      setError(err.message || 'Error al procesar el pago. Inténtalo de nuevo.');
+      const msg = err.message || 'Error al procesar el pago. Inténtalo de nuevo.';
+      // Si es un error de stock, mostrar mensaje más claro
+      if (msg.includes('Stock insuficiente') || msg.includes('stock')) {
+        setError('⚠️ ' + msg + '. Actualiza la página y revisa tu carrito.');
+      } else {
+        setError(msg);
+      }
       setIsProcessing(false);
     }
   };

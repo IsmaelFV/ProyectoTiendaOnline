@@ -203,6 +203,9 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     }
 
     // 2. Procesar line_items de Stripe para crear order_items y actualizar stock
+    // Primero crear los order_items y recopilar info para decrement atómico
+    const stockDecrementItems: Array<{ product_id: string; size: string; quantity: number }> = [];
+
     for (const lineItem of lineItems.data) {
       const productName = lineItem.description || 'Producto';
       const quantity = lineItem.quantity || 1;
@@ -245,30 +248,12 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
           continue;
         }
 
-        // Decrementar stock de forma atómica — POR TALLA
-        const stockBefore = product.stock || 0;
-        const { error: stockError } = await supabaseAdmin.rpc('decrement_stock', {
+        // Acumular para decrement atómico
+        stockDecrementItems.push({
           product_id: product.id,
-          quantity: quantity,
-          p_size: itemSize
+          size: itemSize,
+          quantity: quantity
         });
-
-        if (stockError) {
-          console.error(`❌ Error updating stock for product ${product.id}:`, stockError.message);
-          // Marcar el pedido para revisión manual
-          await supabaseAdmin
-            .from('orders')
-            .update({ 
-              status: 'processing',
-              admin_notes: `Stock update failed: ${stockError.message}` 
-            })
-            .eq('id', order.id);
-        } else {
-          // Comprobar si el stock ha bajado del umbral y notificar a wishlist
-          const stockAfter = stockBefore - quantity;
-          checkAndNotifyLowStock(product.id, stockBefore, stockAfter)
-            .catch(err => console.error('[Webhook] Error notificando stock bajo:', err));
-        }
       } else {
         console.warn(`⚠️ Product "${productName}" not found in database, skipping order item (product_id required)`);
         // Para productos de prueba que no existen, marcar pedido como pendiente de revisión
@@ -280,6 +265,47 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
           })
           .eq('id', order.id);
       }
+    }
+
+    // ⭐ DECREMENT ATÓMICO: Validar y decrementar todo el stock de golpe (anti-race-condition)
+    if (stockDecrementItems.length > 0) {
+      console.log(`🔒 Decrementando stock atómicamente para ${stockDecrementItems.length} items...`);
+      
+      const { data: stockResult, error: stockError } = await supabaseAdmin.rpc('validate_and_decrement_stock', {
+        p_items: stockDecrementItems
+      }) as { data: any; error: any };
+
+      if (stockError || !stockResult?.success) {
+        const errorMsg = stockResult?.message || stockError?.message || 'Error desconocido';
+        console.error(`❌ Error en decrement atómico: ${errorMsg}`);
+        
+        // Si falla la validación de stock, el pedido ya está pagado.
+        // Marcar para revisión manual pero NO cancelar (Stripe ya cobró)
+        await supabaseAdmin
+          .from('orders')
+          .update({ 
+            status: 'processing',
+            admin_notes: `⚠️ ATENCIÓN: Stock insuficiente tras pago. Detalles: ${errorMsg}. Revisar manualmente.`
+          })
+          .eq('id', order.id);
+      } else {
+        console.log(`✅ Stock decrementado: ${stockResult.items_processed} items procesados`);
+        
+        // Notificar stock bajo para wishlist
+        for (const item of stockDecrementItems) {
+          const { data: prod } = await supabaseAdmin
+            .from('products')
+            .select('stock')
+            .eq('id', item.product_id)
+            .single();
+          
+          if (prod) {
+            checkAndNotifyLowStock(item.product_id, prod.stock + item.quantity, prod.stock)
+              .catch(err => console.error('[Webhook] Error notificando stock bajo:', err));
+          }
+        }
+      }
+    }
     }
 
     console.log(`✅ Order ${orderNumber} processed successfully with ${lineItems.data.length} items`);

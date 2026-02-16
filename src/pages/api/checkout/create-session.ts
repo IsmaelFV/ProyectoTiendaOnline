@@ -108,7 +108,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
 
         const errorMessage = reservation?.error === 'insufficient_stock'
-          ? `Stock insuficiente para ${product.name}. Disponible: ${reservation.available}`
+          ? `Stock insuficiente para "${product.name}" (talla ${item.size || 'Única'}). Solo quedan ${reservation.available} unidades disponibles. Otro cliente puede haber comprado antes que tú.`
           : `Error al reservar stock para ${product.name}`;
 
         return new Response(JSON.stringify({ 
