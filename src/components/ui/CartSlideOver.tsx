@@ -94,7 +94,7 @@ export default function CartSlideOver() {
       const msg = err.message || 'Error al procesar el pago. Inténtalo de nuevo.';
       // Si es un error de stock, mostrar mensaje más claro
       if (msg.includes('Stock insuficiente') || msg.includes('stock')) {
-        setError(msg + '. Actualiza la página y revisa tu carrito.');
+        setError(msg);
       } else {
         setError(msg);
       }

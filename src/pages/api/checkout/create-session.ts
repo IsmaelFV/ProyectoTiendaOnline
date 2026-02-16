@@ -81,18 +81,44 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
       // Validar stock real (lectura directa de la BD)
       const itemSize = item.size || 'Única';
-      let availableStock = product.stock || 0;
-      
-      if (product.stock_by_size && typeof product.stock_by_size === 'object') {
-        const sizeStock = product.stock_by_size as Record<string, number>;
-        if (itemSize in sizeStock) {
-          availableStock = sizeStock[itemSize] || 0;
+
+      // Leer stock FRESCO directamente de la BD (no del cache de la query anterior en caso de bfcache)
+      let availableStock = 0;
+      try {
+        const { data: freshProduct, error: freshError } = await supabase
+          .from('products')
+          .select('stock, stock_by_size')
+          .eq('id', item.id)
+          .single();
+
+        if (freshError || !freshProduct) {
+          console.error(`[CHECKOUT] Error leyendo stock fresco de ${product.name}:`, freshError);
+          availableStock = product.stock || 0;
+        } else {
+          // Usar stock_by_size si existe para esta talla
+          if (freshProduct.stock_by_size && typeof freshProduct.stock_by_size === 'object') {
+            const sizeStock = freshProduct.stock_by_size as Record<string, number>;
+            if (itemSize in sizeStock) {
+              availableStock = sizeStock[itemSize] || 0;
+            } else {
+              // La talla no existe en stock_by_size, usar stock global
+              availableStock = freshProduct.stock || 0;
+            }
+          } else {
+            availableStock = freshProduct.stock || 0;
+          }
         }
+      } catch (e) {
+        console.warn('[CHECKOUT] Error en lectura fresca, usando datos de query:', e);
+        availableStock = product.stock || 0;
       }
 
+      console.log(`[CHECKOUT] Validación stock: "${product.name}" talla=${itemSize} stockDisponible=${availableStock} cantidadPedida=${item.quantity} stock_by_size=${JSON.stringify(product.stock_by_size)} stockTotal=${product.stock}`);
+
       if (availableStock < item.quantity) {
+        console.warn(`[CHECKOUT] STOCK INSUFICIENTE: ${product.name} talla=${itemSize} disponible=${availableStock} pedido=${item.quantity}`);
         return new Response(JSON.stringify({ 
-          error: `Stock insuficiente para "${product.name}" (talla ${itemSize}). Solo quedan ${availableStock} unidades disponibles.`,
+          error: `Stock insuficiente para "${product.name}" (talla ${itemSize}). Solo quedan ${availableStock} unidades disponibles de esa talla. Pediste ${item.quantity}.`,
           available: availableStock,
           requested: item.quantity
         }), {
