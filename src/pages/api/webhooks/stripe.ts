@@ -3,7 +3,6 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { generateInvoicePDF } from '../../../lib/invoice-pdf';
 import { sendInvoiceEmail } from '../../../lib/brevo';
-import { checkAndNotifyLowStock } from '../../../lib/wishlist-notifications';
 
 // Cliente de Supabase con SERVICE ROLE para bypasear RLS (solo para webhooks server-side)
 const supabaseAdmin = createClient(
@@ -105,21 +104,24 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       console.warn('[WEBHOOK] Error parsing order_items_sizes metadata:', e);
     }
 
-    // PASO 0: Confirmar reservas de stock (marcar como completadas)
-    console.log('[WEBHOOK] Confirmando reservas de stock...');
-    const { data: confirmResult, error: confirmError } = await supabaseAdmin.rpc('confirm_reservation', {
-      p_session_id: session.id,
-      p_order_id: null // Se actualizará después de crear la orden
-    }) as { data: any; error: any };
+    // PASO 0: Confirmar reservas de stock (si el sistema de reservas está activo)
+    try {
+      console.log('[WEBHOOK] Intentando confirmar reservas de stock...');
+      const { data: confirmResult, error: confirmError } = await supabaseAdmin.rpc('confirm_reservation', {
+        p_session_id: session.id,
+        p_order_id: null
+      }) as { data: any; error: any };
 
-    if (confirmError) {
-      console.error('[WEBHOOK] Error al confirmar reservas:', confirmError);
-      // No lanzar error, continuar con la creación del pedido
-      // Las reservas expirarán automáticamente
-    } else if (confirmResult?.success) {
-      console.log(`[WEBHOOK] Reservas confirmadas: ${confirmResult.confirmed} items`);
-    } else {
-      console.warn('[WEBHOOK] No se encontraron reservas para confirmar');
+      if (confirmError) {
+        console.warn('[WEBHOOK] confirm_reservation no disponible o falló:', confirmError.message);
+      } else if (confirmResult?.success) {
+        console.log(`[WEBHOOK] Reservas confirmadas: ${confirmResult.confirmed} items`);
+      } else {
+        console.warn('[WEBHOOK] No se encontraron reservas para confirmar (normal si no se usa reservas)');
+      }
+    } catch (reserveErr: any) {
+      console.warn('[WEBHOOK] Sistema de reservas no disponible:', reserveErr.message);
+      // No es crítico, continuar con la creación del pedido
     }
 
     // Obtener line_items de Stripe (contiene los productos comprados)
@@ -267,43 +269,86 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       }
     }
 
-    // DECREMENT ATÓMICO: Validar y decrementar todo el stock de golpe (anti-race-condition)
+    // DECREMENT STOCK: Intentar RPC atómico, con fallback a UPDATE directo
     if (stockDecrementItems.length > 0) {
-      console.log(`[WEBHOOK] Decrementando stock atómicamente para ${stockDecrementItems.length} items...`);
+      console.log(`[WEBHOOK] Decrementando stock para ${stockDecrementItems.length} items...`);
       
-      const { data: stockResult, error: stockError } = await supabaseAdmin.rpc('validate_and_decrement_stock', {
-        p_items: stockDecrementItems
-      }) as { data: any; error: any };
+      let stockSuccess = false;
 
-      if (stockError || !stockResult?.success) {
-        const errorMsg = stockResult?.message || stockError?.message || 'Error desconocido';
-        console.error(`[WEBHOOK] Error en decrement atómico: ${errorMsg}`);
-        
-        // Si falla la validación de stock, el pedido ya está pagado.
-        // Marcar para revisión manual pero NO cancelar (Stripe ya cobró)
+      // Intento 1: RPC atómico (si la función existe en Supabase)
+      try {
+        const { data: stockResult, error: stockError } = await supabaseAdmin.rpc('validate_and_decrement_stock', {
+          p_items: stockDecrementItems
+        }) as { data: any; error: any };
+
+        if (!stockError && stockResult?.success) {
+          console.log(`[WEBHOOK] Stock decrementado (RPC): ${stockResult.items_processed} items`);
+          stockSuccess = true;
+        } else {
+          console.warn(`[WEBHOOK] RPC falló: ${stockResult?.message || stockError?.message}`);
+        }
+      } catch (rpcErr: any) {
+        console.warn(`[WEBHOOK] RPC no disponible: ${rpcErr.message}`);
+      }
+
+      // Intento 2: Fallback - UPDATE directo producto por producto
+      if (!stockSuccess) {
+        console.log('[WEBHOOK] Usando fallback: UPDATE directo de stock...');
+        for (const item of stockDecrementItems) {
+          try {
+            // Leer stock actual
+            const { data: prod, error: readErr } = await supabaseAdmin
+              .from('products')
+              .select('stock, stock_by_size')
+              .eq('id', item.product_id)
+              .single();
+
+            if (readErr || !prod) {
+              console.error(`[WEBHOOK] No se pudo leer producto ${item.product_id}:`, readErr);
+              continue;
+            }
+
+            const newStock = Math.max(0, (prod.stock || 0) - item.quantity);
+            
+            // Actualizar stock_by_size si existe
+            let updateData: any = { 
+              stock: newStock,
+              updated_at: new Date().toISOString()
+            };
+            
+            if (prod.stock_by_size && typeof prod.stock_by_size === 'object') {
+              const sizeStock = prod.stock_by_size as Record<string, number>;
+              if (item.size in sizeStock) {
+                sizeStock[item.size] = Math.max(0, (sizeStock[item.size] || 0) - item.quantity);
+                updateData.stock_by_size = sizeStock;
+              }
+            }
+
+            const { error: updateErr } = await supabaseAdmin
+              .from('products')
+              .update(updateData)
+              .eq('id', item.product_id);
+
+            if (updateErr) {
+              console.error(`[WEBHOOK] Error actualizando stock de ${item.product_id}:`, updateErr);
+            } else {
+              console.log(`[WEBHOOK] Stock actualizado (fallback): ${item.product_id} -> ${newStock}`);
+              stockSuccess = true;
+            }
+          } catch (itemErr: any) {
+            console.error(`[WEBHOOK] Error en fallback stock ${item.product_id}:`, itemErr.message);
+          }
+        }
+      }
+
+      if (!stockSuccess) {
+        // Marcar pedido para revision manual
         await supabaseAdmin
           .from('orders')
           .update({ 
-            status: 'processing',
-            admin_notes: `ATENCIÓN: Stock insuficiente tras pago. Detalles: ${errorMsg}. Revisar manualmente.`
+            admin_notes: `ATENCION: Stock no se pudo decrementar. Revisar manualmente.`
           })
           .eq('id', order.id);
-      } else {
-        console.log(`[WEBHOOK] Stock decrementado: ${stockResult.items_processed} items procesados`);
-        
-        // Notificar stock bajo para wishlist
-        for (const item of stockDecrementItems) {
-          const { data: prod } = await supabaseAdmin
-            .from('products')
-            .select('stock')
-            .eq('id', item.product_id)
-            .single();
-          
-          if (prod) {
-            checkAndNotifyLowStock(item.product_id, prod.stock + item.quantity, prod.stock)
-              .catch(err => console.error('[Webhook] Error notificando stock bajo:', err));
-          }
-        }
       }
     }
 
@@ -374,28 +419,29 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
 // ============================================================================
 async function handleExpiredSession(session: Stripe.Checkout.Session) {
   try {
-    console.log('[WEBHOOK] Procesando sesión expirada - Session ID:', session.id);
+    console.log('[WEBHOOK] Procesando sesion expirada - Session ID:', session.id);
 
-    // Cancelar reservas de stock asociadas
-    const { data: cancelResult, error: cancelError } = await supabaseAdmin.rpc('cancel_reservation', {
-      p_session_id: session.id,
-      p_reason: 'checkout_expired'
-    }) as { data: any; error: any };
+    // Cancelar reservas de stock asociadas (si el sistema de reservas esta activo)
+    try {
+      const { data: cancelResult, error: cancelError } = await supabaseAdmin.rpc('cancel_reservation', {
+        p_session_id: session.id,
+        p_reason: 'checkout_expired'
+      }) as { data: any; error: any };
 
-    if (cancelError) {
-      console.error('[WEBHOOK] Error al cancelar reservas:', cancelError);
-      throw cancelError;
-    }
-
-    if (cancelResult?.success) {
-      console.log(`[WEBHOOK] Reservas canceladas: ${cancelResult.cancelled} items liberados`);
-    } else {
-      console.warn('[WEBHOOK] No se encontraron reservas para cancelar (posiblemente ya expiradas)');
+      if (cancelError) {
+        console.warn('[WEBHOOK] cancel_reservation no disponible o fallo:', cancelError.message);
+      } else if (cancelResult?.success) {
+        console.log(`[WEBHOOK] Reservas canceladas: ${cancelResult.cancelled} items liberados`);
+      } else {
+        console.warn('[WEBHOOK] No se encontraron reservas para cancelar (posiblemente ya expiradas o no se usa reservas)');
+      }
+    } catch (rpcErr: any) {
+      console.warn('[WEBHOOK] Sistema de reservas no disponible para cancelacion:', rpcErr.message);
     }
 
   } catch (error: any) {
-    console.error('[WEBHOOK] Error al procesar sesión expirada:', error);
-    throw error;
+    console.error('[WEBHOOK] Error al procesar sesion expirada:', error);
+    // No relanzar, no es critico
   }
 }
 
