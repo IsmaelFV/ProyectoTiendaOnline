@@ -149,13 +149,13 @@ if (session) {
             const { isAdmin } = await res.json();
 
             if (isAdmin) {
-              console.log('🔐 [CALLBACK] Usuario es ADMIN, redirigiendo a /admin');
+              console.log('[CALLBACK] Usuario es ADMIN, redirigiendo a /admin');
               window.location.href = '/admin';
               return;
             }
           }
         } catch (err) {
-          console.warn('🔐 [CALLBACK] Error verificando admin:', err);
+          console.warn('[CALLBACK] Error verificando admin:', err);
         }
 
         // Redirigir al home (usuario normal)

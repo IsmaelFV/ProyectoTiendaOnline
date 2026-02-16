@@ -178,7 +178,7 @@ function translateReason(reason: string) {
                             data-return-id={ret.id}
                             data-action="receive"
                           >
-                            ✅ Recibido y Reembolsar
+                            Recibido y Reembolsar
                           </button>
                           <button
                             class="action-btn reject-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors"
@@ -272,12 +272,12 @@ function translateReason(reason: string) {
             setTimeout(() => window.location.reload(), 1500);
           } else {
             customAlert(data.message || 'Error desconocido', 'error');
-            target.textContent = isReceive ? '✅ Recibido y Reembolsar' : '✕ Rechazar';
+            target.textContent = isReceive ? 'Recibido y Reembolsar' : '✕ Rechazar';
             target.removeAttribute('disabled');
           }
         } catch {
           customAlert('Error de conexión con el servidor', 'error');
-          target.textContent = isReceive ? '✅ Recibido y Reembolsar' : '✕ Rechazar';
+          target.textContent = isReceive ? 'Recibido y Reembolsar' : '✕ Rechazar';
           target.removeAttribute('disabled');
         }
       });

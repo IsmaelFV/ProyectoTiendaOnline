@@ -26,8 +26,8 @@ export default function Toast({ message, type = 'error', onClose, duration = 300
   const icons = {
     error: '✕',
     success: '✓',
-    warning: '⚠',
-    info: 'ℹ'
+    warning: '!',
+    info: 'i'
   };
 
   return (

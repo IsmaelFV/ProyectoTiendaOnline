@@ -39,7 +39,7 @@ const { data: products, error } = await supabase
   .order('created_at', { ascending: false })
   .limit(24);
 
-console.log('🔍 DEBUG HOMBRE - Productos:');
+console.log('[HOMBRE] DEBUG - Productos:');
 console.log('- Gender ID:', gender.id);
 console.log('- Cantidad productos:', products?.length || 0);
 console.log('- Error:', error);

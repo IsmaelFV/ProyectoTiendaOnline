@@ -603,10 +603,10 @@ ANALYZE product_categories;
 
 DO $$
 BEGIN
-  RAISE NOTICE '✅ Migración completada exitosamente';
-  RAISE NOTICE '📊 Tablas creadas: genders, colors, product_variants, product_categories';
-  RAISE NOTICE '🔧 Funciones creadas: search_products, autocomplete_search, get_category_tree, get_available_filters';
-  RAISE NOTICE '🎨 Géneros: %', (SELECT COUNT(*) FROM genders);
+  RAISE NOTICE 'Migración completada exitosamente';
+  RAISE NOTICE 'Tablas creadas: genders, colors, product_variants, product_categories';
+  RAISE NOTICE 'Funciones creadas: search_products, autocomplete_search, get_category_tree, get_available_filters';
+  RAISE NOTICE 'Géneros: %', (SELECT COUNT(*) FROM genders);
   RAISE NOTICE '🌈 Colores: %', (SELECT COUNT(*) FROM colors);
   RAISE NOTICE '📁 Categorías: %', (SELECT COUNT(*) FROM categories);
 END $$;

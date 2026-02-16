@@ -89,37 +89,37 @@ export const POST: APIRoute = async ({ request }) => {
 // Función para manejar pagos exitosos
 async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
   try {
-    console.log('✅ Procesando pago exitoso - Session ID:', session.id);
-    console.log('📋 Session metadata:', session.metadata);
-    console.log('📋 Customer details:', session.customer_details);
+    console.log('[WEBHOOK] Procesando pago exitoso - Session ID:', session.id);
+    console.log('[WEBHOOK] Session metadata:', session.metadata);
+    console.log('[WEBHOOK] Customer details:', session.customer_details);
     
     const { user_id, discount_code } = session.metadata || {};
 
-    // ⭐ Parsear info de tallas por item desde metadata
+    // Parsear info de tallas por item desde metadata
     let orderItemsSizes: Array<{ id: string; size: string; qty: number }> = [];
     try {
       if (session.metadata?.order_items_sizes) {
         orderItemsSizes = JSON.parse(session.metadata.order_items_sizes);
       }
     } catch (e) {
-      console.warn('⚠️ Error parsing order_items_sizes metadata:', e);
+      console.warn('[WEBHOOK] Error parsing order_items_sizes metadata:', e);
     }
 
-    // ⭐ PASO 0: Confirmar reservas de stock (marcar como completadas)
-    console.log('🔒 Confirmando reservas de stock...');
+    // PASO 0: Confirmar reservas de stock (marcar como completadas)
+    console.log('[WEBHOOK] Confirmando reservas de stock...');
     const { data: confirmResult, error: confirmError } = await supabaseAdmin.rpc('confirm_reservation', {
       p_session_id: session.id,
       p_order_id: null // Se actualizará después de crear la orden
     }) as { data: any; error: any };
 
     if (confirmError) {
-      console.error('❌ Error al confirmar reservas:', confirmError);
+      console.error('[WEBHOOK] Error al confirmar reservas:', confirmError);
       // No lanzar error, continuar con la creación del pedido
       // Las reservas expirarán automáticamente
     } else if (confirmResult?.success) {
-      console.log(`✅ Reservas confirmadas: ${confirmResult.confirmed} items`);
+      console.log(`[WEBHOOK] Reservas confirmadas: ${confirmResult.confirmed} items`);
     } else {
-      console.warn('⚠️ No se encontraron reservas para confirmar');
+      console.warn('[WEBHOOK] No se encontraron reservas para confirmar');
     }
 
     // Obtener line_items de Stripe (contiene los productos comprados)
@@ -127,7 +127,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       expand: ['data.price.product']
     });
 
-    console.log('📦 Line items:', lineItems.data.length);
+    console.log('[WEBHOOK] Line items:', lineItems.data.length);
 
     if (!lineItems.data || lineItems.data.length === 0) {
       throw new Error('No line items found in session');
@@ -143,7 +143,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     const shippingCents = session.total_details?.amount_shipping || 0;
     const discountCents = session.total_details?.amount_discount || 0;
 
-    console.log('💰 Amounts - Subtotal:', subtotalCents, 'Total:', totalCents, 'Tax:', taxCents, 'Shipping:', shippingCents, 'Discount:', discountCents);
+    console.log('[WEBHOOK] Amounts - Subtotal:', subtotalCents, 'Total:', totalCents, 'Tax:', taxCents, 'Shipping:', shippingCents, 'Discount:', discountCents);
 
     // 1. Crear el pedido en la base de datos (order_number se autogenera con trigger)
     console.log('💾 Creando pedido en BD...');
@@ -171,7 +171,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       admin_notes: `Stripe Session: ${session.id} | Email: ${session.customer_details?.email || session.customer_email}`,
     };
 
-    console.log('📝 Order data:', JSON.stringify(orderData, null, 2));
+    console.log('[WEBHOOK] Order data:', JSON.stringify(orderData, null, 2));
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
@@ -180,12 +180,12 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       .single();
 
     if (orderError) {
-      console.error('❌ Error creating order:', orderError);
+      console.error('[WEBHOOK] Error creating order:', orderError);
       throw new Error(`Error creating order: ${orderError.message}`);
     }
 
     const orderNumber = order.order_number;
-    console.log(`✅ Order created: ${orderNumber} (ID: ${order.id})`);
+    console.log(`[WEBHOOK] Order created: ${orderNumber} (ID: ${order.id})`);
 
     // 1.5. Incrementar contador de usos del código de descuento si se usó
     if (discount_code && discountCents > 0) {
@@ -195,10 +195,10 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       });
       
       if (discountError) {
-        console.error('⚠️ Error al incrementar uso del código:', discountError);
+        console.error('[WEBHOOK] Error al incrementar uso del código:', discountError);
         // No lanzar error, el pedido ya está creado
       } else {
-        console.log(`✅ Código ${discount_code} registrado como usado`);
+        console.log(`[WEBHOOK] Código ${discount_code} registrado como usado`);
       }
     }
 
@@ -219,12 +219,12 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
         .maybeSingle();
 
       if (productError) {
-        console.error(`❌ Error querying product: ${productError.message}`);
+        console.error(`[WEBHOOK] Error querying product: ${productError.message}`);
       }
 
       // Solo crear order_item si encontramos el producto (product_id es requerido)
       if (product?.id) {
-        // ⭐ Buscar la talla de este item desde los metadata
+        // Buscar la talla de este item desde los metadata
         const itemSizeInfo = orderItemsSizes.find(oi => oi.id === product.id);
         const itemSize = itemSizeInfo?.size || 'Única';
 
@@ -244,7 +244,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
           });
 
         if (itemError) {
-          console.error(`❌ Error creating order item: ${itemError.message}`);
+          console.error(`[WEBHOOK] Error creating order item: ${itemError.message}`);
           continue;
         }
 
@@ -255,7 +255,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
           quantity: quantity
         });
       } else {
-        console.warn(`⚠️ Product "${productName}" not found in database, skipping order item (product_id required)`);
+        console.warn(`[WEBHOOK] Product "${productName}" not found in database, skipping order item (product_id required)`);
         // Para productos de prueba que no existen, marcar pedido como pendiente de revisión
         await supabaseAdmin
           .from('orders')
@@ -267,9 +267,9 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       }
     }
 
-    // ⭐ DECREMENT ATÓMICO: Validar y decrementar todo el stock de golpe (anti-race-condition)
+    // DECREMENT ATÓMICO: Validar y decrementar todo el stock de golpe (anti-race-condition)
     if (stockDecrementItems.length > 0) {
-      console.log(`🔒 Decrementando stock atómicamente para ${stockDecrementItems.length} items...`);
+      console.log(`[WEBHOOK] Decrementando stock atómicamente para ${stockDecrementItems.length} items...`);
       
       const { data: stockResult, error: stockError } = await supabaseAdmin.rpc('validate_and_decrement_stock', {
         p_items: stockDecrementItems
@@ -277,7 +277,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
 
       if (stockError || !stockResult?.success) {
         const errorMsg = stockResult?.message || stockError?.message || 'Error desconocido';
-        console.error(`❌ Error en decrement atómico: ${errorMsg}`);
+        console.error(`[WEBHOOK] Error en decrement atómico: ${errorMsg}`);
         
         // Si falla la validación de stock, el pedido ya está pagado.
         // Marcar para revisión manual pero NO cancelar (Stripe ya cobró)
@@ -285,11 +285,11 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
           .from('orders')
           .update({ 
             status: 'processing',
-            admin_notes: `⚠️ ATENCIÓN: Stock insuficiente tras pago. Detalles: ${errorMsg}. Revisar manualmente.`
+            admin_notes: `ATENCIÓN: Stock insuficiente tras pago. Detalles: ${errorMsg}. Revisar manualmente.`
           })
           .eq('id', order.id);
       } else {
-        console.log(`✅ Stock decrementado: ${stockResult.items_processed} items procesados`);
+        console.log(`[WEBHOOK] Stock decrementado: ${stockResult.items_processed} items procesados`);
         
         // Notificar stock bajo para wishlist
         for (const item of stockDecrementItems) {
@@ -308,17 +308,17 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     }
     }
 
-    console.log(`✅ Order ${orderNumber} processed successfully with ${lineItems.data.length} items`);
+    console.log(`[WEBHOOK] Order ${orderNumber} processed successfully with ${lineItems.data.length} items`);
 
     // 3. Enviar factura automáticamente por email
     try {
-      console.log(`📧 Generando y enviando factura para pedido ${orderNumber}...`);
+      console.log(`[WEBHOOK] Generando y enviando factura para pedido ${orderNumber}...`);
       
       const customerEmail = session.customer_details?.email || session.customer_email;
       const customerName = session.customer_details?.name || 'Cliente';
 
       if (!customerEmail) {
-        console.warn('⚠️ No se pudo enviar factura: email no disponible');
+        console.warn('[WEBHOOK] No se pudo enviar factura: email no disponible');
         return;
       }
 
@@ -356,16 +356,16 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
         pdfBase64
       });
 
-      console.log(`✅ Factura enviada correctamente a ${customerEmail}`);
+      console.log(`[WEBHOOK] Factura enviada correctamente a ${customerEmail}`);
 
     } catch (emailError: any) {
-      console.error('❌ Error al enviar factura:', emailError.message);
+      console.error('[WEBHOOK] Error al enviar factura:', emailError.message);
       // No lanzamos error para no fallar todo el webhook
       // La factura se puede enviar manualmente después
     }
 
   } catch (error: any) {
-    console.error('❌ Error handling successful payment:', error);
+    console.error('[WEBHOOK] Error handling successful payment:', error);
     throw error;
   }
 }
@@ -375,27 +375,27 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
 // ============================================================================
 async function handleExpiredSession(session: Stripe.Checkout.Session) {
   try {
-    console.log('⏰ Procesando sesión expirada - Session ID:', session.id);
+    console.log('[WEBHOOK] Procesando sesión expirada - Session ID:', session.id);
 
-    // ⭐ Cancelar reservas de stock asociadas
+    // Cancelar reservas de stock asociadas
     const { data: cancelResult, error: cancelError } = await supabaseAdmin.rpc('cancel_reservation', {
       p_session_id: session.id,
       p_reason: 'checkout_expired'
     }) as { data: any; error: any };
 
     if (cancelError) {
-      console.error('❌ Error al cancelar reservas:', cancelError);
+      console.error('[WEBHOOK] Error al cancelar reservas:', cancelError);
       throw cancelError;
     }
 
     if (cancelResult?.success) {
-      console.log(`✅ Reservas canceladas: ${cancelResult.cancelled} items liberados`);
+      console.log(`[WEBHOOK] Reservas canceladas: ${cancelResult.cancelled} items liberados`);
     } else {
-      console.warn('⚠️ No se encontraron reservas para cancelar (posiblemente ya expiradas)');
+      console.warn('[WEBHOOK] No se encontraron reservas para cancelar (posiblemente ya expiradas)');
     }
 
   } catch (error: any) {
-    console.error('❌ Error al procesar sesión expirada:', error);
+    console.error('[WEBHOOK] Error al procesar sesión expirada:', error);
     throw error;
   }
 }

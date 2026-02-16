@@ -21,8 +21,8 @@ ORDER BY created_at DESC
 LIMIT 10;
 
 -- ❓ PREGUNTA: ¿Ves pedidos aquí?
--- ✅ SÍ → Continúa al paso 2
--- ❌ NO → El problema es que no se están creando pedidos (problema en webhook)
+-- SÍ → Continúa al paso 2
+-- NO → El problema es que no se están creando pedidos (problema en webhook)
 
 -- =====================================================
 -- 2. Verificar el valor de user_id en los pedidos
@@ -31,8 +31,8 @@ SELECT
   order_number,
   user_id,
   CASE 
-    WHEN user_id IS NULL THEN '⚠️ NULL (pedido de invitado)'
-    ELSE '✅ Tiene user_id'
+    WHEN user_id IS NULL THEN 'NULL (pedido de invitado)'
+    ELSE 'Tiene user_id'
   END as user_status,
   shipping_full_name,
   total
@@ -41,8 +41,8 @@ ORDER BY created_at DESC
 LIMIT 10;
 
 -- ❓ PREGUNTA: ¿Los pedidos tienen user_id o son NULL?
--- ⚠️ NULL → Los pedidos se crearon como invitado
--- ✅ UUID → Continúa al paso 3
+-- NULL → Los pedidos se crearon como invitado
+-- UUID → Continúa al paso 3
 
 -- =====================================================
 -- 3. Obtener tu user_id actual de Supabase Auth
@@ -75,8 +75,8 @@ WHERE user_id = 'TU_USER_ID_AQUI'
 ORDER BY created_at DESC;
 
 -- ❓ PREGUNTA: ¿Aparecen pedidos aquí?
--- ✅ SÍ → El problema es RLS, continúa al paso 5
--- ❌ NO → Los pedidos se crearon con otro user_id o como invitado
+-- SÍ → El problema es RLS, continúa al paso 5
+-- NO → Los pedidos se crearon con otro user_id o como invitado
 
 -- =====================================================
 -- 5. Verificar políticas RLS activas
@@ -94,9 +94,9 @@ WHERE tablename IN ('orders', 'order_items')
 ORDER BY tablename, policyname;
 
 -- ❓ PREGUNTA: ¿Ves estas políticas?
--- ✅ "Users can view their own orders" → RLS configurado correctamente
--- ✅ "Users can view items of their orders" → RLS configurado correctamente
--- ❌ NO aparecen → Las migraciones no se aplicaron correctamente
+-- "Users can view their own orders" → RLS configurado correctamente
+-- "Users can view items of their orders" → RLS configurado correctamente
+-- NO aparecen → Las migraciones no se aplicaron correctamente
 
 -- =====================================================
 -- 6. Probar consulta con RLS simulando usuario
@@ -118,8 +118,8 @@ WHERE user_id = 'TU_USER_ID_AQUI';
 RESET ROLE;
 
 -- ❓ PREGUNTA: ¿Aparecen pedidos con esta query?
--- ✅ SÍ → RLS funciona, problema en frontend
--- ❌ NO → RLS bloqueando incorrectamente
+-- SÍ → RLS funciona, problema en frontend
+-- NO → RLS bloqueando incorrectamente
 
 -- =====================================================
 -- 7. Verificar que RLS está habilitado

@@ -103,6 +103,6 @@ WHERE schemaname = 'public'
   AND tablename IN ('products', 'categories', 'genders', 'colors', 'product_categories');
 
 -- Mensaje final
-SELECT '✅ SEGURIDAD CONFIGURADA CORRECTAMENTE' as resultado,
+SELECT 'SEGURIDAD CONFIGURADA CORRECTAMENTE' as resultado,
        '📖 Lectura: Pública (sin login)' as lectura,
-       '✍️ Escritura: Solo usuarios autenticados' as escritura;
+       '✍Escritura: Solo usuarios autenticados' as escritura;

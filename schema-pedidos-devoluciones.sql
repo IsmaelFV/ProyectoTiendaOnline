@@ -428,7 +428,7 @@ USING (
 -- ============================================================================
 -- VERIFICACIÓN
 -- ============================================================================
-SELECT '✅ ESQUEMA DE PEDIDOS Y DEVOLUCIONES CREADO' as resultado;
+SELECT 'ESQUEMA DE PEDIDOS Y DEVOLUCIONES CREADO' as resultado;
 
 -- Ver todas las tablas creadas
 SELECT table_name, 

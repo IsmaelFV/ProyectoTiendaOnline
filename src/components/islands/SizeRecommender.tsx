@@ -326,7 +326,7 @@ export default function SizeRecommender({ productSizes, onSelectSize, sizeMeasur
                       </svg>
                     </div>
                     <button onClick={() => setStep('gender')} className="mt-2 text-[11px] text-gray-500 hover:text-accent-gold underline">
-                      {gender === 'mujer' ? '♀ Mujer' : '♂ Hombre'} · Cambiar
+                      {gender === 'mujer' ? 'Mujer' : 'Hombre'} · Cambiar
                     </button>
                   </div>
 

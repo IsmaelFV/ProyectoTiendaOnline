@@ -35,7 +35,7 @@ if (authError || !user) {
   return Astro.redirect('/auth/login?redirect=/perfil/mis-pedidos');
 }
 
-console.log('✅ Usuario autenticado:', user.id, user.email);
+console.log('[MIS-PEDIDOS] Usuario autenticado:', user.id, user.email);
 
 // Obtener pedidos del usuario (con RLS activo)
 const { data: orders, error } = await supabase
@@ -49,9 +49,9 @@ const { data: orders, error } = await supabase
   .eq('user_id', user.id)
   .order('created_at', { ascending: false });
 
-console.log('📦 Pedidos encontrados:', orders?.length || 0);
+console.log('[MIS-PEDIDOS] Pedidos encontrados:', orders?.length || 0);
 if (error) {
-  console.error('❌ Error fetching orders:', error);
+  console.error('[MIS-PEDIDOS] Error fetching orders:', error);
   console.error('User ID buscado:', user.id);
 }
 
@@ -68,14 +68,14 @@ const formatDate = (dateString: string) => {
 // Función para obtener el color del badge según el estado (dark theme - MEJORADO)
 const getStatusBadge = (status: string) => {
   const badges: Record<string, { color: string; text: string; icon: string }> = {
-    pending: { color: 'bg-amber-500/20 text-amber-300 border border-amber-400/40', text: 'Pendiente', icon: '⏳' },
+    pending: { color: 'bg-amber-500/20 text-amber-300 border border-amber-400/40', text: 'Pendiente', icon: '' },
     confirmed: { color: 'bg-blue-500/20 text-blue-300 border border-blue-400/40', text: 'Confirmado', icon: '✓' },
-    processing: { color: 'bg-purple-500/20 text-purple-300 border border-purple-400/40', text: 'Procesando', icon: '⚙️' },
-    shipped: { color: 'bg-indigo-500/20 text-indigo-300 border border-indigo-400/40', text: 'Enviado', icon: '🚚' },
-    delivered: { color: 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40', text: 'Entregado', icon: '✅' },
+    processing: { color: 'bg-purple-500/20 text-purple-300 border border-purple-400/40', text: 'Procesando', icon: '' },
+    shipped: { color: 'bg-indigo-500/20 text-indigo-300 border border-indigo-400/40', text: 'Enviado', icon: '→' },
+    delivered: { color: 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40', text: 'Entregado', icon: '✓' },
     cancelled: { color: 'bg-red-500/20 text-red-300 border border-red-400/40', text: 'Cancelado', icon: '✕' },
     refunded: { color: 'bg-gray-500/20 text-gray-300 border border-gray-400/40', text: 'Reembolsado', icon: '↩' },
-    return_requested: { color: 'bg-orange-500/20 text-orange-300 border border-orange-400/40', text: 'Devolución solicitada', icon: '📦' }
+    return_requested: { color: 'bg-orange-500/20 text-orange-300 border border-orange-400/40', text: 'Devolución solicitada', icon: '↩' }
   };
   return badges[status] || badges.pending;
 };
@@ -261,7 +261,7 @@ const getStatusBadge = (status: string) => {
               </div>
 
               <div>
-                <h4 class="font-semibold text-white mb-2">📦 Condiciones de devolución:</h4>
+                <h4 class="font-semibold text-white mb-2">Condiciones de devolución:</h4>
                 <ul class="list-disc list-inside space-y-1 ml-2 text-gray-400">
                   <li>Tienes <strong class="text-white">30 días</strong> desde la recepción del pedido</li>
                   <li>Los productos deben estar <strong class="text-white">sin usar y con etiquetas</strong></li>
@@ -295,7 +295,7 @@ const getStatusBadge = (status: string) => {
               </div>
 
               <div>
-                <h4 class="font-semibold text-white mb-2">💡 Información útil:</h4>
+                <h4 class="font-semibold text-white mb-2">Información útil:</h4>
                 <ul class="list-disc list-inside space-y-1 ml-2 text-gray-400">
                   <li>Procesamos devoluciones en <strong class="text-white">5-7 días hábiles</strong></li>
                   <li>El reembolso se realizará por el mismo método de pago</li>

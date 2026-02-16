@@ -64,7 +64,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // 4. Crear un mapa de productos para validación
     const productMap = new Map(products.map(p => [p.id, p]));
 
-    // ⭐ 5. RESERVAR STOCK de forma atómica (NUEVO - Previene overselling)
+    // 5. RESERVAR STOCK de forma atómica (NUEVO - Previene overselling)
     const supabaseAdmin = createServerSupabaseClient();
     const reservationIds: string[] = [];
     const tempSessionId = `temp_${Date.now()}_${user?.id || 'guest'}`;
@@ -89,7 +89,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         });
       }
 
-      // ⭐ Reservar stock atómicamente (con lock de fila) — POR TALLA
+      // Reservar stock atómicamente (con lock de fila) — POR TALLA
       const { data: reservation, error: reservationError } = await supabaseAdmin.rpc('reserve_stock', {
         p_product_id: item.id,
         p_quantity: item.quantity,
@@ -218,7 +218,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       // Aplicar descuento
       discountAmount = Math.round((validation.discount_amount || 0) * 100); // Convertir a centavos
       discountData = validation;
-      console.log(`💰 Descuento aplicado: ${discountCode} (-${discountAmount / 100}€)`);
+      console.log(`[CHECKOUT] Descuento aplicado: ${discountCode} (-${discountAmount / 100}€)`);
     }
 
     // Calcular total final
@@ -237,11 +237,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         user_id: user?.id || 'guest',
         user_email: user?.email || '',
         total_amount: totalAmount.toString(),
-        temp_session_id: tempSessionId, // ⭐ Para actualizar reservas después
-        reservation_ids: JSON.stringify(reservationIds), // ⭐ IDs de reservas
+        temp_session_id: tempSessionId, // Para actualizar reservas después
+        reservation_ids: JSON.stringify(reservationIds), // IDs de reservas
         discount_code: discountCode || '',
         discount_amount: discountAmount.toString(),
-        // ⭐ Info de tallas por item para decrement_stock en webhook
+        // Info de tallas por item para decrement_stock en webhook
         order_items_sizes: JSON.stringify(
           items.map((item: any) => ({ id: item.id, size: item.size || 'Única', qty: item.quantity }))
         ),
@@ -249,7 +249,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       shipping_address_collection: {
         allowed_countries: ['ES', 'FR', 'DE', 'IT', 'PT', 'US'],
       },
-      expires_at: Math.floor(Date.now() / 1000) + (3 * 60 * 60), // ⭐ 3 horas (Stripe: mín 30 min, máx 24 hrs)
+      expires_at: Math.floor(Date.now() / 1000) + (3 * 60 * 60), // 3 horas (Stripe: mín 30 min, máx 24 hrs)
     };
 
     // Aplicar descuento en Stripe si existe
@@ -276,7 +276,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return new Response(JSON.stringify({ 
       url: session.url,
       sessionId: session.id,
-      reservations: reservationIds.length // ⭐ Info para debugging
+      reservations: reservationIds.length // Info para debugging
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

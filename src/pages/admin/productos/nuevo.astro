@@ -455,7 +455,7 @@ const errorMessage = errorParam ? errorMessages[errorParam] : null;
 
     {/* Ayuda */}
     <div class="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-      <h3 class="text-sm font-semibold text-blue-400 mb-2">💡 Consejos</h3>
+      <h3 class="text-sm font-semibold text-blue-400 mb-2">Consejos</h3>
       <ul class="text-sm text-blue-300/80 space-y-1 list-disc list-inside">
         <li>Usa nombres descriptivos pero concisos para los productos</li>
         <li>El SKU debe ser único para cada producto</li>
@@ -573,7 +573,7 @@ const errorMessage = errorParam ? errorMessages[errorParam] : null;
       sizesSummary.textContent = 'Selecciona al menos una talla';
     }
 
-    // ⭐ Actualizar sección de stock por talla
+    // Actualizar sección de stock por talla
     updateStockBySizeUI();
   }
 
@@ -588,10 +588,10 @@ const errorMessage = errorParam ? errorMessages[errorParam] : null;
   }
 
   function getStockLabel(stock: number) {
-    if (stock === 0) return '⛔ Sin stock';
-    if (stock <= 3) return '⚠️ Muy bajo';
-    if (stock <= 10) return '📦 Bajo';
-    return '✅ OK';
+    if (stock === 0) return 'Sin stock';
+    if (stock <= 3) return 'Muy bajo';
+    if (stock <= 10) return 'Bajo';
+    return 'OK';
   }
 
   function updateStockBySizeUI() {
@@ -695,8 +695,8 @@ const errorMessage = errorParam ? errorMessages[errorParam] : null;
       const lowStock = arr.filter(s => { const v = stockBySize[s] || 0; return v > 0 && v <= 3; }).length;
       
       let parts = [`<span class="text-gray-400">Total: <strong class="text-white">${total}</strong> unidades en <strong class="text-white">${arr.length}</strong> tallas</span>`];
-      if (outOfStock > 0) parts.push(`<span class="text-red-400">⛔ ${outOfStock} sin stock</span>`);
-      if (lowStock > 0) parts.push(`<span class="text-orange-400">⚠️ ${lowStock} stock bajo</span>`);
+      if (outOfStock > 0) parts.push(`<span class="text-red-400">${outOfStock} sin stock</span>`);
+      if (lowStock > 0) parts.push(`<span class="text-orange-400">${lowStock} stock bajo</span>`);
       stockSummaryEl.innerHTML = parts.join(' · ');
     }
   }

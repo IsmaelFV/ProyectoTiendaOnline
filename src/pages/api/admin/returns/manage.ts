@@ -66,9 +66,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
               reason: 'requested_by_customer',
             });
             stripeRefundId = refund.id;
-            console.log(`✅ Reembolso Stripe (devolución): ${refund.id}`);
+            console.log(`[RETURNS] Reembolso Stripe (devolucion): ${refund.id}`);
           } catch (stripeErr: any) {
-            console.error('❌ Stripe refund error:', stripeErr.message);
+            console.error('[RETURNS] Stripe refund error:', stripeErr.message);
             return json({ success: false, message: `Error Stripe: ${stripeErr.message}` }, 500);
           }
         }

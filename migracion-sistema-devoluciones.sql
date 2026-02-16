@@ -138,7 +138,7 @@ USING (true)
 WITH CHECK (true);
 
 -- 9. Verificación
-SELECT '✅ MIGRACIÓN COMPLETADA: Sistema de cancelaciones y devoluciones actualizado' AS resultado;
+SELECT 'MIGRACIÓN COMPLETADA: Sistema de cancelaciones y devoluciones actualizado' AS resultado;
 SELECT column_name, data_type, is_nullable 
 FROM information_schema.columns 
 WHERE table_name = 'returns' 

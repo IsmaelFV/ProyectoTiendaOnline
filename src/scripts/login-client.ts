@@ -9,12 +9,12 @@ function setupLogin() {
   if (!form) return;
 
   supabase.auth.onAuthStateChange((event, session) => {
-    console.log('🔐 [LOGIN PAGE] onAuthStateChange:', event, 'user:', session?.user?.email || null);
+    console.log('[LOGIN PAGE] onAuthStateChange:', event, 'user:', session?.user?.email || null);
   });
 
   // Google OAuth
   googleBtn?.addEventListener('click', async () => {
-    console.log('🔐 [LOGIN PAGE] Iniciando Google OAuth...');
+    console.log('[LOGIN PAGE] Iniciando Google OAuth...');
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -38,9 +38,9 @@ function setupLogin() {
       return;
     }
 
-    console.log('🔐 [LOGIN PAGE] Enviando login...', email);
+    console.log('[LOGIN PAGE] Enviando login...', email);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    console.log('🔐 [LOGIN PAGE] Resultado login:', { data, error });
+    console.log('[LOGIN PAGE] Resultado login:', { data, error });
 
     if (error) {
       customAlert(error.message || 'Error al iniciar sesión', 'error');
@@ -48,7 +48,7 @@ function setupLogin() {
     }
 
     const { data: sessionData } = await supabase.auth.getSession();
-    console.log('🔐 [LOGIN PAGE] Session tras login:', sessionData);
+    console.log('[LOGIN PAGE] Session tras login:', sessionData);
 
     // Copiar tokens a cookies para que las páginas SSR (perfil/pedidos) puedan leerlos
     const accessToken = sessionData.session?.access_token;
@@ -68,30 +68,30 @@ function setupLogin() {
       const key = localStorage.key(i);
       if (key && key.startsWith('sb-')) keys.push(key);
     }
-    console.log('🔐 [LOGIN PAGE] Claves sb-* tras login:', keys);
+    console.log('[LOGIN PAGE] Claves sb-* tras login:', keys);
 
     // Verificar si el usuario es admin mediante API server-side (evita RLS)
     try {
       const userId = data.user?.id;
       if (userId) {
-        console.log('🔐 [LOGIN PAGE] Verificando admin para userId:', userId);
+        console.log('[LOGIN PAGE] Verificando admin para userId:', userId);
         const res = await fetch('/api/auth/check-admin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId }),
         });
         const result = await res.json();
-        console.log('🔐 [LOGIN PAGE] Resultado check-admin:', result);
+        console.log('[LOGIN PAGE] Resultado check-admin:', result);
         const isAdmin = result.isAdmin;
 
         if (isAdmin) {
-          console.log('🔐 [LOGIN PAGE] Usuario es ADMIN, redirigiendo a /admin');
+          console.log('[LOGIN PAGE] Usuario es ADMIN, redirigiendo a /admin');
           window.location.href = '/admin';
           return;
         }
       }
     } catch (adminCheckErr) {
-      console.warn('🔐 [LOGIN PAGE] Error verificando admin (no crítico):', adminCheckErr);
+      console.warn('[LOGIN PAGE] Error verificando admin (no crítico):', adminCheckErr);
     }
 
     window.location.href = '/';

@@ -49,33 +49,33 @@ let isInitialized = false;
 
 export async function initializeSession() {
   if (isInitialized) {
-    console.log('🔐 [SESSION] Ya inicializado, skipping...');
+    console.log('[SESSION] Ya inicializado, skipping...');
     return;
   }
 
   if (typeof window === 'undefined') {
-    console.log('🔐 [SESSION] SSR - skipping client-side initialization');
+    console.log('[SESSION] SSR - skipping client-side initialization');
     return;
   }
 
   isInitialized = true;
-  console.log('🔐 [SESSION] Inicializando session store...');
+  console.log('[SESSION] Inicializando session store...');
 
   try {
     // CRÍTICO: Supabase es la ÚNICA fuente de verdad
     // Siempre validar con Supabase, nunca confiar solo en localStorage
-    console.log('🔐 [SESSION] Consultando sesión desde Supabase...');
+    console.log('[SESSION] Consultando sesión desde Supabase...');
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
-      console.warn('🔐 [SESSION] getSession() error:', error);
+      console.warn('[SESSION] getSession() error:', error);
     }
     
     const liveSession = data?.session || null;
     const liveUser = liveSession?.user || null;
 
     if (liveUser) {
-      console.log('🔐 [SESSION] ✅ Sesión válida desde Supabase:', liveUser.email);
+      console.log('[SESSION] Sesión válida desde Supabase:', liveUser.email);
       sessionState.set({
         user: liveUser,
         session: liveSession,
@@ -83,7 +83,7 @@ export async function initializeSession() {
         error: null,
       });
     } else {
-      console.log('🔐 [SESSION] ❌ No hay sesión válida en Supabase');
+      console.log('[SESSION] No hay sesión válida en Supabase');
       
       // Limpiar artefactos de sesión anterior: claves sb-user-* e sb-*-auth-token
       // Esto previene que un hard refresh lea sesiones antiguas/expiradas
@@ -97,7 +97,7 @@ export async function initializeSession() {
         }
         toRemove.forEach((k) => {
           localStorage.removeItem(k);
-          console.log('🔐 [SESSION] Limpiado:', k);
+          console.log('[SESSION] Limpiado:', k);
         });
         
         // Notificar al carrito que se limpió
@@ -112,7 +112,7 @@ export async function initializeSession() {
       });
     }
   } catch (error) {
-    console.error('🔐 [SESSION] Error en inicialización:', error);
+    console.error('[SESSION] Error en inicialización:', error);
     sessionState.set({
       user: null,
       session: null,
@@ -129,17 +129,17 @@ export async function initializeSession() {
 // AUTH STATE CHANGE LISTENER
 // ============================================================================
 function registerAuthListener() {
-  console.log('🔐 [SESSION] Registrando listener de cambios de autenticación...');
+  console.log('[SESSION] Registrando listener de cambios de autenticación...');
 
   supabase.auth.onAuthStateChange((event, session) => {
-    console.log('🔐 [SESSION] Auth state change:', event);
-    console.log('🔐 [SESSION] Usuario:', session?.user?.email || 'null');
+    console.log('[SESSION] Auth state change:', event);
+    console.log('[SESSION] Usuario:', session?.user?.email || 'null');
 
     const user = session?.user || null;
 
     switch (event) {
       case 'SIGNED_IN':
-        console.log('🔐 [SESSION] ✅ Usuario SIGNED IN:', user?.email);
+        console.log('[SESSION] Usuario SIGNED IN:', user?.email);
         sessionState.set({
           user,
           session,
@@ -149,7 +149,7 @@ function registerAuthListener() {
         break;
 
       case 'SIGNED_OUT':
-        console.log('🔐 [SESSION] ✅ Usuario SIGNED OUT - limpiando estado');
+        console.log('[SESSION] Usuario SIGNED OUT - limpiando estado');
         
         // Limpiar localStorage completamente
         if (typeof window !== 'undefined') {
@@ -162,7 +162,7 @@ function registerAuthListener() {
           }
           toRemove.forEach((k) => {
             localStorage.removeItem(k);
-            console.log('🔐 [SESSION] Limpiado en SIGNED_OUT:', k);
+            console.log('[SESSION] Limpiado en SIGNED_OUT:', k);
           });
           
           // Notificar al carrito
@@ -175,11 +175,11 @@ function registerAuthListener() {
           isLoading: false,
           error: null,
         });
-        console.log('🔐 [SESSION] ✅ Estado limpiado a null');
+        console.log('[SESSION] Estado limpiado a null');
         break;
 
       case 'USER_UPDATED':
-        console.log('🔐 [SESSION] ℹ️ Usuario UPDATED');
+        console.log('[SESSION] Usuario UPDATED');
         sessionState.set({
           user,
           session,
@@ -189,7 +189,7 @@ function registerAuthListener() {
         break;
 
       case 'TOKEN_REFRESHED':
-        console.log('🔐 [SESSION] 🔄 TOKEN REFRESHED');
+        console.log('[SESSION] TOKEN REFRESHED');
         sessionState.set({
           user,
           session,
@@ -199,9 +199,9 @@ function registerAuthListener() {
         break;
 
       case 'INITIAL_SESSION':
-        console.log('🔐 [SESSION] ℹ️ INITIAL_SESSION detectado');
+        console.log('[SESSION] INITIAL_SESSION detectado');
         if (user) {
-          console.log('🔐 [SESSION] Usuario en sesión inicial:', user.email);
+          console.log('[SESSION] Usuario en sesión inicial:', user.email);
           sessionState.set({
             user,
             session,
@@ -219,14 +219,14 @@ function registerAuthListener() {
             : false;
           
           if (!hasStoredSession) {
-            console.log('🔐 [SESSION] No hay usuario ni sesión almacenada');
+            console.log('[SESSION] No hay usuario ni sesión almacenada');
             // Solo limpiar si NO hay sesión en localStorage
             if (typeof window !== 'undefined') {
               localStorage.removeItem('last_cart_owner');
-              console.log('🔐 [SESSION] last_cart_owner limpiado en INITIAL_SESSION');
+              console.log('[SESSION] last_cart_owner limpiado en INITIAL_SESSION');
             }
           } else {
-            console.log('🔐 [SESSION] Sesión encontrada en localStorage - esperando carga completa');
+            console.log('[SESSION] Sesión encontrada en localStorage - esperando carga completa');
           }
           
           sessionState.set({
@@ -239,11 +239,11 @@ function registerAuthListener() {
         break;
 
       default:
-        console.log('🔐 [SESSION] Evento desconocido:', event);
+        console.log('[SESSION] Evento desconocido:', event);
     }
   });
 
-  console.log('🔐 [SESSION] ✅ Listener registrado');
+  console.log('[SESSION] Listener registrado');
 }
 
 // ============================================================================
@@ -254,7 +254,7 @@ function registerAuthListener() {
  * Invalidar y reiniciar sesión (útil después de logout)
  */
 export async function refreshSession() {
-  console.log('🔐 [SESSION] Refrescando sesión...');
+  console.log('[SESSION] Refrescando sesión...');
   sessionState.set({ ...sessionState.get(), isLoading: true });
   await initializeSession();
 }

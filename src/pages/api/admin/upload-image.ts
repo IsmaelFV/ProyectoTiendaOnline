@@ -164,7 +164,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const publicUrl = publicUrlData.publicUrl;
 
-    console.info(`[Upload] ✅ Imagen subida correctamente: ${publicUrl}`);
+    console.info(`[Upload] Imagen subida correctamente: ${publicUrl}`);
 
     return new Response(JSON.stringify({ 
       success: true, 

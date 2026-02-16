@@ -41,15 +41,15 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
       const response = await fetch(`/api/categories/${currentGender}?t=${Date.now()}`);
       const data = await response.json();
       
-      console.log('🔍 DATOS DEL API:', data);
-      console.log('🔍 Total categorías recibidas:', data.categories.length);
+      console.log('[CategoryNav] DATOS DEL API:', data);
+      console.log('[CategoryNav] Total categorías recibidas:', data.categories.length);
       
       // Organizar en árbol
       const tree: CategoryTree[] = [];
       // Solo categorías principales (sin parent_id)
       const mainCategories = data.categories.filter((c: Category) => !c.parent_id);
       
-      console.log('🔍 Categorías PRINCIPALES (sin parent_id):', mainCategories.map((c: Category) => ({
+      console.log('[CategoryNav] Categorías PRINCIPALES (sin parent_id):', mainCategories.map((c: Category) => ({
         name: c.name,
         slug: c.slug,
         level: c.level,
@@ -60,7 +60,7 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
         const subcategories = data.categories.filter(
           (c: Category) => c.parent_id === main.id
         );
-        console.log(`🔍 Subcategorías de "${main.name}":`, subcategories.map((s: Category) => s.name));
+        console.log(`[CategoryNav] Subcategorías de "${main.name}":`, subcategories.map((s: Category) => s.name));
         tree.push({ main, subcategories });
       });
       

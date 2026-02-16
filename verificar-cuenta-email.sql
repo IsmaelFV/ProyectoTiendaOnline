@@ -2,7 +2,7 @@
 -- Verificar cuenta: ismaelfloresvargas22@gmail.com
 -- =====================================================
 
--- 1️⃣ Buscar el user_id de este email en Supabase Auth
+-- 1⃣ Buscar el user_id de este email en Supabase Auth
 SELECT 
   id as user_id,
   email,
@@ -13,7 +13,7 @@ WHERE email = 'ismaelfloresvargas22@gmail.com';
 
 -- ❓ ¿El user_id coincide con: 283869ea-97e3-41e4-a959-4bc197c108ec?
 
--- 2️⃣ Pedidos de esta cuenta específica
+-- 2⃣ Pedidos de esta cuenta específica
 SELECT 
   order_number,
   status,

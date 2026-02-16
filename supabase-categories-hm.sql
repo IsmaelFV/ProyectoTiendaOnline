@@ -195,8 +195,8 @@ ORDER BY g.display_order, c.level, c.display_order;
 -- Contadores
 DO $$
 BEGIN
-  RAISE NOTICE '✅ Migración completada';
-  RAISE NOTICE '📊 Categorías totales: %', (SELECT COUNT(*) FROM categories);
+  RAISE NOTICE 'Migración completada';
+  RAISE NOTICE 'Categorías totales: %', (SELECT COUNT(*) FROM categories);
   RAISE NOTICE '👩 Categorías Mujer: %', (SELECT COUNT(*) FROM categories WHERE gender_id = (SELECT id FROM genders WHERE slug = 'mujer'));
   RAISE NOTICE '👨 Categorías Hombre: %', (SELECT COUNT(*) FROM categories WHERE gender_id = (SELECT id FROM genders WHERE slug = 'hombre'));
   RAISE NOTICE '📁 Nivel 1: %', (SELECT COUNT(*) FROM categories WHERE level = 1);

@@ -113,7 +113,7 @@ export default function CustomerReturnModal({
               {/* Información sobre devoluciones */}
               <div className="bg-blue-50 rounded-lg p-4">
                 <h3 className="font-semibold text-blue-900 mb-2">
-                  📦 Política de Devoluciones
+                  Política de Devoluciones
                 </h3>
                 <ul className="text-sm text-blue-800 space-y-1">
                   <li>• Tienes <strong>{returnInfo.returnDeadlineDays} días</strong> para devolver tu pedido</li>
@@ -154,7 +154,7 @@ export default function CustomerReturnModal({
 
               {/* Pasos a seguir */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-3">📋 Pasos para Devolver</h3>
+                <h3 className="font-semibold text-gray-900 mb-3">Pasos para Devolver</h3>
                 <ol className="text-sm text-gray-700 space-y-2">
                   <li className="flex items-start">
                     <span className="bg-brand-navy text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-3 flex-shrink-0">1</span>

@@ -139,14 +139,14 @@ const canRequestReturn = !isWithin2Hours && !['cancelled', 'refunded', 'return_r
 // Obtener info de estado (colores mejorados para tema oscuro)
 const getStatusInfo = (status: string) => {
   const info: Record<string, { color: string; text: string; bg: string; icon: string }> = {
-    pending: { color: 'text-amber-300', text: 'Pendiente', bg: 'bg-amber-500/20 border border-amber-400/40', icon: '⏳' },
+    pending: { color: 'text-amber-300', text: 'Pendiente', bg: 'bg-amber-500/20 border border-amber-400/40', icon: '' },
     confirmed: { color: 'text-blue-300', text: 'Confirmado', bg: 'bg-blue-500/20 border border-blue-400/40', icon: '✓' },
-    processing: { color: 'text-purple-300', text: 'Procesando', bg: 'bg-purple-500/20 border border-purple-400/40', icon: '⚙️' },
-    shipped: { color: 'text-indigo-300', text: 'Enviado', bg: 'bg-indigo-500/20 border border-indigo-400/40', icon: '🚚' },
-    delivered: { color: 'text-emerald-300', text: 'Entregado', bg: 'bg-emerald-500/20 border border-emerald-400/40', icon: '✅' },
+    processing: { color: 'text-purple-300', text: 'Procesando', bg: 'bg-purple-500/20 border border-purple-400/40', icon: '' },
+    shipped: { color: 'text-indigo-300', text: 'Enviado', bg: 'bg-indigo-500/20 border border-indigo-400/40', icon: '→' },
+    delivered: { color: 'text-emerald-300', text: 'Entregado', bg: 'bg-emerald-500/20 border border-emerald-400/40', icon: '✓' },
     cancelled: { color: 'text-red-300', text: 'Cancelado', bg: 'bg-red-500/20 border border-red-400/40', icon: '✕' },
     refunded: { color: 'text-gray-300', text: 'Reembolsado', bg: 'bg-gray-500/20 border border-gray-400/40', icon: '↩' },
-    return_requested: { color: 'text-orange-300', text: 'Devolución Solicitada', bg: 'bg-orange-500/20 border border-orange-400/40', icon: '📦' }
+    return_requested: { color: 'text-orange-300', text: 'Devolución Solicitada', bg: 'bg-orange-500/20 border border-orange-400/40', icon: '↩' }
   };
   return info[status] || info.pending;
 };
@@ -485,11 +485,11 @@ const statusInfo = getStatusInfo(order.status);
         <div class={`mt-4 p-3 rounded-lg text-sm ${isWithin2Hours ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-blue-500/10 border border-blue-500/20'}`}>
           {isWithin2Hours ? (
             <p class="text-emerald-300">
-              <strong>⏱️ Cancelación gratuita disponible</strong> — Puedes cancelar este pedido y recibir un reembolso inmediato. Te quedan <strong>{minutesLeft} minutos</strong>.
+              <strong>Cancelación gratuita disponible</strong> — Puedes cancelar este pedido y recibir un reembolso inmediato. Te quedan <strong>{minutesLeft} minutos</strong>.
             </p>
           ) : (
             <p class="text-blue-300">
-              <strong>📦 Período de devolución</strong> — El plazo de cancelación directa ha expirado. Puedes solicitar una devolución y recibirás el reembolso cuando recibamos el producto.
+              <strong>Período de devolución</strong> — El plazo de cancelación directa ha expirado. Puedes solicitar una devolución y recibirás el reembolso cuando recibamos el producto.
             </p>
           )}
         </div>
@@ -514,7 +514,7 @@ const statusInfo = getStatusInfo(order.status);
               Tu pedido será cancelado y recibirás el reembolso completo de forma inmediata. El dinero estará en tu cuenta en 3-5 días laborables.
             </p>
             <div class="mt-3 p-2.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-              <p class="text-xs text-emerald-300">💰 Reembolso inmediato — No necesitas devolver nada.</p>
+              <p class="text-xs text-emerald-300">Reembolso inmediato — No necesitas devolver nada.</p>
             </div>
           </div>
         </div>
@@ -561,28 +561,28 @@ const statusInfo = getStatusInfo(order.status);
               <label class="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-blue-500/40 cursor-pointer transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10">
                 <input type="radio" name="return-reason" value="wrong_size" class="accent-blue-500">
                 <div>
-                  <span class="text-white text-sm font-medium">👕 Talla incorrecta</span>
+                  <span class="text-white text-sm font-medium">Talla incorrecta</span>
                   <p class="text-xs text-gray-500">La talla no me queda bien</p>
                 </div>
               </label>
               <label class="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-blue-500/40 cursor-pointer transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10">
                 <input type="radio" name="return-reason" value="defective" class="accent-blue-500">
                 <div>
-                  <span class="text-white text-sm font-medium">🔧 Producto defectuoso</span>
+                  <span class="text-white text-sm font-medium">Producto defectuoso</span>
                   <p class="text-xs text-gray-500">El producto tiene algún defecto o está dañado</p>
                 </div>
               </label>
               <label class="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-blue-500/40 cursor-pointer transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10">
                 <input type="radio" name="return-reason" value="wrong_item" class="accent-blue-500">
                 <div>
-                  <span class="text-white text-sm font-medium">📦 Producto incorrecto</span>
+                  <span class="text-white text-sm font-medium">Producto incorrecto</span>
                   <p class="text-xs text-gray-500">Me han enviado un producto diferente al que pedí</p>
                 </div>
               </label>
               <label class="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-blue-500/40 cursor-pointer transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10">
                 <input type="radio" name="return-reason" value="not_as_described" class="accent-blue-500">
                 <div>
-                  <span class="text-white text-sm font-medium">🖼️ No es como se describía</span>
+                  <span class="text-white text-sm font-medium">No es como se describía</span>
                   <p class="text-xs text-gray-500">El producto no coincide con la descripción o las fotos</p>
                 </div>
               </label>
@@ -596,14 +596,14 @@ const statusInfo = getStatusInfo(order.status);
               <label class="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-blue-500/40 cursor-pointer transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10">
                 <input type="radio" name="return-reason" value="better_price" class="accent-blue-500">
                 <div>
-                  <span class="text-white text-sm font-medium">💰 Encontré un precio mejor</span>
+                  <span class="text-white text-sm font-medium">Encontré un precio mejor</span>
                   <p class="text-xs text-gray-500">He visto el mismo producto más barato en otro sitio</p>
                 </div>
               </label>
               <label class="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-orange-500/40 cursor-pointer transition-colors has-[:checked]:border-orange-500 has-[:checked]:bg-orange-500/10">
                 <input type="radio" name="return-reason" value="other" class="accent-orange-500">
                 <div>
-                  <span class="text-white text-sm font-medium">✏️ Otro motivo</span>
+                  <span class="text-white text-sm font-medium">Otro motivo</span>
                   <p class="text-xs text-gray-500">Quiero especificar mi propio motivo</p>
                 </div>
               </label>
@@ -682,7 +682,7 @@ const statusInfo = getStatusInfo(order.status);
         <div class="space-y-4">
           <div class="bg-dark-card/50 rounded-xl p-4 border border-white/10">
             <h4 class="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-              📋 Instrucciones para devolver el producto
+              Instrucciones para devolver el producto
             </h4>
             <ol class="text-sm text-gray-300 space-y-2 list-decimal list-inside">
               <li>Empaqueta el producto en su <strong class="text-white">embalaje original</strong> o en un paquete adecuado.</li>
@@ -704,7 +704,7 @@ const statusInfo = getStatusInfo(order.status);
 
           <div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
             <p class="text-sm text-red-300">
-              <strong>⏰ Plazo límite:</strong> <span id="instructions-deadline" class="font-semibold"></span>
+              <strong>Plazo límite:</strong> <span id="instructions-deadline" class="font-semibold"></span>
             </p>
             <p class="text-xs text-red-300/70 mt-1">Si no recibimos el producto antes de esta fecha, la solicitud se cancelará automáticamente y no recibirás el reembolso.</p>
           </div>

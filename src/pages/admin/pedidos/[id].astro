@@ -456,7 +456,7 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
       
       // Confirmación
       const confirmRefund = await customConfirm(
-        '⚠️ ¿Estás seguro de que quieres reembolsar este pedido?\n\n' +
+        '¿Estás seguro de que quieres reembolsar este pedido?\n\n' +
         'Esta acción:\n' +
         '• Devolverá el dinero al cliente mediante Stripe\n' +
         '• Recuperará el stock de los productos\n' +
@@ -488,17 +488,17 @@ const currentPaymentStatus = paymentStatusOptions.find(s => s.value === order.pa
         const result = await response.json();
         
         if (result.success) {
-          customAlert(`✅ Reembolso procesado correctamente\n\nID: ${result.refund.id}\nMonto: €${result.refund.amount}`, 'success');
+          customAlert(`Reembolso procesado correctamente\n\nID: ${result.refund.id}\nMonto: €${result.refund.amount}`, 'success');
           // Recargar página para ver cambios
           setTimeout(() => window.location.reload(), 2000);
         } else {
-          customAlert('❌ Error al procesar reembolso:\n\n' + result.error, 'error');
+          customAlert('Error al procesar reembolso:\n\n' + result.error, 'error');
           button.disabled = false;
           button.textContent = originalText;
         }
       } catch (error) {
         console.error('Error:', error);
-        customAlert('❌ Error al procesar el reembolso', 'error');
+        customAlert('Error al procesar el reembolso', 'error');
         button.disabled = false;
         button.textContent = originalText;
       }

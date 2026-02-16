@@ -193,7 +193,7 @@ export default function ProductReviews({ productId }: Props) {
                 onClick={() => setShowForm(!showForm)}
                 className="w-full mt-5 px-4 py-2.5 text-sm font-medium bg-amber-400/10 text-amber-400 rounded-xl border border-amber-400/20 hover:bg-amber-400/20 transition-all"
               >
-                {showForm ? 'Cancelar' : '✍️ Escribir una opinión'}
+                {showForm ? 'Cancelar' : 'Escribir una opinión'}
               </button>
             </div>
           </div>

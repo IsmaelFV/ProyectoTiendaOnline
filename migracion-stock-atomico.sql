@@ -134,4 +134,4 @@ suficiente, no se decrementa NADA (todo o nada).';
 -- ============================================================================
 -- 2. VERIFICACIÓN
 -- ============================================================================
-SELECT '✅ Función validate_and_decrement_stock creada correctamente' AS resultado;
+SELECT 'Función validate_and_decrement_stock creada correctamente' AS resultado;

@@ -227,5 +227,5 @@ $$;
 -- ============================================================================
 DO $$
 BEGIN
-  RAISE NOTICE '✅ Funciones del carrito recreadas con permisos correctos';
+  RAISE NOTICE 'Funciones del carrito recreadas con permisos correctos';
 END $$;

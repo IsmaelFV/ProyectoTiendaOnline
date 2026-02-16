@@ -48,10 +48,10 @@ export async function sendEmail({
 
   try {
     const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log('✅ Email enviado correctamente:', data);
+    console.log('[EMAIL] Email enviado correctamente:', data);
     return { success: true, data };
   } catch (error: any) {
-    console.error('❌ Error al enviar email:', error);
+    console.error('[EMAIL] Error al enviar email:', error);
     throw error;
   }
 }
@@ -91,20 +91,20 @@ export async function sendInvoiceEmail({
     <body>
       <div class="container">
         <div class="header">
-          <h1 style="margin: 0;">✅ Pedido Confirmado</h1>
+          <h1 style="margin: 0;">Pedido Confirmado</h1>
         </div>
         <div class="content">
           <p>Hola <strong>${customerName}</strong>,</p>
           
           <p>Gracias por realizar su compra en <strong>Fashion Store</strong>. Tu pedido <strong>${orderNumber}</strong> ha sido procesado correctamente.</p>
           
-          <p>📄 Adjuntamos tu factura en formato PDF.</p>
+          <p>Adjuntamos tu factura en formato PDF.</p>
           
           <div style="background: white; padding: 20px; border-radius: 6px; margin: 20px 0;">
             <h3 style="margin-top: 0;">Detalles del pedido:</h3>
             <ul style="list-style: none; padding: 0;">
-              <li>📦 <strong>Número de pedido:</strong> ${orderNumber}</li>
-              <li>📧 <strong>Email:</strong> ${to}</li>
+              <li><strong>Número de pedido:</strong> ${orderNumber}</li>
+              <li><strong>Email:</strong> ${to}</li>
             </ul>
           </div>
           
@@ -138,10 +138,10 @@ export async function sendInvoiceEmail({
 
   try {
     const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log(`✅ Factura enviada a ${to}:`, data);
+    console.log(`[EMAIL] Factura enviada a ${to}:`, data);
     return { success: true, data };
   } catch (error: any) {
-    console.error('❌ Error al enviar factura:', error);
+    console.error('[EMAIL] Error al enviar factura:', error);
     throw error;
   }
 }

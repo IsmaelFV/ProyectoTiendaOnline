@@ -22,4 +22,4 @@ WHERE schemaname = 'public'
   AND tablename IN ('products', 'categories', 'genders', 'colors', 'product_categories');
 
 -- Mensaje de confirmación
-SELECT '✅ RLS desactivado. Ahora los productos deberían ser visibles públicamente.' as status;
+SELECT 'RLS desactivado. Ahora los productos deberían ser visibles públicamente.' as status;

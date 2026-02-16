@@ -78,7 +78,7 @@ export const POST: APIRoute = async ({ params, request }) => {
         reason: 'requested_by_customer',
       });
       
-      console.log(`✅ Refund created in Stripe: ${refund.id}`);
+      console.log(`[REFUND] Refund created in Stripe: ${refund.id}`);
     } catch (stripeError: any) {
       console.error('Error creating refund in Stripe:', stripeError);
       return new Response(JSON.stringify({ 
@@ -112,10 +112,10 @@ export const POST: APIRoute = async ({ params, request }) => {
           });
 
           if (stockError) {
-            console.error(`❌ Error incrementing stock for product ${item.product_id}:`, stockError.message);
+            console.error(`[REFUND] Error incrementing stock for product ${item.product_id}:`, stockError.message);
             // Continuar con los demás productos
           } else {
-            console.log(`✅ Stock incremented for product ${item.product_id}: +${item.quantity}`);
+            console.log(`[REFUND] Stock incremented for product ${item.product_id}: +${item.quantity}`);
           }
         } catch (error) {
           console.error('Error in increment_stock RPC:', error);
@@ -149,7 +149,7 @@ export const POST: APIRoute = async ({ params, request }) => {
       });
     }
 
-    console.log(`✅ Order ${order.order_number} refunded successfully`);
+    console.log(`[REFUND] Order ${order.order_number} refunded successfully`);
 
     return new Response(JSON.stringify({ 
       success: true,

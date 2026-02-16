@@ -2,15 +2,15 @@
 -- VERIFICACIÓN RÁPIDA: ¿Por qué no veo mis pedidos?
 -- =====================================================
 
--- 1️⃣ ¿Hay pedidos en la base de datos?
+-- 1⃣ ¿Hay pedidos en la base de datos?
 SELECT COUNT(*) as total_pedidos FROM orders;
 
--- 2️⃣ Ver últimos 5 pedidos (con o sin user_id)
+-- 2⃣ Ver últimos 5 pedidos (con o sin user_id)
 SELECT 
   order_number,
   CASE 
-    WHEN user_id IS NULL THEN '❌ INVITADO'
-    ELSE '✅ ' || user_id
+    WHEN user_id IS NULL THEN 'INVITADO'
+    ELSE '' || user_id
   END as usuario,
   status,
   total,
@@ -19,10 +19,10 @@ FROM orders
 ORDER BY created_at DESC
 LIMIT 5;
 
--- 3️⃣ Verificar políticas RLS
+-- 3⃣ Verificar políticas RLS
 SELECT policyname FROM pg_policies WHERE tablename = 'orders';
 
--- 4️⃣ Probar acceso directo (SIN RLS)
+-- 4⃣ Probar acceso directo (SIN RLS)
 -- Esta consulta usa privilegios de admin
 SELECT 
   order_number,

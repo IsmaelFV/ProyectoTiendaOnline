@@ -101,7 +101,7 @@ export async function notifyWishlistSale(data: SaleNotificationData): Promise<vo
   <div style="max-width:600px;margin:0 auto;padding:20px;">
     <!-- Header -->
     <div style="background:linear-gradient(135deg,#dc2626 0%,#f59e0b 100%);color:#fff;padding:30px;text-align:center;border-radius:12px 12px 0 0;">
-      <h1 style="margin:0;font-size:24px;">🔥 ¡Oferta en un producto que te gusta!</h1>
+      <h1 style="margin:0;font-size:24px;">Oferta en un producto que te gusta</h1>
     </div>
     <!-- Body -->
     <div style="background:#fff;padding:30px;border-radius:0 0 12px 12px;">
@@ -141,7 +141,7 @@ export async function notifyWishlistSale(data: SaleNotificationData): Promise<vo
       users.map(u =>
         sendEmail({
           to: u.email,
-          subject: `🔥 ¡"${data.productName}" está en oferta! -${data.discountPercentage}%`,
+          subject: `"${data.productName}" esta en oferta - ${data.discountPercentage}% dto.`,
           htmlContent,
           textContent: `¡"${data.productName}" acaba de ponerse en oferta! Antes: ${formatPrice(data.originalPrice)} → Ahora: ${formatPrice(data.salePrice)} (-${data.discountPercentage}%). Ver: ${productUrl}`,
         })
@@ -205,7 +205,7 @@ export async function notifyWishlistLowStock(data: LowStockNotificationData): Pr
   <div style="max-width:600px;margin:0 auto;padding:20px;">
     <!-- Header -->
     <div style="background:linear-gradient(135deg,#f59e0b 0%,#ef4444 100%);color:#fff;padding:30px;text-align:center;border-radius:12px 12px 0 0;">
-      <h1 style="margin:0;font-size:24px;">⚡ ¡Últimas unidades de un producto que te gusta!</h1>
+      <h1 style="margin:0;font-size:24px;">Ultimas unidades de un producto que te gusta</h1>
     </div>
     <!-- Body -->
     <div style="background:#fff;padding:30px;border-radius:0 0 12px 12px;">
@@ -216,7 +216,7 @@ export async function notifyWishlistLowStock(data: LowStockNotificationData): Pr
         <h2 style="margin:0 0 8px;color:#111827;">${data.productName}</h2>
         <p style="margin:8px 0;font-size:16px;">${displayPrice}</p>
         <div style="display:inline-block;background:#fef3c7;color:#92400e;padding:8px 16px;border-radius:999px;font-weight:bold;font-size:15px;margin-top:8px;">
-          ⚠️ Solo quedan ${data.currentStock} ${stockWord}
+          Solo quedan ${data.currentStock} ${stockWord}
         </div>
       </div>
 
@@ -242,7 +242,7 @@ export async function notifyWishlistLowStock(data: LowStockNotificationData): Pr
       users.map(u =>
         sendEmail({
           to: u.email,
-          subject: `⚡ ¡Quedan solo ${data.currentStock} ${stockWord} de "${data.productName}"!`,
+          subject: `Quedan solo ${data.currentStock} ${stockWord} de "${data.productName}"`,
           htmlContent,
           textContent: `¡"${data.productName}" se está agotando! Solo quedan ${data.currentStock} ${stockWord}. No te quedes sin el tuyo: ${productUrl}`,
         })

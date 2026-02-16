@@ -146,7 +146,7 @@ export const POST: APIRoute = async ({ request }) => {
       })
       .eq('id', orderId);
 
-    console.log(`📦 Devolución ${newReturn.return_number} creada para pedido ${order.order_number}. Plazo: ${returnDeadline.toLocaleDateString('es-ES')}`);
+    console.log(`[RETURN] Devolucion ${newReturn.return_number} creada para pedido ${order.order_number}. Plazo: ${returnDeadline.toLocaleDateString('es-ES')}`);
 
     // 9. Responder con las instrucciones
     return json({ 

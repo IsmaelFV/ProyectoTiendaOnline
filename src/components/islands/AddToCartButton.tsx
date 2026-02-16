@@ -136,17 +136,17 @@ export default function AddToCartButton({ product }: AddToCartButtonProps) {
             </div>
             {selectedSize && getSizeStock(selectedSize) > 0 && getSizeStock(selectedSize) <= 3 && (
               <p className="text-orange-400 text-xs mt-2 font-medium">
-                ⚡ ¡Solo quedan {getSizeStock(selectedSize)} unidades en talla {selectedSize}!
+                Solo quedan {getSizeStock(selectedSize)} unidades en talla {selectedSize}!
               </p>
             )}
             {selectedSize && getSizeStock(selectedSize) > 3 && (
               <p className="text-gray-400 text-xs mt-2">
-                📦 {getSizeStock(selectedSize)} unidades disponibles en talla {selectedSize}
+                {getSizeStock(selectedSize)} unidades disponibles en talla {selectedSize}
               </p>
             )}
             {selectedSize && getSizeStock(selectedSize) <= 0 && (
               <p className="text-red-400 text-xs mt-2 font-medium">
-                ❌ Talla {selectedSize} agotada — Selecciona otra talla
+                Talla {selectedSize} agotada — Selecciona otra talla
               </p>
             )}
             {showError && !selectedSize && (

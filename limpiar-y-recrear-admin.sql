@@ -88,4 +88,4 @@ LIMIT 1;
 -- 5. Verificar
 SELECT * FROM admin_users;
 
-SELECT '✅ Admin_users recreado y simplificado' as resultado;
+SELECT 'Admin_users recreado y simplificado' as resultado;

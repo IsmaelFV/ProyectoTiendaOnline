@@ -708,7 +708,7 @@ if (categories && genders) {
       sizesSummary.textContent = 'Selecciona al menos una talla';
     }
 
-    // ⭐ Actualizar sección de stock por talla
+    // Actualizar sección de stock por talla
     updateStockBySizeUI();
   }
 
@@ -720,10 +720,10 @@ if (categories && genders) {
   }
 
   function getStockLabel(stock) {
-    if (stock === 0) return '⛔ Sin stock';
-    if (stock <= 3) return '⚠️ Muy bajo';
-    if (stock <= 10) return '📦 Bajo';
-    return '✅ OK';
+    if (stock === 0) return 'Sin stock';
+    if (stock <= 3) return 'Muy bajo';
+    if (stock <= 10) return 'Bajo';
+    return 'OK';
   }
 
   function updateStockBySizeUI() {
@@ -827,8 +827,8 @@ if (categories && genders) {
       const lowStock = arr.filter(s => { const v = stockBySize[s] || 0; return v > 0 && v <= 3; }).length;
       
       let parts = [`<span class="text-gray-400">Total: <strong class="text-white">${total}</strong> unidades en <strong class="text-white">${arr.length}</strong> tallas</span>`];
-      if (outOfStock > 0) parts.push(`<span class="text-red-400">⛔ ${outOfStock} sin stock</span>`);
-      if (lowStock > 0) parts.push(`<span class="text-orange-400">⚠️ ${lowStock} stock bajo</span>`);
+      if (outOfStock > 0) parts.push(`<span class="text-red-400">${outOfStock} sin stock</span>`);
+      if (lowStock > 0) parts.push(`<span class="text-orange-400">${lowStock} stock bajo</span>`);
       stockSummaryEl.innerHTML = parts.join(' · ');
     }
   }

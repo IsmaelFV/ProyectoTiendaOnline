@@ -274,5 +274,5 @@ WHERE gender_id = (SELECT id FROM genders WHERE slug = 'mujer')
 ORDER BY display_order, level;
 
 -- ============================================================================
--- ✅ Si ves categorías en el resultado, TODO ESTÁ LISTO!
+-- Si ves categorías en el resultado, TODO ESTÁ LISTO!
 -- ============================================================================

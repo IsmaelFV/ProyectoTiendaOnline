@@ -149,5 +149,5 @@ SELECT
 FROM admin_users
 ORDER BY created_at DESC;
 
-SELECT '✅ TABLAS DE ADMINISTRACIÓN CREADAS CORRECTAMENTE' as resultado;
-SELECT '📝 Ahora necesitas añadir un usuario admin manualmente (ver instrucciones arriba)' as siguiente_paso;
+SELECT 'TABLAS DE ADMINISTRACIÓN CREADAS CORRECTAMENTE' as resultado;
+SELECT 'Ahora necesitas añadir un usuario admin manualmente (ver instrucciones arriba)' as siguiente_paso;

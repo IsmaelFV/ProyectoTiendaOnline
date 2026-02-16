@@ -48,13 +48,13 @@ if (session?.user) {
   </style>
 </head>
 <body>
-  <h1>🔍 Diagnóstico de Sesión y Pedidos</h1>
+  <h1>Diagnóstico de Sesión y Pedidos</h1>
 
   <div class="section">
-    <h2>1️⃣ Estado de Sesión</h2>
+    <h2>1. Estado de Sesión</h2>
     {session ? (
       <div class="success">
-        <p>✅ <strong>SESIÓN ACTIVA</strong></p>
+        <p><strong>SESIÓN ACTIVA</strong></p>
         <pre>{JSON.stringify({
           user_id: session.user.id,
           email: session.user.email,
@@ -63,7 +63,7 @@ if (session?.user) {
       </div>
     ) : (
       <div class="error">
-        <p>❌ <strong>NO HAY SESIÓN ACTIVA</strong></p>
+        <p><strong>NO HAY SESIÓN ACTIVA</strong></p>
         <p>Necesitas iniciar sesión primero</p>
         <a href="/auth/login" style="color: #00ff00;">→ Ir a login</a>
       </div>
@@ -72,16 +72,16 @@ if (session?.user) {
 
   {session && (
     <div class="section">
-      <h2>2️⃣ Pedidos Encontrados</h2>
+      <h2>2. Pedidos Encontrados</h2>
       {orders && orders.length > 0 ? (
         <div class="success">
-          <p>✅ <strong>Se encontraron {orders.length} pedido(s)</strong></p>
+          <p><strong>Se encontraron {orders.length} pedido(s)</strong></p>
           <pre>{JSON.stringify(orders, null, 2)}</pre>
           <p><a href="/perfil/mis-pedidos" style="color: #00ff00;">→ Ver en Mis Pedidos</a></p>
         </div>
       ) : (
         <div class="warning">
-          <p>⚠️ <strong>NO SE ENCONTRARON PEDIDOS</strong></p>
+          <p><strong>NO SE ENCONTRARON PEDIDOS</strong></p>
           <p>Posibles causas:</p>
           <ul>
             <li>Hiciste checkout sin estar logueado (pedidos NULL)</li>
@@ -94,21 +94,21 @@ if (session?.user) {
   )}
 
   <div class="section">
-    <h2>3️⃣ User ID Esperado</h2>
+    <h2>3. User ID Esperado</h2>
     <p>El pedido <code>ORD-20260119-1792</code> pertenece a:</p>
     <pre>283869ea-97e3-41e4-a959-4bc197c108ec</pre>
     {session && (
       <p class={session.user.id === '283869ea-97e3-41e4-a959-4bc197c108ec' ? 'success' : 'error'}>
         {session.user.id === '283869ea-97e3-41e4-a959-4bc197c108ec' 
-          ? '✅ COINCIDE - Este es el usuario correcto' 
-          : `❌ NO COINCIDE - Tu user_id es: ${session.user.id}`
+          ? 'COINCIDE - Este es el usuario correcto' 
+          : `NO COINCIDE - Tu user_id es: ${session.user.id}`
         }
       </p>
     )}
   </div>
 
   <div class="section">
-    <h2>4️⃣ Pedidos en Base de Datos</h2>
+    <h2>4. Pedidos en Base de Datos</h2>
     <p>Pedidos totales: 3</p>
     <ul>
       <li class="success">ORD-20260119-1792 → CON user_id (visible si estás logueado con esa cuenta)</li>
@@ -118,14 +118,14 @@ if (session?.user) {
   </div>
 
   <div class="section">
-    <h2>🎯 Solución</h2>
+    <h2>Solución</h2>
     <ol>
       <li>Inicia sesión con el email de la cuenta: <code>283869ea-97e3-41e4-a959-4bc197c108ec</code></li>
       <li>Recarga esta página: <a href="/test-session" style="color: #00ff00;">/test-session</a></li>
       <li>Deberías ver "1 pedido encontrado"</li>
       <li>Luego ve a <a href="/perfil/mis-pedidos" style="color: #00ff00;">Mis Pedidos</a></li>
     </ol>
-    <p class="warning">⚠️ Los pedidos NULL (invitado) no se pueden recuperar en el perfil</p>
+    <p class="warning">Los pedidos NULL (invitado) no se pueden recuperar en el perfil</p>
   </div>
 </body>
 </html>

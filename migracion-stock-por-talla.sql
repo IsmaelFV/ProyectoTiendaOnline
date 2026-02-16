@@ -94,7 +94,7 @@ BEGIN
     );
   END IF;
 
-  -- ⭐ LOCK la fila del producto (previene race conditions)
+  -- LOCK la fila del producto (previene race conditions)
   SELECT stock, stock_by_size INTO v_available_stock, v_stock_by_size
   FROM products
   WHERE id = p_product_id
@@ -384,14 +384,14 @@ COMMENT ON FUNCTION recalculate_total_stock IS
 -- ============================================================================
 DO $$
 BEGIN
-  RAISE NOTICE '✅ Migración stock-por-talla completada';
+  RAISE NOTICE 'Migración stock-por-talla completada';
   RAISE NOTICE 'Columna: products.stock_by_size (JSONB) añadida';
   RAISE NOTICE 'Columna: stock_reservations.size (TEXT) añadida';
   RAISE NOTICE 'Funciones actualizadas: reserve_stock, decrement_stock, increment_stock, get_effective_stock';
   RAISE NOTICE 'Nueva función: recalculate_total_stock';
   RAISE NOTICE 'Vista actualizada: active_reservations_summary';
   RAISE NOTICE '';
-  RAISE NOTICE '⚠️  El stock global (products.stock) se mantiene como la SUMA de todas las tallas';
-  RAISE NOTICE '⚠️  Los productos existentes se han migrado distribuyendo el stock equitativamente';
-  RAISE NOTICE '⚠️  REVISA los productos y ajusta el stock por talla manualmente si necesario';
+  RAISE NOTICE ' El stock global (products.stock) se mantiene como la SUMA de todas las tallas';
+  RAISE NOTICE ' Los productos existentes se han migrado distribuyendo el stock equitativamente';
+  RAISE NOTICE ' REVISA los productos y ajusta el stock por talla manualmente si necesario';
 END $$;

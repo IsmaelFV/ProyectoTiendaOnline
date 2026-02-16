@@ -234,7 +234,7 @@ const successMessage = Astro.url.searchParams.get('success');
 
     // Google OAuth para registro
     googleBtn?.addEventListener('click', async () => {
-      console.log('🔐 [REGISTER PAGE] Iniciando Google OAuth...');
+      console.log('[REGISTER PAGE] Iniciando Google OAuth...');
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

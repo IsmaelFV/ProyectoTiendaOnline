@@ -53,15 +53,15 @@ const lastCartOwner = persistentAtom<string>(
   }
 );
 
-console.log('🛒 [CART INIT] Client Cart ID:', typeof window !== 'undefined' ? clientCartId.get() : 'SSR');
-console.log('🛒 [CART INIT] Last Cart Owner:', typeof window !== 'undefined' ? lastCartOwner.get() || 'ninguno' : 'SSR');
+console.log('[CART INIT] Client Cart ID:', typeof window !== 'undefined' ? clientCartId.get() : 'SSR');
+console.log('[CART INIT] Last Cart Owner:', typeof window !== 'undefined' ? lastCartOwner.get() || 'ninguno' : 'SSR');
 
 // Escuchar evento de limpieza de lastCartOwner desde session.ts
 if (typeof window !== 'undefined') {
   window.addEventListener('lastCartOwnerCleared', () => {
-    console.log('🛒 [CART] Evento lastCartOwnerCleared recibido - forzando recarga');
+    console.log('[CART] Evento lastCartOwnerCleared recibido - forzando recarga');
     lastCartOwner.set('');
-    console.log('🛒 [CART] Last Cart Owner reseteado a:', lastCartOwner.get() || 'ninguno');
+    console.log('[CART] Last Cart Owner reseteado a:', lastCartOwner.get() || 'ninguno');
   });
 }
 
@@ -76,16 +76,16 @@ function createLocalCart(id: string): MapStore<Record<string, CartItem>> {
     const storedCart = typeof window !== 'undefined' ? localStorage.getItem(cartKey) : null;
     if (storedCart) {
       cartData = JSON.parse(storedCart);
-      console.log('🛒 [CART INIT] Carrito recuperado de sesión anterior:', Object.keys(cartData).length, 'items');
+      console.log('[CART INIT] Carrito recuperado de sesion anterior:', Object.keys(cartData).length, 'items');
     }
   } catch (e) {
-    console.warn('🛒 [CART INIT] Error al cargar carrito:', e);
+    console.warn('[CART INIT] Error al cargar carrito:', e);
   }
   const map = persistentMap<Record<string, CartItem>>(cartKey, cartData, {
     encode: JSON.stringify,
     decode: JSON.parse,
   });
-  console.log('🛒 [CART INIT] Inicializando localStorage con key:', cartKey);
+  console.log('[CART INIT] Inicializando localStorage con key:', cartKey);
   return map;
 }
 
@@ -93,7 +93,7 @@ if (typeof window !== 'undefined') {
   localCart = createLocalCart(clientCartId.get());
 } else {
   // Fallback para SSR
-  console.log('🛒 [CART INIT] SSR - usando dummy store');
+  console.log('[CART INIT] SSR - usando dummy store');
   localCart = persistentMap<Record<string, CartItem>>('cart:ssr', {}, {
     encode: JSON.stringify,
     decode: JSON.parse,
@@ -128,7 +128,7 @@ if (typeof window !== 'undefined') {
     clientCartId,
     localCart
   };
-  console.log('🐛 [DEBUG] Cart stores expuestos en window.debugCart');
+  console.log('[DEBUG] Cart stores expuestos en window.debugCart');
 }
 
 // ============================================================================
@@ -139,34 +139,34 @@ let lastMigratedUserId: string | null = null;
 
 export async function initializeCart() {
   if (isCartInitialized) {
-    console.log('🛒 [CART] Ya inicializado, skipping...');
+    console.log('[CART] Ya inicializado, skipping...');
     return;
   }
 
   if (typeof window === 'undefined') {
-    console.log('🛒 [CART] SSR - skipping initialization');
+    console.log('[CART] SSR - skipping initialization');
     return;
   }
 
   isCartInitialized = true;
-  console.log('🛒 [CART] ========== INICIALIZANDO CARRITO ==========');
+  console.log('[CART] ========== INICIALIZANDO CARRITO ==========');
 
   // Cargar items desde localStorage primero
   const localItems = localCart.get();
-  console.log('🛒 [CART] Items en localStorage:', Object.keys(localItems).length);
-  cartItems.set(localItems); // ✅ CARGAR INMEDIATAMENTE
+  console.log('[CART] Items en localStorage:', Object.keys(localItems).length);
+  cartItems.set(localItems); // CARGAR INMEDIATAMENTE
 
   // Sincronizar con DB si está autenticado
   const userId = currentUserId.get();
   
   if (userId) {
-    console.log('🛒 [CART] ✅ Usuario AUTENTICADO detectado:', userId);
+    console.log('[CART] Usuario AUTENTICADO detectado:', userId);
     await loadCartFromDatabase(userId);
   } else {
-    console.log('🛒 [CART] ❌ Usuario NO autenticado - usando carrito anónimo');
+    console.log('[CART] Usuario NO autenticado - usando carrito anónimo');
   }
 
-  console.log('🛒 [CART] ========== INICIALIZACIÓN COMPLETADA ==========');
+  console.log('[CART] ========== INICIALIZACION COMPLETADA ==========');
 }
 
 // ============================================================================
@@ -178,7 +178,7 @@ if (typeof window !== 'undefined') {
   // Suscribirse a cambios de autenticación
   currentUserId.subscribe((userId) => {
     if (isProcessingAuthChange) {
-      console.log('🛒 [CART] ⚠️  Cambio de auth duplicado - ignorando');
+      console.log('[CART] Cambio de auth duplicado - ignorando');
       return;
     }
 
@@ -186,26 +186,26 @@ if (typeof window !== 'undefined') {
 
     (async () => {
       try {
-        console.log('🛒 [CART] ========== AUTH CHANGE DETECTED ==========');
-        console.log('🛒 [CART] Nueva sesión de usuario:', userId || 'anónimo');
+        console.log('[CART] ========== AUTH CHANGE DETECTED ==========');
+        console.log('[CART] Nueva sesión de usuario:', userId || 'anónimo');
 
         if (userId) {
           // Usuario hizo LOGIN: verificar si es diferente al último usuario
           const previousOwner = lastCartOwner.get();
-          console.log('🛒 [CART] ✅ LOGIN - Usuario:', userId);
-          console.log('🛒 [CART] Último propietario:', previousOwner || 'ninguno');
+          console.log('[CART] LOGIN - Usuario:', userId);
+          console.log('[CART] Último propietario:', previousOwner || 'ninguno');
           
           // Si es un usuario DIFERENTE, regenerar client_cart_id (aislar carrito guest)
           if (previousOwner && previousOwner !== userId) {
-            console.log('🛒 [CART] ⚠️  Usuario diferente detectado - regenerando client_cart_id');
+            console.log('[CART] Usuario diferente detectado - regenerando client_cart_id');
             
             // Limpiar localStorage del usuario anterior
             const oldCartKey = `cart:guest:${clientCartId.get()}`;
             try {
               localStorage.removeItem(oldCartKey);
-              console.log('🛒 [CART] Limpiado carrito anterior:', oldCartKey);
+              console.log('[CART] Limpiado carrito anterior:', oldCartKey);
             } catch (e) {
-              console.warn('🛒 [CART] Error limpiando carrito anterior:', e);
+              console.warn('[CART] Error limpiando carrito anterior:', e);
             }
             
             // Generar nuevo ID y carrito limpio
@@ -213,48 +213,48 @@ if (typeof window !== 'undefined') {
             clientCartId.set(newId);
             localCart = createLocalCart(newId);
             localCart.set({});
-            console.log('🛒 [CART] Nuevo client_cart_id:', newId.substring(0, 12) + '...');
+            console.log('[CART] Nuevo client_cart_id:', newId.substring(0, 12) + '...');
           }
           
           const localItems = localCart.get();
           const itemsToMigrate = Object.values(localItems);
           
           if (itemsToMigrate.length > 0) {
-            console.log('🛒 [CART] Migrando', itemsToMigrate.length, 'items a la base de datos');
+            console.log('[CART] Migrando', itemsToMigrate.length, 'items a la base de datos');
             await migrateLocalCartToDatabase(userId);
             // Limpia carrito guest para evitar que otro usuario lo herede
             localCart.set({});
-            console.log('🛒 [CART] Carrito guest limpiado tras migración');
+            console.log('[CART] Carrito guest limpiado tras migración');
           }
 
           // Cargar carrito desde DB
-          console.log('🛒 [CART] Cargando carrito desde base de datos...');
+          console.log('[CART] Cargando carrito desde base de datos...');
           await loadCartFromDatabase(userId);
           
           // Marcar este usuario como último propietario
           lastCartOwner.set(userId);
           lastMigratedUserId = userId;
           
-          console.log('🛒 [CART] ✅ Login completado');
+          console.log('[CART] Login completado');
         } else {
           // Usuario hizo LOGOUT: mantener carrito guest del dispositivo
-          console.log('🛒 [CART] ✅ LOGOUT - Manteniendo carrito guest');
-          console.log('🛒 [CART] Último propietario del carrito:', lastCartOwner.get() || 'ninguno');
+          console.log('[CART] LOGOUT - Manteniendo carrito guest');
+          console.log('[CART] Último propietario del carrito:', lastCartOwner.get() || 'ninguno');
           
           // NO regenerar client_cart_id (mantener el carrito guest del dispositivo)
           // Restaurar desde localStorage
           const localItems = localCart.get();
           cartItems.set(localItems);
           
-          console.log('🛒 [CART] Carrito guest restaurado con', Object.keys(localItems).length, 'items');
+          console.log('[CART] Carrito guest restaurado con', Object.keys(localItems).length, 'items');
           lastMigratedUserId = null;
         }
       } catch (error) {
-        console.error('🛒 [CART] ❌ Error en cambio de autenticación:', error);
+        console.error('[CART] Error en cambio de autenticación:', error);
       } finally {
         setTimeout(() => {
           isProcessingAuthChange = false;
-          console.log('🛒 [CART] Flag isProcessingAuthChange reseteado');
+          console.log('[CART] Flag isProcessingAuthChange reseteado');
         }, 50);
       }
     })();
@@ -265,7 +265,7 @@ if (typeof window !== 'undefined') {
 // FUNCIONES DE BASE DE DATOS
 // ============================================================================
 async function loadCartFromDatabase(userId: string) {
-  console.log('🛒 [CART] Cargando carrito desde DB para user:', userId);
+  console.log('[CART] Cargando carrito desde DB para user:', userId);
   isLoadingCart.set(true);
   
   try {
@@ -274,11 +274,11 @@ async function loadCartFromDatabase(userId: string) {
     });
 
     if (error) {
-      console.error('🛒 [CART ERROR] Error llamando get_cart_with_products:', error);
+      console.error('[CART ERROR] Error llamando get_cart_with_products:', error);
       throw error;
     }
 
-    console.log('🛒 [CART] Datos recibidos de DB:', data);
+    console.log('[CART] Datos recibidos de DB:', data);
 
     // Convertir resultado a formato de cartItems
     const items: Record<string, CartItem> = {};
@@ -295,13 +295,13 @@ async function loadCartFromDatabase(userId: string) {
       };
     });
 
-    console.log('🛒 [CART] Items procesados:', Object.keys(items).length);
+    console.log('[CART] Items procesados:', Object.keys(items).length);
     cartItems.set(items);
   } catch (error) {
-    console.error('🛒 [CART ERROR] Error loading cart from database:', error);
+    console.error('[CART ERROR] Error loading cart from database:', error);
     // Fallback a localStorage en caso de error
     const localItems = localCart.get();
-    console.log('🛒 [CART] Fallback a localStorage con', Object.keys(localItems).length, 'items');
+    console.log('[CART] Fallback a localStorage con', Object.keys(localItems).length, 'items');
     cartItems.set(localItems);
   } finally {
     isLoadingCart.set(false);
@@ -354,16 +354,16 @@ export async function addToCart(product: {
   const cartKey = `${product.id}-${product.size}`;
   const userId = currentUserId.get();
 
-  console.log('🛒 [CART] ========== addToCart INICIO ==========');
-  console.log('🛒 [CART] currentUserId.get():', userId);
-  console.log('🛒 [CART] Tipo:', userId ? 'Usuario autenticado' : 'Usuario invitado');
-  console.log('🛒 [CART] Producto:', product.name, 'Talla:', product.size);
-  console.log('🛒 [CART] Cart Key:', cartKey);
+  console.log('[CART] ========== addToCart INICIO ==========');
+  console.log('[CART] currentUserId.get():', userId);
+  console.log('[CART] Tipo:', userId ? 'Usuario autenticado' : 'Usuario invitado');
+  console.log('[CART] Producto:', product.name, 'Talla:', product.size);
+  console.log('[CART] Cart Key:', cartKey);
 
   if (userId) {
     // Usuario autenticado: usar Supabase
-    console.log('🛒 [CART] ✅ RUTA: Agregando a SUPABASE DB...');
-    console.log('🛒 [CART] Parámetros RPC:', {
+    console.log('[CART] RUTA: Agregando a SUPABASE DB...');
+    console.log('[CART] Parámetros RPC:', {
       p_user_id: userId,
       p_product_id: product.id,
       p_size: product.size,
@@ -378,35 +378,35 @@ export async function addToCart(product: {
         p_quantity: 1
       });
 
-      console.log('🛒 [CART] Respuesta RPC:', { data, error });
+      console.log('[CART] Respuesta RPC:', { data, error });
       if (error) {
-        console.error('🛒 [CART ERROR] ❌ Error en RPC add_to_cart:', error);
+        console.error('[CART ERROR] Error en RPC add_to_cart:', error);
         throw error;
       }
 
       // Recargar carrito desde DB
-      console.log('🛒 [CART] Recargando carrito desde DB...');
+      console.log('[CART] Recargando carrito desde DB...');
       await loadCartFromDatabase(userId);
     } catch (error) {
-      console.error('🛒 [CART ERROR] Error adding to cart:', error);
+      console.error('[CART ERROR] Error adding to cart:', error);
       return;
     }
   } else {
     // Usuario no autenticado: usar localStorage
-    console.log('🛒 [CART] ✅ RUTA: Agregando a LOCALSTORAGE...');
-    console.log('🛒 [CART] Client Cart ID actual:', clientCartId.get());
+    console.log('[CART] RUTA: Agregando a LOCALSTORAGE...');
+    console.log('[CART] Client Cart ID actual:', clientCartId.get());
     
     const currentItems = localCart.get();
-    console.log('🛒 [CART] Items actuales en localStorage:', Object.keys(currentItems).length);
+    console.log('[CART] Items actuales en localStorage:', Object.keys(currentItems).length);
     
     if (currentItems[cartKey]) {
-      console.log('🛒 [CART] Item ya existe, incrementando cantidad');
+      console.log('[CART] Item ya existe, incrementando cantidad');
       localCart.setKey(cartKey, {
         ...currentItems[cartKey],
         quantity: currentItems[cartKey].quantity + 1,
       });
     } else {
-      console.log('🛒 [CART] Nuevo item, agregando al carrito');
+      console.log('[CART] Nuevo item, agregando al carrito');
       localCart.setKey(cartKey, {
         id: product.id,
         name: product.name,
@@ -422,10 +422,10 @@ export async function addToCart(product: {
     
     const updatedItems = localCart.get();
     cartItems.set(updatedItems);
-    console.log('🛒 [CART] ✅ Item agregado a localStorage. Total items:', Object.keys(updatedItems).length);
+    console.log('[CART] Item agregado a localStorage. Total items:', Object.keys(updatedItems).length);
   }
   
-  console.log('🛒 [CART] ========== addToCart FIN ==========');
+  console.log('[CART] ========== addToCart FIN ==========');
   isCartOpen.set(true);
 }
 
@@ -476,10 +476,10 @@ export async function updateQuantity(cartKey: string, quantity: number) {
   const productId = cartKey.substring(0, lastDashIndex);
   const size = cartKey.substring(lastDashIndex + 1);
   
-  console.log('🛒 [CART] updateQuantity - cartKey:', cartKey);
-  console.log('🛒 [CART] updateQuantity - productId:', productId, 'length:', productId.length);
-  console.log('🛒 [CART] updateQuantity - size:', size);
-  console.log('🛒 [CART] updateQuantity - quantity:', quantity);
+  console.log('[CART] updateQuantity - cartKey:', cartKey);
+  console.log('[CART] updateQuantity - productId:', productId, 'length:', productId.length);
+  console.log('[CART] updateQuantity - size:', size);
+  console.log('[CART] updateQuantity - quantity:', quantity);
 
   if (userId) {
     // Usuario autenticado: usar Supabase
@@ -550,13 +550,13 @@ export function closeCart() {
 // FUNCIÓN PARA LIMPIAR SESIÓN DE INVITADO (útil para testing)
 // ============================================================================
 export function clearGuestSession() {
-  console.log('🛒 [CART] Limpiando sesión de invitado actual');
+  console.log('[CART] Limpiando sesión de invitado actual');
   const currentClientId = clientCartId.get();
   localStorage.removeItem(`cart:guest:${currentClientId}`);
   
   const newClientId = generateClientCartId();
   clientCartId.set(newClientId);
-  console.log('🛒 [CART] Nueva sesión de invitado creada:', newClientId);
+  console.log('[CART] Nueva sesión de invitado creada:', newClientId);
   
   cartItems.set({});
 }

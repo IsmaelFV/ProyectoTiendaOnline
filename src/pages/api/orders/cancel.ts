@@ -87,9 +87,9 @@ export const POST: APIRoute = async ({ request }) => {
           reason: 'requested_by_customer',
         });
         stripeRefundId = refund.id;
-        console.log(`✅ Stripe refund: ${refund.id} (${refund.amount / 100}€)`);
+        console.log(`[CANCEL] Stripe refund: ${refund.id} (${refund.amount / 100}€)`);
       } catch (stripeErr: any) {
-        console.error('❌ Stripe refund error:', stripeErr.message);
+        console.error('[CANCEL] Stripe refund error:', stripeErr.message);
         return json({ success: false, message: 'Error al procesar el reembolso. Inténtalo de nuevo.' }, 500);
       }
     }
@@ -127,7 +127,7 @@ export const POST: APIRoute = async ({ request }) => {
       })
       .eq('id', orderId);
 
-    console.log(`✅ Pedido ${order.order_number} cancelado (<2h). User: ${user.id}. Stock: ${restoredItems} items.`);
+    console.log(`[CANCEL] Pedido ${order.order_number} cancelado (<2h). User: ${user.id}. Stock: ${restoredItems} items.`);
 
     return json({ 
       success: true, 

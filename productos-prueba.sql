@@ -309,10 +309,10 @@ BEGIN
   INSERT INTO product_categories (product_id, category_id) VALUES
     (prod_id, cat_camisas_hombre_id);
 
-  RAISE NOTICE '✅ Se han insertado 8 productos de prueba';
-  RAISE NOTICE '📦 Productos con múltiples categorías configurados';
-  RAISE NOTICE '🎨 Productos con colores y tallas asignados';
-  RAISE NOTICE '🏷️ Productos nuevos y en oferta marcados';
+  RAISE NOTICE 'Se han insertado 8 productos de prueba';
+  RAISE NOTICE 'Productos con múltiples categorías configurados';
+  RAISE NOTICE 'Productos con colores y tallas asignados';
+  RAISE NOTICE 'Productos nuevos y en oferta marcados';
 END $$;
 
 -- ============================================================================

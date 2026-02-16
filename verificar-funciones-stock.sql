@@ -12,8 +12,8 @@ SELECT
 FROM pg_proc 
 WHERE proname = 'decrement_stock';
 
--- Si devuelve filas, la función existe ✅
--- Si no devuelve nada, necesitas ejecutar sql-decrement-stock.sql ❌
+-- Si devuelve filas, la función existe 
+-- Si no devuelve nada, necesitas ejecutar sql-decrement-stock.sql 
 
 -- 2. Verificar si la función increment_stock existe
 SELECT 
@@ -22,8 +22,8 @@ SELECT
 FROM pg_proc 
 WHERE proname = 'increment_stock';
 
--- Si devuelve filas, la función existe ✅
--- Si no devuelve nada, necesitas ejecutar sql-increment-stock.sql ❌
+-- Si devuelve filas, la función existe 
+-- Si no devuelve nada, necesitas ejecutar sql-increment-stock.sql 
 
 -- 3. Probar decrement_stock manualmente (PRUEBA)
 -- NOTA: Reemplaza el UUID con un ID de producto real de tu base de datos
