@@ -232,6 +232,8 @@ function translateReason(reason: string) {
   </div>
 
   <script>
+    import { customConfirm, customAlert } from '../../../lib/notifications';
+
     // Admin return actions
     document.querySelectorAll('.action-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
@@ -240,11 +242,19 @@ function translateReason(reason: string) {
         const action = target.dataset.action;
         if (!returnId || !action) return;
 
-        const confirmMsg = action === 'receive'
-          ? '¿Confirmar que se ha recibido el producto? Se procesará el reembolso automáticamente.'
-          : '¿Rechazar esta solicitud de devolución?';
-
-        if (!confirm(confirmMsg)) return;
+        const isReceive = action === 'receive';
+        const confirmed = await customConfirm(
+          isReceive
+            ? '¿Confirmar que se ha recibido el producto? Se procesará el reembolso automáticamente.'
+            : '¿Rechazar esta solicitud de devolución? Esta acción no se puede deshacer.',
+          {
+            title: isReceive ? 'Confirmar recepción' : 'Rechazar devolución',
+            confirmText: isReceive ? 'Sí, reembolsar' : 'Sí, rechazar',
+            cancelText: 'Cancelar',
+            type: isReceive ? 'info' : 'danger'
+          }
+        );
+        if (!confirmed) return;
 
         target.textContent = 'Procesando...';
         target.setAttribute('disabled', 'true');
@@ -258,16 +268,16 @@ function translateReason(reason: string) {
           const data = await res.json();
 
           if (data.success) {
-            alert(data.message || 'Operación completada');
-            window.location.reload();
+            customAlert(data.message || 'Operación completada correctamente', 'success');
+            setTimeout(() => window.location.reload(), 1500);
           } else {
-            alert('Error: ' + (data.message || 'Error desconocido'));
-            target.textContent = action === 'receive' ? '✅ Recibido y Reembolsar' : '✕ Rechazar';
+            customAlert(data.message || 'Error desconocido', 'error');
+            target.textContent = isReceive ? '✅ Recibido y Reembolsar' : '✕ Rechazar';
             target.removeAttribute('disabled');
           }
         } catch {
-          alert('Error de conexión');
-          target.textContent = action === 'receive' ? '✅ Recibido y Reembolsar' : '✕ Rechazar';
+          customAlert('Error de conexión con el servidor', 'error');
+          target.textContent = isReceive ? '✅ Recibido y Reembolsar' : '✕ Rechazar';
           target.removeAttribute('disabled');
         }
       });

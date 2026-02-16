@@ -309,6 +309,8 @@ const now = new Date();
 </AdminLayout>
 
 <script>
+  import { customConfirm, customAlert } from '../../../lib/notifications';
+
   const modal = document.getElementById('codeModal');
   const modalTitle = document.getElementById('codeModalTitle');
   const editIdField = document.getElementById('codeEditId') as HTMLInputElement;
@@ -384,7 +386,7 @@ const now = new Date();
     const discount_value = valueInput?.value;
 
     if (!code || !discount_type || !discount_value) {
-      alert('Código, tipo y valor de descuento son obligatorios');
+      customAlert('Código, tipo y valor de descuento son obligatorios', 'warning');
       return;
     }
 
@@ -420,7 +422,7 @@ const now = new Date();
 
       window.location.reload();
     } catch (err: any) {
-      alert(err.message || 'Error al guardar el código');
+      customAlert(err.message || 'Error al guardar el código', 'error');
       btn.disabled = false;
       btn.textContent = 'Guardar';
     }
@@ -445,7 +447,7 @@ const now = new Date();
 
         window.location.reload();
       } catch (err: any) {
-        alert(err.message || 'Error al cambiar estado');
+        customAlert(err.message || 'Error al cambiar el estado', 'error');
       }
     });
   });
@@ -457,7 +459,16 @@ const now = new Date();
       const id = el.dataset.id!;
       const code = el.dataset.code!;
 
-      if (!confirm(`¿Eliminar el código "${code}"? Esta acción no se puede deshacer.`)) return;
+      const confirmed = await customConfirm(
+        `¿Eliminar el código "${code}"? Esta acción no se puede deshacer.`,
+        {
+          title: 'Eliminar código',
+          confirmText: 'Sí, eliminar',
+          cancelText: 'Cancelar',
+          type: 'danger'
+        }
+      );
+      if (!confirmed) return;
 
       try {
         const res = await fetch('/api/discount-codes/manage', {
@@ -469,9 +480,10 @@ const now = new Date();
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
 
-        window.location.reload();
+        customAlert('Código eliminado correctamente', 'success');
+        setTimeout(() => window.location.reload(), 1000);
       } catch (err: any) {
-        alert(err.message || 'Error al eliminar el código');
+        customAlert(err.message || 'Error al eliminar el código', 'error');
       }
     });
   });

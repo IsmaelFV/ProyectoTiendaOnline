@@ -1110,7 +1110,8 @@ const errorMessage = errorParam ? errorMessages[errorParam] : null;
     
     if (errors.length > 0) {
       e.preventDefault();
-      alert('Por favor corrige lo siguiente:\n\n• ' + errors.join('\n• '));
+      const { customAlert } = await import('../../../lib/notifications');
+      customAlert('Por favor corrige lo siguiente:\n\n• ' + errors.join('\n• '), 'warning');
       return false;
     }
     
