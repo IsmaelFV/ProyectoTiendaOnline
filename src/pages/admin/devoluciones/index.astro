@@ -52,7 +52,8 @@ function getStatusColor(status: string) {
     rejected: 'bg-red-500/20 text-red-400 border border-red-500/30',
     received: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
     refunded: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
-    cancelled: 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+    cancelled: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
+    expired: 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
   };
   return colors[status] || 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
 }
@@ -65,7 +66,8 @@ function translateStatus(status: string) {
     rejected: 'Rechazada',
     received: 'Recibida',
     refunded: 'Reembolsada',
-    cancelled: 'Cancelada'
+    cancelled: 'Cancelada',
+    expired: 'Expirada'
   };
   return translations[status] || status;
 }
@@ -78,6 +80,8 @@ function translateReason(reason: string) {
     wrong_size: 'Talla incorrecta',
     not_as_described: 'No es como se describía',
     changed_mind: 'Cambio de opinión',
+    better_price: 'Mejor precio',
+    too_late: 'Llegó tarde',
     other: 'Otro'
   };
   return translations[reason] || reason;
@@ -166,12 +170,29 @@ function translateReason(reason: string) {
                     </span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <a
-                      href={`/admin/devoluciones/${ret.id}`}
-                      class="text-accent-gold hover:text-accent-gold/80 transition-colors"
-                    >
-                      Ver detalles
-                    </a>
+                    <div class="flex items-center justify-end gap-2">
+                      {ret.status === 'pending' && (
+                        <>
+                          <button
+                            class="action-btn receive-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors"
+                            data-return-id={ret.id}
+                            data-action="receive"
+                          >
+                            ✅ Recibido y Reembolsar
+                          </button>
+                          <button
+                            class="action-btn reject-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors"
+                            data-return-id={ret.id}
+                            data-action="reject"
+                          >
+                            ✕ Rechazar
+                          </button>
+                        </>
+                      )}
+                      <span class="text-xs text-gray-500">
+                        {ret.return_deadline ? `Límite: ${formatDate(ret.return_deadline)}` : ''}
+                      </span>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -209,4 +230,54 @@ function translateReason(reason: string) {
       </div>
     )}
   </div>
+
+  <script>
+    // Admin return actions
+    document.querySelectorAll('.action-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
+        const returnId = target.dataset.returnId;
+        const action = target.dataset.action;
+        if (!returnId || !action) return;
+
+        const confirmMsg = action === 'receive'
+          ? '¿Confirmar que se ha recibido el producto? Se procesará el reembolso automáticamente.'
+          : '¿Rechazar esta solicitud de devolución?';
+
+        if (!confirm(confirmMsg)) return;
+
+        target.textContent = 'Procesando...';
+        target.setAttribute('disabled', 'true');
+
+        try {
+          const res = await fetch('/api/admin/returns/manage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ returnId, action })
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            alert(data.message || 'Operación completada');
+            window.location.reload();
+          } else {
+            alert('Error: ' + (data.message || 'Error desconocido'));
+            target.textContent = action === 'receive' ? '✅ Recibido y Reembolsar' : '✕ Rechazar';
+            target.removeAttribute('disabled');
+          }
+        } catch {
+          alert('Error de conexión');
+          target.textContent = action === 'receive' ? '✅ Recibido y Reembolsar' : '✕ Rechazar';
+          target.removeAttribute('disabled');
+        }
+      });
+    });
+
+    // Auto-expire check on page load
+    fetch('/api/admin/returns/manage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'expire_check' })
+    }).catch(() => {});
+  </script>
 </AdminLayout>

@@ -121,9 +121,20 @@ const statusOrder = ['pending', 'confirmed', 'processing', 'shipped', 'delivered
 const currentStepIndex = statusOrder.indexOf(order.status);
 const isCancelled = order.status === 'cancelled';
 const isRefunded = order.status === 'refunded';
+const isReturnRequested = order.status === 'return_requested';
 
-// Puede cancelar si está en confirmed o processing
-const canCancel = order.status === 'confirmed' || order.status === 'processing';
+// Calcular tiempo desde el pedido
+const orderCreatedAt = new Date(order.created_at).getTime();
+const timeSinceOrderMs = Date.now() - orderCreatedAt;
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+const isWithin2Hours = timeSinceOrderMs < TWO_HOURS_MS;
+const minutesLeft = Math.max(0, Math.floor((TWO_HOURS_MS - timeSinceOrderMs) / 60000));
+
+// Puede cancelar directamente (<2h, no enviado/entregado)
+const canCancel = isWithin2Hours && !['shipped', 'delivered', 'cancelled', 'refunded', 'return_requested'].includes(order.status);
+
+// Puede solicitar devolución (>2h o ya entregado, no cancelado/reembolsado)
+const canRequestReturn = !isWithin2Hours && !['cancelled', 'refunded', 'return_requested'].includes(order.status);
 
 // Obtener info de estado (colores mejorados para tema oscuro)
 const getStatusInfo = (status: string) => {
@@ -134,7 +145,8 @@ const getStatusInfo = (status: string) => {
     shipped: { color: 'text-indigo-300', text: 'Enviado', bg: 'bg-indigo-500/20 border border-indigo-400/40', icon: '🚚' },
     delivered: { color: 'text-emerald-300', text: 'Entregado', bg: 'bg-emerald-500/20 border border-emerald-400/40', icon: '✅' },
     cancelled: { color: 'text-red-300', text: 'Cancelado', bg: 'bg-red-500/20 border border-red-400/40', icon: '✕' },
-    refunded: { color: 'text-gray-300', text: 'Reembolsado', bg: 'bg-gray-500/20 border border-gray-400/40', icon: '↩' }
+    refunded: { color: 'text-gray-300', text: 'Reembolsado', bg: 'bg-gray-500/20 border border-gray-400/40', icon: '↩' },
+    return_requested: { color: 'text-orange-300', text: 'Devolución Solicitada', bg: 'bg-orange-500/20 border border-orange-400/40', icon: '📦' }
   };
   return info[status] || info.pending;
 };
@@ -254,12 +266,12 @@ const statusInfo = getStatusInfo(order.status);
       </div>
     )}
 
-    <!-- Estado especial: Cancelado o Reembolsado -->
-    {(isCancelled || isRefunded) && (
-      <div class={`bg-dark-surface/80 backdrop-blur-sm rounded-2xl border p-6 mb-6 ${isCancelled ? 'border-red-500/40' : 'border-white/10'}`}>
+    <!-- Estado especial: Cancelado, Reembolsado o Devolución solicitada -->
+    {(isCancelled || isRefunded || isReturnRequested) && (
+      <div class={`bg-dark-surface/80 backdrop-blur-sm rounded-2xl border p-6 mb-6 ${isCancelled ? 'border-red-500/40' : isReturnRequested ? 'border-orange-500/40' : 'border-white/10'}`}>
         <div class="flex items-center">
-          <div class={`flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center ${isCancelled ? 'bg-red-500/20' : 'bg-gray-500/20'}`}>
-            <svg class={`w-7 h-7 ${isCancelled ? 'text-red-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class={`flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center ${isCancelled ? 'bg-red-500/20' : isReturnRequested ? 'bg-orange-500/20' : 'bg-gray-500/20'}`}>
+            <svg class={`w-7 h-7 ${isCancelled ? 'text-red-400' : isReturnRequested ? 'text-orange-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {isCancelled ? (
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               ) : (
@@ -268,13 +280,15 @@ const statusInfo = getStatusInfo(order.status);
             </svg>
           </div>
           <div class="ml-5">
-            <h3 class={`text-xl font-semibold ${isCancelled ? 'text-red-300' : 'text-white'}`}>
-              {isCancelled ? 'Pedido Cancelado' : 'Pedido Reembolsado'}
+            <h3 class={`text-xl font-semibold ${isCancelled ? 'text-red-300' : isReturnRequested ? 'text-orange-300' : 'text-white'}`}>
+              {isCancelled ? 'Pedido Cancelado' : isReturnRequested ? 'Devolución en Proceso' : 'Pedido Reembolsado'}
             </h3>
-            <p class={`text-sm mt-1 ${isCancelled ? 'text-red-300/70' : 'text-gray-400'}`}>
+            <p class={`text-sm mt-1 ${isCancelled ? 'text-red-300/70' : isReturnRequested ? 'text-orange-300/70' : 'text-gray-400'}`}>
               {isCancelled 
-                ? 'Este pedido fue cancelado. El stock ha sido restaurado.' 
-                : 'Este pedido ha sido reembolsado.'}
+                ? 'Este pedido fue cancelado. El reembolso ha sido procesado.' 
+                : isReturnRequested
+                  ? 'Tu solicitud de devolución está siendo procesada. Sigue las instrucciones para enviar el producto.'
+                  : 'Este pedido ha sido reembolsado. El dinero será devuelto en 3-5 días laborables.'}
             </p>
           </div>
         </div>
@@ -435,25 +449,28 @@ const statusInfo = getStatusInfo(order.status);
           Descargar Factura
         </button>
 
+        {/* Botón Cancelar (solo si <2h y no enviado) */}
         {canCancel && (
           <button 
             id="cancel-order"
             data-order-id={order.id}
-            class="inline-flex items-center px-4 py-2 border border-red-500/30 rounded-lg text-sm font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-colors"
+            class="inline-flex items-center px-4 py-3 border border-red-500/30 rounded-xl text-sm font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-colors"
           >
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
             Cancelar Pedido
+            <span class="ml-2 text-xs text-red-400/60">({minutesLeft} min restantes)</span>
           </button>
         )}
 
-        {order.status === 'delivered' && (
+        {/* Botón Solicitar Devolución (>2h, no cancelado/reembolsado) */}
+        {canRequestReturn && (
           <button 
             id="request-return"
             data-order-id={order.id}
-            data-order-number={order.order_number}
-            class="inline-flex items-center px-4 py-2 border border-blue-500/30 rounded-lg text-sm font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
+            data-order-total={order.total}
+            class="inline-flex items-center px-4 py-3 border border-blue-500/30 rounded-xl text-sm font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
           >
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
@@ -462,14 +479,29 @@ const statusInfo = getStatusInfo(order.status);
           </button>
         )}
       </div>
+
+      {/* Info de fase según tiempo */}
+      {!isCancelled && !isRefunded && !isReturnRequested && (
+        <div class={`mt-4 p-3 rounded-lg text-sm ${isWithin2Hours ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-blue-500/10 border border-blue-500/20'}`}>
+          {isWithin2Hours ? (
+            <p class="text-emerald-300">
+              <strong>⏱️ Cancelación gratuita disponible</strong> — Puedes cancelar este pedido y recibir un reembolso inmediato. Te quedan <strong>{minutesLeft} minutos</strong>.
+            </p>
+          ) : (
+            <p class="text-blue-300">
+              <strong>📦 Período de devolución</strong> — El plazo de cancelación directa ha expirado. Puedes solicitar una devolución y recibirás el reembolso cuando recibamos el producto.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   </div>
 
-  <!-- Modal de cancelación -->
+  <!-- ==================== MODAL DE CANCELACIÓN (<2h) ==================== -->
   <div id="cancel-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen px-4">
-      <div class="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity" id="modal-overlay"></div>
-      <div class="relative glass-panel shadow-glow max-w-md w-full p-6">
+      <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" id="cancel-overlay"></div>
+      <div class="relative bg-dark-surface rounded-2xl border border-white/10 shadow-2xl max-w-md w-full p-6">
         <div class="flex items-start">
           <div class="flex-shrink-0 w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
             <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -479,22 +511,208 @@ const statusInfo = getStatusInfo(order.status);
           <div class="ml-4">
             <h3 class="text-lg font-semibold text-white">¿Cancelar pedido?</h3>
             <p class="mt-2 text-sm text-gray-400">
-              ¿Estás seguro de que deseas cancelar este pedido? Esta acción no se puede deshacer y el stock será restaurado automáticamente.
+              Tu pedido será cancelado y recibirás el reembolso completo de forma inmediata. El dinero estará en tu cuenta en 3-5 días laborables.
             </p>
+            <div class="mt-3 p-2.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+              <p class="text-xs text-emerald-300">💰 Reembolso inmediato — No necesitas devolver nada.</p>
+            </div>
           </div>
         </div>
         <div class="mt-6 flex justify-end gap-3">
-          <button 
-            id="modal-close"
-            class="btn-secondary px-4 py-2 text-sm"
-          >
+          <button id="cancel-modal-close" class="px-4 py-2 text-sm font-medium text-gray-300 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors">
             No, mantener
           </button>
-          <button 
-            id="modal-confirm"
-            class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Sí, cancelar
+          <button id="cancel-modal-confirm" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+            Sí, cancelar y reembolsar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL DE DEVOLUCIÓN (>2h) ==================== -->
+  <div id="return-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 py-8">
+      <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" id="return-overlay"></div>
+      <div class="relative bg-dark-surface rounded-2xl border border-white/10 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        
+        <!-- Header del modal -->
+        <div class="sticky top-0 bg-dark-surface border-b border-white/10 px-6 py-4 rounded-t-2xl z-10">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-semibold text-white flex items-center gap-2">
+              <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              Solicitar Devolución
+            </h3>
+            <button id="return-modal-close" class="text-gray-400 hover:text-white transition-colors">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <div class="px-6 py-5 space-y-6">
+          <!-- Paso 1: Seleccionar motivo -->
+          <div>
+            <label class="block text-sm font-semibold text-white mb-3">¿Por qué quieres devolver el pedido? <span class="text-red-400">*</span></label>
+            <div class="space-y-2" id="reason-options">
+              <label class="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-blue-500/40 cursor-pointer transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10">
+                <input type="radio" name="return-reason" value="wrong_size" class="accent-blue-500">
+                <div>
+                  <span class="text-white text-sm font-medium">👕 Talla incorrecta</span>
+                  <p class="text-xs text-gray-500">La talla no me queda bien</p>
+                </div>
+              </label>
+              <label class="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-blue-500/40 cursor-pointer transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10">
+                <input type="radio" name="return-reason" value="defective" class="accent-blue-500">
+                <div>
+                  <span class="text-white text-sm font-medium">🔧 Producto defectuoso</span>
+                  <p class="text-xs text-gray-500">El producto tiene algún defecto o está dañado</p>
+                </div>
+              </label>
+              <label class="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-blue-500/40 cursor-pointer transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10">
+                <input type="radio" name="return-reason" value="wrong_item" class="accent-blue-500">
+                <div>
+                  <span class="text-white text-sm font-medium">📦 Producto incorrecto</span>
+                  <p class="text-xs text-gray-500">Me han enviado un producto diferente al que pedí</p>
+                </div>
+              </label>
+              <label class="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-blue-500/40 cursor-pointer transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10">
+                <input type="radio" name="return-reason" value="not_as_described" class="accent-blue-500">
+                <div>
+                  <span class="text-white text-sm font-medium">🖼️ No es como se describía</span>
+                  <p class="text-xs text-gray-500">El producto no coincide con la descripción o las fotos</p>
+                </div>
+              </label>
+              <label class="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-blue-500/40 cursor-pointer transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10">
+                <input type="radio" name="return-reason" value="changed_mind" class="accent-blue-500">
+                <div>
+                  <span class="text-white text-sm font-medium">💭 He cambiado de opinión</span>
+                  <p class="text-xs text-gray-500">Ya no quiero el producto</p>
+                </div>
+              </label>
+              <label class="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-blue-500/40 cursor-pointer transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10">
+                <input type="radio" name="return-reason" value="better_price" class="accent-blue-500">
+                <div>
+                  <span class="text-white text-sm font-medium">💰 Encontré un precio mejor</span>
+                  <p class="text-xs text-gray-500">He visto el mismo producto más barato en otro sitio</p>
+                </div>
+              </label>
+              <label class="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:border-orange-500/40 cursor-pointer transition-colors has-[:checked]:border-orange-500 has-[:checked]:bg-orange-500/10">
+                <input type="radio" name="return-reason" value="other" class="accent-orange-500">
+                <div>
+                  <span class="text-white text-sm font-medium">✏️ Otro motivo</span>
+                  <p class="text-xs text-gray-500">Quiero especificar mi propio motivo</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Campo de texto para "Otro" (aparece al seleccionar "other") -->
+          <div id="other-reason-container" class="hidden">
+            <label class="block text-sm font-semibold text-white mb-2">Especifica el motivo <span class="text-red-400">*</span></label>
+            <textarea 
+              id="other-reason-text"
+              placeholder="Describe tu motivo (mínimo 10 caracteres)..."
+              class="w-full px-4 py-3 bg-dark-card border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+              rows="3"
+            ></textarea>
+            <p class="text-xs text-gray-500 mt-1"><span id="other-char-count">0</span>/10 caracteres mínimo</p>
+          </div>
+
+          <!-- Paso 2: Descripción adicional (siempre visible) -->
+          <div>
+            <label class="block text-sm font-semibold text-white mb-2">Detalles adicionales <span class="text-gray-500 font-normal">(opcional)</span></label>
+            <textarea 
+              id="return-description"
+              placeholder="¿Algo más que quieras añadir? Describe cualquier detalle que pueda ayudarnos..."
+              class="w-full px-4 py-3 bg-dark-card border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+              rows="3"
+            ></textarea>
+          </div>
+
+          <!-- Info importante -->
+          <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+            <h4 class="text-sm font-semibold text-amber-300 mb-2 flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              Información importante
+            </h4>
+            <ul class="text-xs text-amber-200/80 space-y-1.5">
+              <li>• Tienes <strong class="text-amber-200">7 días</strong> para enviar el producto a nuestra dirección.</li>
+              <li>• El producto debe estar <strong class="text-amber-200">sin usar, con etiquetas y en su embalaje original</strong>.</li>
+              <li>• El reembolso se procesará <strong class="text-amber-200">cuando recibamos el producto</strong>.</li>
+              <li>• Si no recibimos el producto en el plazo, la solicitud se cancelará automáticamente.</li>
+              <li>• Los gastos de envío de devolución corren a cargo del cliente.</li>
+            </ul>
+          </div>
+        </div>
+        
+        <!-- Footer del modal -->
+        <div class="sticky bottom-0 bg-dark-surface border-t border-white/10 px-6 py-4 rounded-b-2xl flex justify-end gap-3">
+          <button id="return-modal-cancel" class="px-5 py-2.5 text-sm font-medium text-gray-300 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors">
+            Cancelar
+          </button>
+          <button id="return-modal-submit" disabled class="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            Solicitar Devolución
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL DE INSTRUCCIONES (después de enviar solicitud) ==================== -->
+  <div id="instructions-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 py-8">
+      <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" id="instructions-overlay"></div>
+      <div class="relative bg-dark-surface rounded-2xl border border-emerald-500/30 shadow-2xl max-w-lg w-full p-6">
+        <div class="text-center mb-6">
+          <div class="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center mb-4">
+            <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-white">Solicitud registrada</h3>
+          <p class="text-sm text-gray-400 mt-1" id="instructions-return-number"></p>
+        </div>
+
+        <div class="space-y-4">
+          <div class="bg-dark-card/50 rounded-xl p-4 border border-white/10">
+            <h4 class="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+              📋 Instrucciones para devolver el producto
+            </h4>
+            <ol class="text-sm text-gray-300 space-y-2 list-decimal list-inside">
+              <li>Empaqueta el producto en su <strong class="text-white">embalaje original</strong> o en un paquete adecuado.</li>
+              <li>Incluye una <strong class="text-white">nota con tu número de devolución</strong> dentro del paquete.</li>
+              <li>Asegúrate de que el producto esté <strong class="text-white">sin usar y con etiquetas</strong>.</li>
+              <li>Envía el paquete a la dirección indicada abajo.</li>
+              <li>Conserva el <strong class="text-white">comprobante de envío</strong> y número de seguimiento.</li>
+            </ol>
+          </div>
+
+          <div class="bg-dark-card/50 rounded-xl p-4 border border-white/10">
+            <h4 class="text-sm font-semibold text-white mb-2">📍 Dirección de envío</h4>
+            <p class="text-sm text-gray-300 font-mono">
+              FashionMarket — Devoluciones<br>
+              Calle Ejemplo, 123<br>
+              28001 Madrid, España
+            </p>
+          </div>
+
+          <div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+            <p class="text-sm text-red-300">
+              <strong>⏰ Plazo límite:</strong> <span id="instructions-deadline" class="font-semibold"></span>
+            </p>
+            <p class="text-xs text-red-300/70 mt-1">Si no recibimos el producto antes de esta fecha, la solicitud se cancelará automáticamente y no recibirás el reembolso.</p>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <button id="instructions-close" class="w-full px-5 py-3 text-sm font-semibold text-dark-bg bg-accent-gold rounded-lg hover:bg-accent-gold/90 transition-colors">
+            Entendido
           </button>
         </div>
       </div>
@@ -502,7 +720,7 @@ const statusInfo = getStatusInfo(order.status);
   </div>
 
   <!-- Toast -->
-  <div id="toast" class="hidden fixed bottom-4 right-4 z-50">
+  <div id="toast" class="hidden fixed bottom-4 right-4 z-[60]">
     <div class="bg-dark-surface/95 backdrop-blur-xl rounded-lg shadow-glow border-l-4 p-4 max-w-md border border-white/10" id="toast-container">
       <div class="flex items-center">
         <svg id="toast-icon" class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -513,126 +731,211 @@ const statusInfo = getStatusInfo(order.status);
     </div>
   </div>
 
+  <!-- Datos para JS -->
+  <div id="order-data" class="hidden" data-order-id={order.id} data-order-number={order.order_number}></div>
+
   <script>
-    // Toast helper
+    // === Helpers ===
     function showToast(message: string, type: 'success' | 'error') {
       const toast = document.getElementById('toast');
-      const toastContainer = document.getElementById('toast-container');
-      const toastMessage = document.getElementById('toast-message');
-      const toastIcon = document.getElementById('toast-icon');
-      
-      if (toast && toastContainer && toastMessage && toastIcon) {
-        toastMessage.textContent = message;
-        
-        if (type === 'success') {
-          toastContainer.classList.remove('border-red-500');
-          toastContainer.classList.add('border-accent-glow');
-          toastIcon.classList.remove('text-red-400');
-          toastIcon.classList.add('text-accent-glow');
-        } else {
-          toastContainer.classList.remove('border-accent-glow');
-          toastContainer.classList.add('border-red-500');
-          toastIcon.classList.remove('text-accent-glow');
-          toastIcon.classList.add('text-red-400');
-        }
-        
-        toast.classList.remove('hidden');
-        setTimeout(() => toast.classList.add('hidden'), 4000);
-      }
+      const container = document.getElementById('toast-container');
+      const msg = document.getElementById('toast-message');
+      const icon = document.getElementById('toast-icon');
+      if (!toast || !container || !msg || !icon) return;
+
+      msg.textContent = message;
+      container.classList.toggle('border-red-500', type === 'error');
+      container.classList.toggle('border-accent-glow', type === 'success');
+      icon.classList.toggle('text-red-400', type === 'error');
+      icon.classList.toggle('text-accent-glow', type === 'success');
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 4000);
     }
 
-    // Copiar tracking
+    async function getAuthToken(): Promise<string | null> {
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const sb = createClient(
+          (import.meta as any).env.PUBLIC_SUPABASE_URL,
+          (import.meta as any).env.PUBLIC_SUPABASE_ANON_KEY
+        );
+        const { data: { session } } = await sb.auth.getSession();
+        return session?.access_token || null;
+      } catch { return null; }
+    }
+
+    function openModal(id: string) { document.getElementById(id)?.classList.remove('hidden'); }
+    function closeModal(id: string) { document.getElementById(id)?.classList.add('hidden'); }
+
+    // === Copiar tracking ===
     document.getElementById('copy-tracking')?.addEventListener('click', function() {
-      const tracking = this.getAttribute('data-tracking');
-      if (tracking) {
-        navigator.clipboard.writeText(tracking);
-        showToast('Número de seguimiento copiado', 'success');
-      }
+      const tracking = (this as HTMLElement).getAttribute('data-tracking');
+      if (tracking) { navigator.clipboard.writeText(tracking); showToast('Número de seguimiento copiado', 'success'); }
     });
 
-    // Descargar factura
+    // === Descargar factura ===
     document.getElementById('download-invoice')?.addEventListener('click', async function() {
-      const orderId = this.getAttribute('data-order-id');
-      const orderNumber = this.getAttribute('data-order-number');
-      
+      const btn = this as HTMLButtonElement;
+      const orderId = btn.dataset.orderId;
+      const orderNumber = btn.dataset.orderNumber;
       try {
         const response = await fetch(`/api/orders/${orderId}/invoice`);
         if (response.ok) {
           const blob = await response.blob();
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.href = url;
-          a.download = `Factura-${orderNumber}.pdf`;
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          a.remove();
+          a.href = url; a.download = `Factura-${orderNumber}.pdf`;
+          document.body.appendChild(a); a.click();
+          window.URL.revokeObjectURL(url); a.remove();
           showToast('Factura descargada', 'success');
-        } else {
-          showToast('Error al descargar la factura', 'error');
-        }
-      } catch (error) {
-        showToast('Error al descargar la factura', 'error');
-      }
+        } else { showToast('Error al descargar la factura', 'error'); }
+      } catch { showToast('Error al descargar la factura', 'error'); }
     });
 
-    // Cancelar pedido
+    // === CANCELACIÓN (<2h) ===
     const cancelBtn = document.getElementById('cancel-order');
-    const cancelModal = document.getElementById('cancel-modal');
-    const modalClose = document.getElementById('modal-close');
-    const modalOverlay = document.getElementById('modal-overlay');
-    const modalConfirm = document.getElementById('modal-confirm');
+    cancelBtn?.addEventListener('click', () => openModal('cancel-modal'));
+    document.getElementById('cancel-modal-close')?.addEventListener('click', () => closeModal('cancel-modal'));
+    document.getElementById('cancel-overlay')?.addEventListener('click', () => closeModal('cancel-modal'));
 
-    cancelBtn?.addEventListener('click', () => {
-      cancelModal?.classList.remove('hidden');
-    });
-
-    modalClose?.addEventListener('click', () => {
-      cancelModal?.classList.add('hidden');
-    });
-
-    modalOverlay?.addEventListener('click', () => {
-      cancelModal?.classList.add('hidden');
-    });
-
-    modalConfirm?.addEventListener('click', async () => {
+    document.getElementById('cancel-modal-confirm')?.addEventListener('click', async () => {
       const orderId = cancelBtn?.getAttribute('data-order-id');
       if (!orderId) return;
 
-      modalConfirm.textContent = 'Cancelando...';
-      modalConfirm.setAttribute('disabled', 'true');
+      const btn = document.getElementById('cancel-modal-confirm') as HTMLButtonElement;
+      btn.textContent = 'Procesando reembolso...';
+      btn.disabled = true;
+
+      const token = await getAuthToken();
+      if (!token) { showToast('Debes iniciar sesión', 'error'); return; }
 
       try {
-        const response = await fetch('/api/orders/cancel', {
+        const res = await fetch('/api/orders/cancel', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ orderId })
         });
+        const data = await res.json();
 
-        const result = await response.json();
-
-        if (result.success) {
-          showToast('Pedido cancelado correctamente', 'success');
-          setTimeout(() => window.location.reload(), 1500);
+        if (data.success) {
+          closeModal('cancel-modal');
+          showToast(data.message || 'Pedido cancelado y reembolsado', 'success');
+          setTimeout(() => window.location.reload(), 2000);
+        } else if (data.type === 'requires_return') {
+          closeModal('cancel-modal');
+          showToast('Han pasado más de 2h. Usa "Solicitar Devolución".', 'error');
         } else {
-          showToast(result.message || 'Error al cancelar el pedido', 'error');
-          modalConfirm.textContent = 'Sí, cancelar';
-          modalConfirm.removeAttribute('disabled');
+          showToast(data.message || 'Error al cancelar', 'error');
+          btn.textContent = 'Sí, cancelar y reembolsar';
+          btn.disabled = false;
         }
-      } catch (error) {
-        showToast('Error al cancelar el pedido', 'error');
-        modalConfirm.textContent = 'Sí, cancelar';
-        modalConfirm.removeAttribute('disabled');
+      } catch {
+        showToast('Error inesperado', 'error');
+        btn.textContent = 'Sí, cancelar y reembolsar';
+        btn.disabled = false;
       }
-
-      cancelModal?.classList.add('hidden');
     });
 
-    // Solicitar devolución
-    document.getElementById('request-return')?.addEventListener('click', function() {
-      const orderId = this.getAttribute('data-order-id');
-      // Redirigir a la página de devoluciones o abrir modal
-      window.location.href = `/perfil/mis-pedidos?return=${orderId}`;
+    // === DEVOLUCIÓN (>2h) ===
+    const returnBtn = document.getElementById('request-return');
+    const submitBtn = document.getElementById('return-modal-submit') as HTMLButtonElement;
+    const otherContainer = document.getElementById('other-reason-container');
+    const otherText = document.getElementById('other-reason-text') as HTMLTextAreaElement;
+    const charCount = document.getElementById('other-char-count');
+
+    returnBtn?.addEventListener('click', () => openModal('return-modal'));
+    document.getElementById('return-modal-close')?.addEventListener('click', () => closeModal('return-modal'));
+    document.getElementById('return-modal-cancel')?.addEventListener('click', () => closeModal('return-modal'));
+    document.getElementById('return-overlay')?.addEventListener('click', () => closeModal('return-modal'));
+
+    // Lógica de radio buttons
+    document.querySelectorAll('input[name="return-reason"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const value = (e.target as HTMLInputElement).value;
+        const isOther = value === 'other';
+        otherContainer?.classList.toggle('hidden', !isOther);
+
+        if (isOther) {
+          submitBtn.disabled = (otherText?.value.trim().length || 0) < 10;
+        } else {
+          submitBtn.disabled = false;
+        }
+      });
+    });
+
+    // Contar caracteres en "otro"
+    otherText?.addEventListener('input', () => {
+      const len = otherText.value.trim().length;
+      if (charCount) charCount.textContent = String(len);
+      const selected = (document.querySelector('input[name="return-reason"]:checked') as HTMLInputElement)?.value;
+      if (selected === 'other') {
+        submitBtn.disabled = len < 10;
+      }
+    });
+
+    // Enviar solicitud de devolución
+    submitBtn?.addEventListener('click', async () => {
+      const reason = (document.querySelector('input[name="return-reason"]:checked') as HTMLInputElement)?.value;
+      if (!reason) { showToast('Selecciona un motivo', 'error'); return; }
+
+      const orderData = document.getElementById('order-data');
+      const orderId = orderData?.dataset.orderId;
+      if (!orderId) return;
+
+      const description = (document.getElementById('return-description') as HTMLTextAreaElement)?.value || '';
+      const fullDescription = reason === 'other' 
+        ? `${otherText?.value.trim()}\n\n${description}`.trim()
+        : description.trim();
+
+      submitBtn.textContent = 'Enviando solicitud...';
+      submitBtn.disabled = true;
+
+      const token = await getAuthToken();
+      if (!token) { showToast('Debes iniciar sesión', 'error'); return; }
+
+      try {
+        const res = await fetch('/api/orders/return', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ orderId, reason, description: fullDescription })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          closeModal('return-modal');
+
+          // Mostrar instrucciones
+          const retNum = document.getElementById('instructions-return-number');
+          if (retNum) retNum.textContent = `Nº Devolución: ${data.returnNumber}`;
+
+          const deadline = document.getElementById('instructions-deadline');
+          if (deadline && data.deadline) {
+            deadline.textContent = new Date(data.deadline).toLocaleDateString('es-ES', {
+              weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+            });
+          }
+
+          openModal('instructions-modal');
+        } else {
+          showToast(data.message || 'Error al solicitar la devolución', 'error');
+          submitBtn.textContent = 'Solicitar Devolución';
+          submitBtn.disabled = false;
+        }
+      } catch {
+        showToast('Error inesperado', 'error');
+        submitBtn.textContent = 'Solicitar Devolución';
+        submitBtn.disabled = false;
+      }
+    });
+
+    // Cerrar modal de instrucciones → recargar
+    document.getElementById('instructions-close')?.addEventListener('click', () => {
+      closeModal('instructions-modal');
+      window.location.reload();
+    });
+    document.getElementById('instructions-overlay')?.addEventListener('click', () => {
+      closeModal('instructions-modal');
+      window.location.reload();
     });
   </script>
 </PublicLayout>
