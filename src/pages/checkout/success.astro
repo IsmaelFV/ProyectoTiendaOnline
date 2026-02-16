@@ -1,10 +1,21 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
 import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
+import { generateInvoicePDF } from '../../lib/invoice-pdf';
+import { sendInvoiceEmail } from '../../lib/brevo';
 
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2025-12-15.clover',
 });
+
+const supabaseAdmin = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: { autoRefreshToken: false, persistSession: false }
+  }
+);
 
 // Obtener session_id de la URL
 const sessionId = Astro.url.searchParams.get('session_id');
@@ -12,16 +23,196 @@ const sessionId = Astro.url.searchParams.get('session_id');
 let orderNumber = '';
 let customerEmail = '';
 let totalAmount = 0;
+let orderStatus = 'unknown';
 
 if (sessionId) {
   try {
-    // Recuperar información de la sesión
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-    orderNumber = session.metadata?.order_number || 'N/A';
+    // 1. Recuperar sesion de Stripe
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['line_items', 'line_items.data.price.product']
+    });
+    
     customerEmail = session.customer_email || session.customer_details?.email || '';
     totalAmount = session.amount_total || 0;
+
+    // 2. Verificar si el pedido ya existe
+    const { data: existingOrder } = await supabaseAdmin
+      .from('orders')
+      .select('id, order_number, status')
+      .or(`payment_id.eq.${session.payment_intent},admin_notes.ilike.%${sessionId}%`)
+      .maybeSingle();
+
+    if (existingOrder) {
+      // El webhook ya lo creo
+      orderNumber = existingOrder.order_number;
+      orderStatus = 'exists';
+      console.log(`[SUCCESS] Pedido ya existe: ${orderNumber}`);
+    } else if (session.payment_status === 'paid') {
+      // FALLBACK: El webhook no creo el pedido, crearlo aqui
+      console.log('[SUCCESS] Pedido NO encontrado, creando como fallback...');
+      
+      const { user_id, discount_code } = session.metadata || {};
+
+      let orderItemsSizes: Array<{ id: string; size: string; qty: number }> = [];
+      try {
+        if (session.metadata?.order_items_sizes) {
+          orderItemsSizes = JSON.parse(session.metadata.order_items_sizes);
+        }
+      } catch (e) { /* ignorar */ }
+
+      // Obtener line_items
+      let lineItems = session.line_items?.data || [];
+      if (lineItems.length === 0) {
+        const fetchedItems = await stripe.checkout.sessions.listLineItems(sessionId, {
+          expand: ['data.price.product']
+        });
+        lineItems = fetchedItems.data;
+      }
+
+      const subtotalCents = lineItems.reduce((sum, item) => {
+        return sum + ((item.price?.unit_amount || 0) * (item.quantity || 1));
+      }, 0);
+      const totalCents = session.amount_total || 0;
+      const taxCents = session.total_details?.amount_tax || 0;
+      const shippingCents = session.total_details?.amount_shipping || 0;
+      const discountCents = session.total_details?.amount_discount || 0;
+
+      const orderData = {
+        user_id: (user_id && user_id !== 'guest') ? user_id : null,
+        shipping_full_name: session.customer_details?.name || 'Cliente',
+        shipping_phone: session.customer_details?.phone || '',
+        shipping_address_line1: session.customer_details?.address?.line1 || 'Direccion no proporcionada',
+        shipping_address_line2: session.customer_details?.address?.line2 || null,
+        shipping_city: session.customer_details?.address?.city || 'Ciudad',
+        shipping_state: session.customer_details?.address?.state || '',
+        shipping_postal_code: session.customer_details?.address?.postal_code || '00000',
+        shipping_country: session.customer_details?.address?.country || 'ES',
+        subtotal: subtotalCents / 100,
+        shipping_cost: shippingCents / 100,
+        tax: taxCents / 100,
+        discount: discountCents / 100,
+        total: totalCents / 100,
+        payment_method: 'card',
+        payment_status: 'paid',
+        payment_id: session.payment_intent as string,
+        status: 'confirmed',
+        customer_notes: discount_code ? `Codigo aplicado: ${discount_code}` : null,
+        admin_notes: `[FALLBACK] Stripe Session: ${session.id} | Email: ${customerEmail}`,
+      };
+
+      const { data: order, error: orderError } = await supabaseAdmin
+        .from('orders')
+        .insert(orderData)
+        .select()
+        .single();
+
+      if (orderError) {
+        console.error('[SUCCESS] Error creando pedido:', orderError);
+        orderStatus = 'error';
+      } else {
+        orderNumber = order.order_number;
+        orderStatus = 'created';
+        console.log(`[SUCCESS] Pedido creado (fallback): ${orderNumber}`);
+
+        // Crear order_items y decrementar stock
+        for (const lineItem of lineItems) {
+          const productName = lineItem.description || 'Producto';
+          const quantity = lineItem.quantity || 1;
+          const pricePerUnit = lineItem.price?.unit_amount || 0;
+
+          const { data: product } = await supabaseAdmin
+            .from('products')
+            .select('id, slug, sku, images, stock, stock_by_size')
+            .eq('name', productName)
+            .maybeSingle();
+
+          if (product?.id) {
+            const itemSizeInfo = orderItemsSizes.find(oi => oi.id === product.id);
+            const itemSize = itemSizeInfo?.size || 'Unica';
+
+            await supabaseAdmin
+              .from('order_items')
+              .insert({
+                order_id: order.id,
+                product_id: product.id,
+                product_name: productName,
+                product_slug: product.slug,
+                product_image: product.images?.[0] || null,
+                size: itemSize,
+                color: null,
+                price: pricePerUnit / 100,
+                quantity: quantity,
+                subtotal: (pricePerUnit * quantity) / 100,
+              });
+
+            // Decrementar stock
+            const newStock = Math.max(0, (product.stock || 0) - quantity);
+            const updateData: any = { 
+              stock: newStock,
+              updated_at: new Date().toISOString()
+            };
+            
+            if (product.stock_by_size && typeof product.stock_by_size === 'object') {
+              const sizeStock = product.stock_by_size as Record<string, number>;
+              if (itemSize in sizeStock) {
+                sizeStock[itemSize] = Math.max(0, (sizeStock[itemSize] || 0) - quantity);
+                updateData.stock_by_size = sizeStock;
+              }
+            }
+
+            await supabaseAdmin
+              .from('products')
+              .update(updateData)
+              .eq('id', product.id);
+          }
+        }
+
+        // Enviar email de factura
+        try {
+          if (customerEmail) {
+            const customerName = session.customer_details?.name || 'Cliente';
+            const invoiceItems = lineItems.map(item => ({
+              name: item.description || 'Producto',
+              quantity: item.quantity || 1,
+              price: item.price?.unit_amount || 0,
+              total: (item.price?.unit_amount || 0) * (item.quantity || 1)
+            }));
+
+            const shippingAddress = session.customer_details?.address 
+              ? `${session.customer_details.address.line1 || ''}${session.customer_details.address.line2 ? ', ' + session.customer_details.address.line2 : ''}, ${session.customer_details.address.city || ''}, ${session.customer_details.address.postal_code || ''}, ${session.customer_details.address.country || ''}`
+              : 'Direccion no proporcionada';
+
+            const pdfBase64 = generateInvoicePDF({
+              orderNumber: order.order_number,
+              orderDate: new Date().toISOString(),
+              customerName,
+              customerEmail,
+              shippingAddress,
+              items: invoiceItems,
+              subtotal: subtotalCents,
+              shipping: shippingCents,
+              tax: taxCents,
+              total: totalCents
+            });
+
+            await sendInvoiceEmail({
+              to: customerEmail,
+              customerName,
+              orderNumber: order.order_number,
+              pdfBase64
+            });
+            console.log(`[SUCCESS] Factura enviada a ${customerEmail}`);
+          }
+        } catch (emailErr: any) {
+          console.error('[SUCCESS] Error enviando email:', emailErr.message);
+        }
+      }
+    } else {
+      orderStatus = 'pending';
+    }
   } catch (error) {
-    console.error('Error retrieving session:', error);
+    console.error('[SUCCESS] Error:', error);
+    orderStatus = 'error';
   }
 }
 ---
