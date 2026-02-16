@@ -13,6 +13,7 @@ export default function CartSlideOver() {
   const [error, setError] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState<any>(null);
   const [finalTotal, setFinalTotal] = useState(total);
+  const [updatingKey, setUpdatingKey] = useState<string | null>(null);
 
   const itemsArray = Object.entries(items).map(([key, item]) => ({ key, ...item }));
 
@@ -194,14 +195,24 @@ export default function CartSlideOver() {
                       <div className="flex items-center gap-2 mt-2">
                         <button
                           onClick={() => updateQuantity(key, quantity - 1)}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg border border-white/10 text-gray-300 hover:border-accent-gold/50 hover:text-accent-gold transition-colors"
+                          disabled={updatingKey === key}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg border border-white/10 text-gray-300 hover:border-accent-gold/50 hover:text-accent-gold transition-colors disabled:opacity-50"
                         >
                           -
                         </button>
                         <span className="w-8 text-center text-white">{quantity}</span>
                         <button
-                          onClick={() => updateQuantity(key, quantity + 1)}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg border border-white/10 text-gray-300 hover:border-accent-gold/50 hover:text-accent-gold transition-colors"
+                          onClick={async () => {
+                            setUpdatingKey(key);
+                            setError('');
+                            const result = await updateQuantity(key, quantity + 1);
+                            if (result && !result.success) {
+                              setError(result.error || 'No hay más stock disponible');
+                            }
+                            setUpdatingKey(null);
+                          }}
+                          disabled={updatingKey === key}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg border border-white/10 text-gray-300 hover:border-accent-gold/50 hover:text-accent-gold transition-colors disabled:opacity-50"
                         >
                           +
                         </button>

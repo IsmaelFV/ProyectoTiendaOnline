@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { addToCart } from '@stores/cart';
+import { addToCart, cartItems } from '@stores/cart';
+import { useStore } from '@nanostores/react';
 import Toast from '@components/ui/Toast';
 import SizeRecommender from './SizeRecommender';
 
@@ -29,6 +30,8 @@ export default function AddToCartButton({ product }: AddToCartButtonProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [showError, setShowError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const items = useStore(cartItems);
 
   // Si no hay tallas, seleccionar "Única" por defecto
   const hasSizes = product.sizes && product.sizes.length > 0;
@@ -40,23 +43,40 @@ export default function AddToCartButton({ product }: AddToCartButtonProps) {
     return stockBySize[size] ?? 999; // Si no hay dato, asumir disponible
   };
 
-  const handleAddToCart = () => {
+  // Helper para obtener cantidad en carrito de una talla
+  const getCartQuantity = (size: string): number => {
+    const cartKey = `${product.id}-${size}`;
+    return items[cartKey]?.quantity || 0;
+  };
+
+  const handleAddToCart = async () => {
     const sizeToUse = hasSizes ? selectedSize : 'Única';
     
     if (hasSizes && !selectedSize) {
       setShowError(true);
+      setErrorMessage('');
       return;
     }
 
     // Verificar stock de la talla seleccionada
-    if (getSizeStock(sizeToUse) <= 0) {
+    const stock = getSizeStock(sizeToUse);
+    const inCart = getCartQuantity(sizeToUse);
+    
+    if (stock <= 0) {
       setShowError(true);
+      setErrorMessage(`La talla ${sizeToUse} está agotada`);
+      return;
+    }
+
+    if (inCart >= stock) {
+      setShowError(true);
+      setErrorMessage(`Ya tienes las ${stock} unidades disponibles de talla ${sizeToUse} en tu carrito`);
       return;
     }
 
     setIsAdding(true);
     
-    addToCart({
+    const result = await addToCart({
       id: product.id,
       name: product.name,
       price: product.price,
@@ -67,21 +87,25 @@ export default function AddToCartButton({ product }: AddToCartButtonProps) {
       gender: product.gender,
     });
 
-    setTimeout(() => {
-      setIsAdding(false);
+    setIsAdding(false);
+
+    if (result && !result.success) {
+      setShowError(true);
+      setErrorMessage(result.error || 'No se pudo añadir al carrito');
+    } else {
       setShowSuccess(true);
-    }, 500);
+    }
   };
 
   return (
     <>
       {showError && (
         <Toast 
-          message={selectedSize && getSizeStock(selectedSize) <= 0 
+          message={errorMessage || (selectedSize && getSizeStock(selectedSize) <= 0 
             ? `La talla ${selectedSize} está agotada` 
-            : "Por favor, selecciona una talla antes de añadir al carrito"}
+            : "Por favor, selecciona una talla antes de añadir al carrito")}
           type="warning"
-          onClose={() => setShowError(false)}
+          onClose={() => { setShowError(false); setErrorMessage(''); }}
         />
       )}
       

@@ -350,7 +350,7 @@ export async function addToCart(product: {
     name: string;
     slug: string;
   };
-}) {
+}): Promise<{ success: boolean; error?: string }> {
   const cartKey = `${product.id}-${product.size}`;
   const userId = currentUserId.get();
 
@@ -359,6 +359,28 @@ export async function addToCart(product: {
   console.log('[CART] Tipo:', userId ? 'Usuario autenticado' : 'Usuario invitado');
   console.log('[CART] Producto:', product.name, 'Talla:', product.size);
   console.log('[CART] Cart Key:', cartKey);
+
+  // Verificar stock disponible ANTES de añadir
+  try {
+    const { data: productData } = await supabase
+      .from('products')
+      .select('stock_by_size')
+      .eq('id', product.id)
+      .single();
+    
+    if (productData?.stock_by_size) {
+      const sizeStock = (productData.stock_by_size as Record<string, number>)[product.size] ?? 0;
+      const currentItems = cartItems.get();
+      const currentQty = currentItems[cartKey]?.quantity || 0;
+      
+      if (currentQty >= sizeStock) {
+        console.warn(`[CART] Stock insuficiente: ${product.name} talla ${product.size} - stock: ${sizeStock}, en carrito: ${currentQty}`);
+        return { success: false, error: `Solo hay ${sizeStock} unidades disponibles de talla ${product.size}` };
+      }
+    }
+  } catch (e) {
+    console.warn('[CART] No se pudo verificar stock, continuando:', e);
+  }
 
   if (userId) {
     // Usuario autenticado: usar Supabase
@@ -389,7 +411,7 @@ export async function addToCart(product: {
       await loadCartFromDatabase(userId);
     } catch (error) {
       console.error('[CART ERROR] Error adding to cart:', error);
-      return;
+      return { success: false, error: 'Error al añadir al carrito' };
     }
   } else {
     // Usuario no autenticado: usar localStorage
@@ -427,6 +449,7 @@ export async function addToCart(product: {
   
   console.log('[CART] ========== addToCart FIN ==========');
   isCartOpen.set(true);
+  return { success: true };
 }
 
 export async function removeFromCart(cartKey: string) {
@@ -462,10 +485,10 @@ export async function removeFromCart(cartKey: string) {
   }
 }
 
-export async function updateQuantity(cartKey: string, quantity: number) {
+export async function updateQuantity(cartKey: string, quantity: number): Promise<{ success: boolean; error?: string }> {
   if (quantity <= 0) {
     await removeFromCart(cartKey);
-    return;
+    return { success: true };
   }
 
   const userId = currentUserId.get();
@@ -475,6 +498,25 @@ export async function updateQuantity(cartKey: string, quantity: number) {
   const lastDashIndex = cartKey.lastIndexOf('-');
   const productId = cartKey.substring(0, lastDashIndex);
   const size = cartKey.substring(lastDashIndex + 1);
+
+  // Verificar stock disponible ANTES de actualizar
+  try {
+    const { data: productData } = await supabase
+      .from('products')
+      .select('stock_by_size')
+      .eq('id', productId)
+      .single();
+    
+    if (productData?.stock_by_size) {
+      const sizeStock = (productData.stock_by_size as Record<string, number>)[size] ?? 0;
+      if (quantity > sizeStock) {
+        console.warn(`[CART] No se puede poner cantidad ${quantity}: stock disponible ${sizeStock} para talla ${size}`);
+        return { success: false, error: `Solo hay ${sizeStock} unidades disponibles` };
+      }
+    }
+  } catch (e) {
+    console.warn('[CART] No se pudo verificar stock en updateQuantity:', e);
+  }
   
   console.log('[CART] updateQuantity - cartKey:', cartKey);
   console.log('[CART] updateQuantity - productId:', productId, 'length:', productId.length);
@@ -495,8 +537,10 @@ export async function updateQuantity(cartKey: string, quantity: number) {
 
       // Recargar carrito desde DB
       await loadCartFromDatabase(userId);
+      return { success: true };
     } catch (error) {
       console.error('Error updating cart quantity:', error);
+      return { success: false, error: 'Error al actualizar cantidad' };
     }
   } else {
     // Usuario no autenticado: usar localStorage
@@ -509,6 +553,7 @@ export async function updateQuantity(cartKey: string, quantity: number) {
       cartItems.set(localCart.get());
     }
   }
+  return { success: true };
 }
 
 export async function clearCart() {
