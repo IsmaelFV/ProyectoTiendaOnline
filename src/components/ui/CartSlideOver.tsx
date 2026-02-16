@@ -62,10 +62,7 @@ export default function CartSlideOver() {
         throw new Error(data.error || 'Error al procesar el pago');
       }
 
-      // Limpiar carrito antes de redirigir
-      clearCart();
-
-      // Redirigir a Stripe Checkout
+      // Redirigir a Stripe Checkout (el carrito se limpia en success.astro tras confirmar el pago)
       window.location.href = data.url;
 
     } catch (err: any) {

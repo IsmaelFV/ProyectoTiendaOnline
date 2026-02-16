@@ -358,4 +358,38 @@ if (sessionId) {
       </div>
     </div>
   </div>
+
+  <!-- Limpiar carrito tras pago exitoso -->
+  <script>
+    // Limpiar el carrito del lado cliente ahora que el pago se ha confirmado
+    try {
+      // 1. Limpiar todas las claves de carrito en localStorage
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('cart:guest:') || key === 'cart')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+
+      // 2. Para usuarios autenticados: limpiar carrito en Supabase via API
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user?.id) {
+        await supabase.rpc('clear_cart', { p_user_id: session.user.id }).catch(() => {});
+      }
+
+      // 3. Disparar evento storage para que nanostores se actualice
+      window.dispatchEvent(new Event('storage'));
+      
+      console.log('[SUCCESS] Carrito limpiado tras pago exitoso');
+    } catch (e) {
+      console.warn('[SUCCESS] Error al limpiar carrito:', e);
+    }
+  </script>
 </PublicLayout>

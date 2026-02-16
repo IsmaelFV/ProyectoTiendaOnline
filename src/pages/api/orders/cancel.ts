@@ -103,16 +103,66 @@ export const POST: APIRoute = async ({ request }) => {
     let restoredItems = 0;
     if (orderItems?.length) {
       for (const item of orderItems) {
+        let restored = false;
+
+        // Intento 1: RPC increment_stock (con soporte de talla)
         try {
-          await supabase.rpc('increment_stock', {
+          const { error: rpcError } = await supabase.rpc('increment_stock', {
             product_id: item.product_id,
             quantity: item.quantity,
             p_size: item.size || null
           });
-          restoredItems++;
+          if (!rpcError) {
+            restored = true;
+          } else {
+            console.warn(`[CANCEL] RPC increment_stock falló para ${item.product_id}:`, rpcError.message);
+          }
         } catch (err) {
-          console.error(`Error restaurando stock ${item.product_id}:`, err);
+          console.warn(`[CANCEL] RPC increment_stock no disponible para ${item.product_id}:`, err);
         }
+
+        // Intento 2: Fallback directo UPDATE (stock + stock_by_size)
+        if (!restored) {
+          try {
+            const { data: prod } = await supabase
+              .from('products')
+              .select('stock, stock_by_size')
+              .eq('id', item.product_id)
+              .single();
+
+            if (prod) {
+              const newStock = (prod.stock || 0) + item.quantity;
+              const updateData: any = {
+                stock: newStock,
+                updated_at: new Date().toISOString()
+              };
+
+              // Restaurar stock_by_size también
+              const itemSize = item.size || 'Única';
+              if (prod.stock_by_size && typeof prod.stock_by_size === 'object') {
+                const sizeStock = prod.stock_by_size as Record<string, number>;
+                sizeStock[itemSize] = (sizeStock[itemSize] || 0) + item.quantity;
+                updateData.stock_by_size = sizeStock;
+              }
+
+              const { error: updateErr } = await supabase
+                .from('products')
+                .update(updateData)
+                .eq('id', item.product_id);
+
+              if (!updateErr) {
+                restored = true;
+                console.log(`[CANCEL] Stock restaurado (fallback directo): ${item.product_id} talla ${itemSize} +${item.quantity}`);
+              } else {
+                console.error(`[CANCEL] Fallback UPDATE falló para ${item.product_id}:`, updateErr);
+              }
+            }
+          } catch (fallbackErr) {
+            console.error(`[CANCEL] Error en fallback stock ${item.product_id}:`, fallbackErr);
+          }
+        }
+
+        if (restored) restoredItems++;
       }
     }
 

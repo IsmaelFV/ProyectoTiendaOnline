@@ -101,9 +101,12 @@ export const POST: APIRoute = async ({ params, request }) => {
       // Continuar de todas formas, ya se procesó el reembolso
     }
 
-    // 3. Recuperar stock de cada producto
+    // 3. Recuperar stock de cada producto (RPC con fallback directo)
     if (orderItems && orderItems.length > 0) {
       for (const item of orderItems) {
+        let restored = false;
+
+        // Intento 1: RPC increment_stock (con soporte de talla)
         try {
           const { error: stockError } = await supabase.rpc('increment_stock', {
             product_id: item.product_id,
@@ -111,14 +114,55 @@ export const POST: APIRoute = async ({ params, request }) => {
             p_size: item.size || null
           });
 
-          if (stockError) {
-            console.error(`[REFUND] Error incrementing stock for product ${item.product_id}:`, stockError.message);
-            // Continuar con los demás productos
+          if (!stockError) {
+            restored = true;
+            console.log(`[REFUND] Stock incrementado (RPC) para producto ${item.product_id} talla ${item.size || 'Única'}: +${item.quantity}`);
           } else {
-            console.log(`[REFUND] Stock incremented for product ${item.product_id}: +${item.quantity}`);
+            console.warn(`[REFUND] RPC increment_stock falló para ${item.product_id}:`, stockError.message);
           }
         } catch (error) {
-          console.error('Error in increment_stock RPC:', error);
+          console.warn('[REFUND] RPC increment_stock no disponible:', error);
+        }
+
+        // Intento 2: Fallback directo UPDATE (stock + stock_by_size)
+        if (!restored) {
+          try {
+            const { data: prod } = await supabase
+              .from('products')
+              .select('stock, stock_by_size')
+              .eq('id', item.product_id)
+              .single();
+
+            if (prod) {
+              const newStock = (prod.stock || 0) + item.quantity;
+              const updateData: any = {
+                stock: newStock,
+                updated_at: new Date().toISOString()
+              };
+
+              // Restaurar stock_by_size también
+              const itemSize = item.size || 'Única';
+              if (prod.stock_by_size && typeof prod.stock_by_size === 'object') {
+                const sizeStock = prod.stock_by_size as Record<string, number>;
+                sizeStock[itemSize] = (sizeStock[itemSize] || 0) + item.quantity;
+                updateData.stock_by_size = sizeStock;
+              }
+
+              const { error: updateErr } = await supabase
+                .from('products')
+                .update(updateData)
+                .eq('id', item.product_id);
+
+              if (!updateErr) {
+                restored = true;
+                console.log(`[REFUND] Stock restaurado (fallback directo): ${item.product_id} talla ${itemSize} +${item.quantity}`);
+              } else {
+                console.error(`[REFUND] Fallback UPDATE falló para ${item.product_id}:`, updateErr);
+              }
+            }
+          } catch (fallbackErr) {
+            console.error(`[REFUND] Error en fallback stock ${item.product_id}:`, fallbackErr);
+          }
         }
       }
     }
