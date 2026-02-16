@@ -113,14 +113,32 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         availableStock = product.stock || 0;
       }
 
-      console.log(`[CHECKOUT] Validación stock: "${product.name}" talla=${itemSize} stockDisponible=${availableStock} cantidadPedida=${item.quantity} stock_by_size=${JSON.stringify(product.stock_by_size)} stockTotal=${product.stock}`);
+      // Log ultradetallado para diagnóstico
+      const freshStockBySize = freshProduct?.stock_by_size || product.stock_by_size;
+      console.log(`[CHECKOUT] ======= VALIDACIÓN STOCK =======`);
+      console.log(`[CHECKOUT] Producto: "${product.name}" (${item.id})`);
+      console.log(`[CHECKOUT] Talla solicitada: "${itemSize}"`);
+      console.log(`[CHECKOUT] Stock disponible para talla "${itemSize}": ${availableStock}`);
+      console.log(`[CHECKOUT] Cantidad pedida: ${item.quantity}`);
+      console.log(`[CHECKOUT] stock_by_size COMPLETO: ${JSON.stringify(freshStockBySize)}`);
+      console.log(`[CHECKOUT] stock global: ${freshProduct?.stock || product.stock}`);
+      console.log(`[CHECKOUT] Resultado: ${availableStock >= item.quantity ? 'OK ✅' : 'INSUFICIENTE ❌'}`);
+      console.log(`[CHECKOUT] ============================`);
 
       if (availableStock < item.quantity) {
-        console.warn(`[CHECKOUT] STOCK INSUFICIENTE: ${product.name} talla=${itemSize} disponible=${availableStock} pedido=${item.quantity}`);
+        // Construir mensaje con info detallada de stock por talla
+        const allSizesInfo = freshStockBySize && typeof freshStockBySize === 'object'
+          ? Object.entries(freshStockBySize as Record<string, number>)
+              .map(([s, qty]) => `${s}: ${qty} uds`)
+              .join(', ')
+          : 'no disponible';
+        
+        console.warn(`[CHECKOUT] STOCK INSUFICIENTE: ${product.name} talla=${itemSize} disponible=${availableStock} pedido=${item.quantity} (desglose: ${allSizesInfo})`);
         return new Response(JSON.stringify({ 
-          error: `Stock insuficiente para "${product.name}" (talla ${itemSize}). Solo quedan ${availableStock} unidades disponibles de esa talla. Pediste ${item.quantity}.`,
+          error: `Stock insuficiente para "${product.name}" en talla ${itemSize}. Esa talla solo tiene ${availableStock} unidades (pediste ${item.quantity}). Stock por talla: ${allSizesInfo}`,
           available: availableStock,
-          requested: item.quantity
+          requested: item.quantity,
+          stockBySize: freshStockBySize
         }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' }

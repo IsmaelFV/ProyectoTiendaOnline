@@ -70,7 +70,7 @@ export default function AddToCartButton({ product }: AddToCartButtonProps) {
 
     if (inCart >= stock) {
       setShowError(true);
-      setErrorMessage(`Ya tienes las ${stock} unidades disponibles de talla ${sizeToUse} en tu carrito`);
+      setErrorMessage(`Ya tienes ${inCart} de ${stock} unidades de talla ${sizeToUse} en tu carrito. Cada talla tiene su propio stock.`);
       return;
     }
 

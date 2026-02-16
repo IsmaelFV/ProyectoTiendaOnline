@@ -364,7 +364,7 @@ export async function addToCart(product: {
   try {
     const { data: productData } = await supabase
       .from('products')
-      .select('stock_by_size')
+      .select('stock_by_size, stock')
       .eq('id', product.id)
       .single();
     
@@ -373,9 +373,11 @@ export async function addToCart(product: {
       const currentItems = cartItems.get();
       const currentQty = currentItems[cartKey]?.quantity || 0;
       
+      console.log(`[CART] Verificación stock: talla=${product.size} stockTalla=${sizeStock} enCarrito=${currentQty} stockTotal=${productData.stock} stockBySize=${JSON.stringify(productData.stock_by_size)}`);
+      
       if (currentQty >= sizeStock) {
-        console.warn(`[CART] Stock insuficiente: ${product.name} talla ${product.size} - stock: ${sizeStock}, en carrito: ${currentQty}`);
-        return { success: false, error: `Solo hay ${sizeStock} unidades disponibles de talla ${product.size}` };
+        console.warn(`[CART] Stock insuficiente: ${product.name} talla ${product.size} - stockTalla: ${sizeStock}, en carrito: ${currentQty}`);
+        return { success: false, error: `Solo hay ${sizeStock} unidades de la talla ${product.size} (tienes ${currentQty} en el carrito). El stock es por talla, no total.` };
       }
     }
   } catch (e) {
@@ -503,15 +505,18 @@ export async function updateQuantity(cartKey: string, quantity: number): Promise
   try {
     const { data: productData } = await supabase
       .from('products')
-      .select('stock_by_size')
+      .select('stock_by_size, stock')
       .eq('id', productId)
       .single();
     
     if (productData?.stock_by_size) {
       const sizeStock = (productData.stock_by_size as Record<string, number>)[size] ?? 0;
+      
+      console.log(`[CART] updateQuantity verificación: talla=${size} stockTalla=${sizeStock} cantidadSolicitada=${quantity} stockTotal=${productData.stock} stockBySize=${JSON.stringify(productData.stock_by_size)}`);
+      
       if (quantity > sizeStock) {
         console.warn(`[CART] No se puede poner cantidad ${quantity}: stock disponible ${sizeStock} para talla ${size}`);
-        return { success: false, error: `Solo hay ${sizeStock} unidades disponibles` };
+        return { success: false, error: `Solo hay ${sizeStock} unidades de la talla ${size}. El stock es por talla, no total.` };
       }
     }
   } catch (e) {

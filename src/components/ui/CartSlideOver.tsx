@@ -29,6 +29,7 @@ export default function CartSlideOver() {
     const handlePageShow = (e: PageTransitionEvent) => {
       // persisted = true cuando la página se restaura del bfcache (botón atrás)
       if (e.persisted) {
+        console.log('[CART] Página restaurada del bfcache - reseteando estado');
         setIsProcessing(false);
         setError('');
       }
@@ -36,6 +37,7 @@ export default function CartSlideOver() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && isProcessing) {
         // Si la página vuelve a ser visible y estábamos procesando, resetear
+        console.log('[CART] Página visible de nuevo - reseteando procesamiento');
         setIsProcessing(false);
       }
     };
@@ -83,7 +85,15 @@ export default function CartSlideOver() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al procesar el pago');
+        // Incluir desglose de stock por talla si viene en la respuesta
+        let errorMsg = data.error || 'Error al procesar el pago';
+        if (data.stockBySize) {
+          const sizesDetail = Object.entries(data.stockBySize as Record<string, number>)
+            .map(([s, qty]) => `${s}: ${qty}`)
+            .join(', ');
+          errorMsg += `\n\nStock por talla: ${sizesDetail}`;
+        }
+        throw new Error(errorMsg);
       }
 
       // Redirigir a Stripe Checkout (el carrito se limpia en success.astro tras confirmar el pago)
@@ -255,7 +265,7 @@ export default function CartSlideOver() {
               </div>
               
               {error && (
-                <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm">
+                <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm whitespace-pre-wrap">
                   {error}
                 </div>
               )}
