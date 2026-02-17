@@ -161,7 +161,7 @@ export default function CartSlideOver() {
               <p className="text-gray-600 text-sm mb-6">Explora nuestra colección</p>
               <button
                 onClick={closeCart}
-                className="btn-secondary"
+                className="btn btn-secondary"
               >
                 Continuar Comprando
               </button>
