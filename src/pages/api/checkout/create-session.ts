@@ -79,11 +79,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         });
       }
 
-      // Validar stock real (lectura directa de la BD)
       const itemSize = item.size || 'Única';
+      const cartQuantity = item.quantity;
 
-      // Leer stock FRESCO directamente de la BD (no del cache de la query anterior en caso de bfcache)
+      // Leer stock FRESCO directamente de la BD para cada producto
       let availableStock = 0;
+      let currentStockBySize: Record<string, number> | null = null;
+      let currentStockGlobal = product.stock || 0;
+
       try {
         const { data: freshProduct, error: freshError } = await supabase
           .from('products')
@@ -93,52 +96,54 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
         if (freshError || !freshProduct) {
           console.error(`[CHECKOUT] Error leyendo stock fresco de ${product.name}:`, freshError);
-          availableStock = product.stock || 0;
+          // Fallback a los datos de la query batch anterior
+          currentStockBySize = product.stock_by_size as Record<string, number> | null;
+          currentStockGlobal = product.stock || 0;
         } else {
-          // Usar stock_by_size si existe para esta talla
-          if (freshProduct.stock_by_size && typeof freshProduct.stock_by_size === 'object') {
-            const sizeStock = freshProduct.stock_by_size as Record<string, number>;
-            if (itemSize in sizeStock) {
-              availableStock = sizeStock[itemSize] || 0;
-            } else {
-              // La talla no existe en stock_by_size, usar stock global
-              availableStock = freshProduct.stock || 0;
-            }
-          } else {
-            availableStock = freshProduct.stock || 0;
-          }
+          currentStockBySize = freshProduct.stock_by_size as Record<string, number> | null;
+          currentStockGlobal = freshProduct.stock || 0;
         }
       } catch (e) {
-        console.warn('[CHECKOUT] Error en lectura fresca, usando datos de query:', e);
-        availableStock = product.stock || 0;
+        console.warn('[CHECKOUT] Error en lectura fresca, usando datos de query batch:', e);
+        currentStockBySize = product.stock_by_size as Record<string, number> | null;
+        currentStockGlobal = product.stock || 0;
       }
 
-      // Log ultradetallado para diagnóstico
-      const freshStockBySize = freshProduct?.stock_by_size || product.stock_by_size;
-      console.log(`[CHECKOUT] ======= VALIDACIÓN STOCK =======`);
-      console.log(`[CHECKOUT] Producto: "${product.name}" (${item.id})`);
-      console.log(`[CHECKOUT] Talla solicitada: "${itemSize}"`);
-      console.log(`[CHECKOUT] Stock disponible para talla "${itemSize}": ${availableStock}`);
-      console.log(`[CHECKOUT] Cantidad pedida: ${item.quantity}`);
-      console.log(`[CHECKOUT] stock_by_size COMPLETO: ${JSON.stringify(freshStockBySize)}`);
-      console.log(`[CHECKOUT] stock global: ${freshProduct?.stock || product.stock}`);
-      console.log(`[CHECKOUT] Resultado: ${availableStock >= item.quantity ? 'OK ✅' : 'INSUFICIENTE ❌'}`);
-      console.log(`[CHECKOUT] ============================`);
+      // Determinar stock disponible para la talla solicitada
+      if (currentStockBySize && typeof currentStockBySize === 'object' && itemSize in currentStockBySize) {
+        availableStock = currentStockBySize[itemSize] || 0;
+      } else {
+        // La talla no existe en stock_by_size → usar stock global
+        availableStock = currentStockGlobal;
+      }
 
-      if (availableStock < item.quantity) {
-        // Construir mensaje con info detallada de stock por talla
-        const allSizesInfo = freshStockBySize && typeof freshStockBySize === 'object'
-          ? Object.entries(freshStockBySize as Record<string, number>)
-              .map(([s, qty]) => `${s}: ${qty} uds`)
-              .join(', ')
-          : 'no disponible';
+      // Construir desglose de stock por talla para logs y errores
+      const allSizesInfo = currentStockBySize && typeof currentStockBySize === 'object'
+        ? Object.entries(currentStockBySize)
+            .map(([s, qty]) => `${s}:${qty}`)
+            .join(', ')
+        : 'sin desglose';
+
+      console.log(`[CHECKOUT] ═══ STOCK CHECK: "${product.name}" ═══`);
+      console.log(`[CHECKOUT]   Talla: "${itemSize}" → ${availableStock} disponibles`);
+      console.log(`[CHECKOUT]   Pedido: ${cartQuantity} unidades`);
+      console.log(`[CHECKOUT]   Stock por talla: { ${allSizesInfo} }`);
+      console.log(`[CHECKOUT]   Stock global: ${currentStockGlobal}`);
+      console.log(`[CHECKOUT]   Resultado: ${availableStock >= cartQuantity ? '✅ OK' : '❌ INSUFICIENTE'}`);
+
+      if (availableStock < cartQuantity) {
+        const errorMsg = `No hay suficiente stock de "${product.name}" en talla ${itemSize}. ` +
+          `Stock de talla ${itemSize}: ${availableStock} unidades. ` +
+          `Cantidad en tu carrito: ${cartQuantity}. ` +
+          `(Stock por talla: ${allSizesInfo.replace(/,/g, ', ')})`;
         
-        console.warn(`[CHECKOUT] STOCK INSUFICIENTE: ${product.name} talla=${itemSize} disponible=${availableStock} pedido=${item.quantity} (desglose: ${allSizesInfo})`);
+        console.warn(`[CHECKOUT] RECHAZADO: ${errorMsg}`);
         return new Response(JSON.stringify({ 
-          error: `Stock insuficiente para "${product.name}" en talla ${itemSize}. Esa talla solo tiene ${availableStock} unidades (pediste ${item.quantity}). Stock por talla: ${allSizesInfo}`,
+          error: errorMsg,
           available: availableStock,
-          requested: item.quantity,
-          stockBySize: freshStockBySize
+          requested: cartQuantity,
+          size: itemSize,
+          stockBySize: currentStockBySize
         }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' }

@@ -70,6 +70,8 @@ export default function CartSlideOver() {
         size: item.size || 'Única'
       }));
 
+      console.log('[CHECKOUT CLIENT] Enviando items al checkout:', JSON.stringify(checkoutItems, null, 2));
+
       // Llamar al endpoint de checkout
       const response = await fetch('/api/checkout/create-session', {
         method: 'POST',
@@ -85,15 +87,9 @@ export default function CartSlideOver() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Incluir desglose de stock por talla si viene en la respuesta
-        let errorMsg = data.error || 'Error al procesar el pago';
-        if (data.stockBySize) {
-          const sizesDetail = Object.entries(data.stockBySize as Record<string, number>)
-            .map(([s, qty]) => `${s}: ${qty}`)
-            .join(', ');
-          errorMsg += `\n\nStock por talla: ${sizesDetail}`;
-        }
-        throw new Error(errorMsg);
+        console.error('[CHECKOUT CLIENT] Error del servidor:', JSON.stringify(data));
+        // El error ya viene descriptivo del servidor
+        throw new Error(data.error || 'Error al procesar el pago');
       }
 
       // Redirigir a Stripe Checkout (el carrito se limpia en success.astro tras confirmar el pago)
