@@ -43,51 +43,55 @@ const { data: products } = await supabase
   .eq('is_active', true)
   .order('created_at', { ascending: false });
 
-// Obtener categorías del mismo género para navegación lateral
+// Obtener solo unas pocas categorías relevantes para navegación
 const { data: allCategories } = await supabase
   .from('categories')
   .select('id, name, slug, level, parent_id, gender_id')
   .eq('is_active', true)
   .order('display_order');
 
-// Encontrar categorías relacionadas (mismo género o misma categoría padre)
-const sameLevelCats = (allCategories || []).filter(c => 
-  c.gender_id === category.gender_id && c.level === category.level
-);
-
-// Deduplicar por nombre base (quitar sufijos "Mujer"/"Hombre")
+// Helper para limpiar nombres
 const clean = (name: string) => name.replace(/\s+(Mujer|Hombre)$/i, '').trim();
-const seen = new Map<string, any>();
-for (const c of sameLevelCats) {
-  const baseName = clean(c.name).toLowerCase();
-  if (!seen.has(baseName)) {
-    seen.set(baseName, c);
-  }
-}
-const relatedCategories = Array.from(seen.values()).slice(0, 12);
 
-// Si la categoría tiene parent (nivel 2), buscar hermanas
-let siblingCategories: any[] = [];
+// Construir lista de categorías a mostrar (máximo 8, sin duplicados)
+let displayCategories: any[] = [];
+
+// 1. Si tiene parent (nivel 2), mostrar hermanas
 if (category.parent_id) {
-  siblingCategories = (allCategories || []).filter(c => 
+  displayCategories = (allCategories || []).filter((c: any) => 
     c.parent_id === category.parent_id && c.id !== category.id
   );
 }
-
-// Si la categoría es nivel 1, buscar hijas
-let childCategories: any[] = [];
-if (category.level === 1) {
-  childCategories = (allCategories || []).filter(c => 
+// 2. Si es nivel 1, mostrar hijas
+else if (category.level === 1) {
+  displayCategories = (allCategories || []).filter((c: any) => 
     c.parent_id === category.id
   );
 }
 
-// Elegir qué categorías mostrar: hermanas > hijas > relacionadas
-const displayCategories = siblingCategories.length > 0 
-  ? siblingCategories 
-  : childCategories.length > 0 
-    ? childCategories 
-    : relatedCategories.filter(c => c.id !== category.id);
+// 3. Si no hay hermanas ni hijas, mostrar algunas del mismo género (deduplicadas)
+if (displayCategories.length === 0) {
+  const candidates = (allCategories || []).filter((c: any) => {
+    if (c.id === category.id) return false;
+    // Si la categoría tiene género, filtrar por mismo género
+    if (category.gender_id) return c.gender_id === category.gender_id;
+    // Si no tiene género, mostrar solo nivel 1
+    return c.level === 1;
+  });
+  
+  // Deduplicar por nombre base
+  const seen = new Map<string, any>();
+  for (const c of candidates) {
+    const baseName = clean(c.name).toLowerCase();
+    if (!seen.has(baseName)) {
+      seen.set(baseName, c);
+    }
+  }
+  displayCategories = Array.from(seen.values());
+}
+
+// Limitar siempre a 8 máximo
+displayCategories = displayCategories.slice(0, 8);
 ---
 
 <PublicLayout 
