@@ -10,7 +10,7 @@ import SearchBar from '../search/SearchBar';
     <div class="flex items-center justify-between h-14">
 
       <!-- ZONA IZQUIERDA: Hamburger -->
-      <div class="flex items-center flex-shrink-0">
+      <div class="flex items-center flex-shrink-0" style="min-width: 120px;">
         <button id="sidebar-toggle" class="hdr-icon" aria-label="Abrir menú">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
@@ -26,7 +26,7 @@ import SearchBar from '../search/SearchBar';
       </div>
 
       <!-- ZONA DERECHA: Lupa + Usuario + Carrito -->
-      <div class="flex items-center justify-end flex-shrink-0 gap-1 sm:gap-2">
+      <div class="flex items-center justify-end flex-shrink-0 gap-1 sm:gap-2" style="min-width: 120px;">
         <!-- Botón de búsqueda -->
         <button id="search-toggle" class="hdr-icon" aria-label="Buscar">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
@@ -90,12 +90,12 @@ import SearchBar from '../search/SearchBar';
 <!-- ===== OVERLAY DE BÚSQUEDA ===== -->
 <div id="search-overlay" class="search-overlay hidden">
   <div class="search-overlay-inner">
-    <div class="max-w-2xl mx-auto px-4 py-4 relative">
-      <SearchBar client:load placeholder="¿Qué estás buscando?" />
-      <button id="search-close" class="absolute top-4 right-6 text-gray-400 hover:text-white transition-colors" aria-label="Cerrar búsqueda">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
+    <div class="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+      <div class="flex-1">
+        <SearchBar client:load placeholder="¿Qué estás buscando?" />
+      </div>
+      <button id="search-close" class="flex-shrink-0 text-gray-400 hover:text-white transition-colors p-2" aria-label="Cerrar búsqueda">
+        <span class="text-sm font-medium">Cerrar</span>
       </button>
     </div>
   </div>

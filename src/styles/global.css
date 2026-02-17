@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Ocultar botón X nativo del navegador en inputs */
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration,
+input[type="text"]::-ms-clear,
+input[type="text"]::-ms-reveal {
+  display: none;
+  -webkit-appearance: none;
+}
+
 /* ===================================
    VARIABLES CSS GLOBALES - PALETA PROFESIONAL
    =================================== */

@@ -172,7 +172,7 @@ export default function SearchBar({
             if (suggestions.length > 0) setIsOpen(true);
           }}
           placeholder={placeholder}
-          className="w-full px-4 py-3 pl-12 pr-4 text-white bg-dark-card/60 backdrop-blur-sm border border-white/10 rounded-xl placeholder:text-gray-500 focus:ring-2 focus:ring-accent-emerald/50 focus:border-accent-emerald/50 transition-all duration-300"
+          className="w-full px-4 py-3 pl-12 pr-12 text-white bg-dark-card/60 backdrop-blur-sm border border-white/10 rounded-xl placeholder:text-gray-500 focus:ring-2 focus:ring-accent-emerald/50 focus:border-accent-emerald/50 transition-all duration-300"
           aria-label="Buscar productos"
           aria-autocomplete="list"
           aria-controls="search-suggestions"

@@ -33,7 +33,7 @@ if (searchQuery) {
   // Fetch products
   let query = supabase
     .from('products')
-    .select('*')
+    .select('*, category:categories(id, name, slug), gender:genders(id, name, slug)')
     .eq('is_active', true)
     .or(`name.ilike.${searchPattern},description.ilike.${searchPattern}`);
 
