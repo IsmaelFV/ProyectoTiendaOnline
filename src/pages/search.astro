@@ -1,0 +1,215 @@
+---
+import PublicLayout from '@layouts/PublicLayout.astro';
+import ProductCard from '@components/product/ProductCard.astro';
+import { supabase } from '@lib/supabase';
+import type { Product } from '@lib/supabase';
+
+// ─── Parámetros ───
+const url = new URL(Astro.request.url);
+const searchQuery = url.searchParams.get('q')?.trim() || '';
+const page = parseInt(url.searchParams.get('pagina') || '1');
+const sortBy = url.searchParams.get('ordenar') || 'relevance';
+const itemsPerPage = 24;
+const offset = (page - 1) * itemsPerPage;
+
+let productsArray: Product[] = [];
+let totalProducts = 0;
+let totalPages = 0;
+
+if (searchQuery) {
+  // Búsqueda por nombre y descripción con ilike
+  const searchPattern = `%${searchQuery}%`;
+  
+  // Count
+  const { count } = await supabase
+    .from('products')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_active', true)
+    .or(`name.ilike.${searchPattern},description.ilike.${searchPattern}`);
+
+  totalProducts = count || 0;
+  totalPages = Math.ceil(totalProducts / itemsPerPage);
+
+  // Fetch products
+  let query = supabase
+    .from('products')
+    .select('*')
+    .eq('is_active', true)
+    .or(`name.ilike.${searchPattern},description.ilike.${searchPattern}`);
+
+  if (sortBy === 'price_asc') query = query.order('price', { ascending: true });
+  else if (sortBy === 'price_desc') query = query.order('price', { ascending: false });
+  else if (sortBy === 'name') query = query.order('name');
+  else query = query.order('created_at', { ascending: false });
+
+  const { data: products } = await query.range(offset, offset + itemsPerPage - 1);
+  productsArray = (products || []) as Product[];
+}
+
+// Título dinámico
+const pageTitle = searchQuery
+  ? `Resultados para "${searchQuery}" - Fashion Store`
+  : 'Buscar - Fashion Store';
+---
+
+<PublicLayout title={pageTitle}>
+  <div class="min-h-screen py-8 relative">
+    <div class="absolute inset-0 bg-gradient-dark -z-10"></div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      {/* Header de búsqueda */}
+      <div class="mb-8">
+        <nav class="flex items-center gap-2 text-sm text-gray-500 mb-4">
+          <a href="/" class="hover:text-accent-gold transition-colors">Inicio</a>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+          <span class="text-gray-300">Búsqueda</span>
+        </nav>
+
+        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            {searchQuery ? (
+              <h1 class="text-3xl sm:text-4xl font-bold text-white font-serif">
+                Resultados para <span class="text-accent-gold">"{searchQuery}"</span>
+              </h1>
+              <p class="text-gray-400 mt-2">
+                {totalProducts === 0
+                  ? 'No se encontraron productos'
+                  : `${totalProducts} producto${totalProducts !== 1 ? 's' : ''} encontrado${totalProducts !== 1 ? 's' : ''}`}
+              </p>
+            ) : (
+              <h1 class="text-3xl sm:text-4xl font-bold text-white font-serif">Buscar Productos</h1>
+              <p class="text-gray-400 mt-2">Introduce un término de búsqueda</p>
+            )}
+          </div>
+
+          {/* Ordenar */}
+          {productsArray.length > 0 && (
+            <div class="flex items-center gap-3">
+              <label class="text-sm text-gray-400 whitespace-nowrap">Ordenar por:</label>
+              <select
+                id="sort-select"
+                class="bg-dark-card/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-accent-gold/30 focus:border-accent-gold/30 transition-all"
+              >
+                <option value="relevance" selected={sortBy === 'relevance'}>Más recientes</option>
+                <option value="price_asc" selected={sortBy === 'price_asc'}>Precio: menor a mayor</option>
+                <option value="price_desc" selected={sortBy === 'price_desc'}>Precio: mayor a menor</option>
+                <option value="name" selected={sortBy === 'name'}>Nombre A-Z</option>
+              </select>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Barra de búsqueda inline */}
+      <div class="mb-8">
+        <form id="search-form" class="relative max-w-2xl">
+          <input
+            type="text"
+            id="search-input"
+            value={searchQuery}
+            placeholder="¿Qué estás buscando?"
+            class="w-full px-5 py-4 pl-14 text-white bg-dark-card/60 backdrop-blur-sm border border-white/10 rounded-2xl placeholder:text-gray-500 focus:ring-2 focus:ring-accent-gold/30 focus:border-accent-gold/30 transition-all duration-300 text-lg"
+          />
+          <div class="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <button
+            type="submit"
+            class="absolute right-3 top-1/2 -translate-y-1/2 btn btn-primary !py-2.5 !px-5 !text-xs"
+          >
+            Buscar
+          </button>
+        </form>
+      </div>
+
+      {/* Grid de productos */}
+      {productsArray.length > 0 ? (
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+          {productsArray.map((product) => (
+            <ProductCard product={product} />
+          ))}
+        </div>
+      ) : searchQuery ? (
+        <div class="text-center py-20">
+          <div class="w-24 h-24 mx-auto mb-6 rounded-2xl bg-dark-card/50 border border-white/5 flex items-center justify-center">
+            <svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <h2 class="text-2xl font-bold text-white mb-3">Sin resultados</h2>
+          <p class="text-gray-400 mb-6 max-w-md mx-auto">
+            No hemos encontrado productos que coincidan con <strong class="text-white">"{searchQuery}"</strong>. 
+            Prueba con otros términos de búsqueda.
+          </p>
+          <a href="/productos" class="btn btn-primary">
+            Ver todos los productos
+          </a>
+        </div>
+      ) : null}
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <nav class="flex justify-center items-center gap-2 mt-12">
+          {page > 1 && (
+            <a
+              href={`/search?q=${encodeURIComponent(searchQuery)}&ordenar=${sortBy}&pagina=${page - 1}`}
+              class="btn btn-secondary !py-2.5 !px-4 !text-xs"
+            >
+              ← Anterior
+            </a>
+          )}
+          
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <a
+              href={`/search?q=${encodeURIComponent(searchQuery)}&ordenar=${sortBy}&pagina=${p}`}
+              class={`w-10 h-10 flex items-center justify-center rounded-xl text-sm font-medium transition-all ${
+                p === page
+                  ? 'bg-accent-gold text-dark-bg'
+                  : 'bg-dark-card/50 text-gray-400 border border-white/10 hover:border-accent-gold/30 hover:text-white'
+              }`}
+            >
+              {p}
+            </a>
+          ))}
+
+          {page < totalPages && (
+            <a
+              href={`/search?q=${encodeURIComponent(searchQuery)}&ordenar=${sortBy}&pagina=${page + 1}`}
+              class="btn btn-secondary !py-2.5 !px-4 !text-xs"
+            >
+              Siguiente →
+            </a>
+          )}
+        </nav>
+      )}
+    </div>
+  </div>
+
+  <script>
+    // Manejar formulario de búsqueda
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('search-input') as HTMLInputElement;
+    
+    searchForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = searchInput?.value.trim();
+      if (q) {
+        window.location.href = `/search?q=${encodeURIComponent(q)}`;
+      }
+    });
+
+    // Manejar cambio de orden
+    const sortSelect = document.getElementById('sort-select') as HTMLSelectElement;
+    sortSelect?.addEventListener('change', () => {
+      const params = new URLSearchParams(window.location.search);
+      params.set('ordenar', sortSelect.value);
+      params.delete('pagina');
+      window.location.href = `/search?${params.toString()}`;
+    });
+  </script>
+</PublicLayout>

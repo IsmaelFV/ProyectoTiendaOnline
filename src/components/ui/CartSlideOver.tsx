@@ -269,7 +269,7 @@ export default function CartSlideOver() {
               <button 
                 onClick={handleCheckout}
                 disabled={isProcessing}
-                className="group w-full relative flex items-center justify-center gap-2.5 py-3.5 px-6 bg-gradient-to-r from-accent-gold to-amber-500 text-dark-bg font-bold text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-accent-gold/25 hover:shadow-xl hover:shadow-accent-gold/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-lg"
+                className="btn btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
                 {isProcessing ? (
                   <>
@@ -291,7 +291,7 @@ export default function CartSlideOver() {
               
               <button
                 onClick={closeCart}
-                className="group w-full flex items-center justify-center gap-2 py-3 px-6 bg-white/[0.03] backdrop-blur-sm text-gray-300 font-medium text-sm rounded-xl border border-white/10 hover:bg-white/[0.07] hover:border-accent-gold/30 hover:text-white hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300"
+                className="btn btn-secondary w-full"
               >
                 <svg className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
