@@ -269,33 +269,41 @@ export default function CartSlideOver() {
               <button 
                 onClick={handleCheckout}
                 disabled={isProcessing}
-                className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group w-full relative flex items-center justify-center gap-2.5 py-3.5 px-6 bg-gradient-to-r from-accent-gold to-amber-500 text-dark-bg font-bold text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-accent-gold/25 hover:shadow-xl hover:shadow-accent-gold/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-lg"
               >
                 {isProcessing ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <>
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Procesando...
-                  </span>
+                    <span>Procesando...</span>
+                  </>
                 ) : (
-                  'Proceder al Pago'
+                  <>
+                    <svg className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" />
+                    </svg>
+                    <span>Proceder al Pago</span>
+                  </>
                 )}
               </button>
               
               <button
                 onClick={closeCart}
-                className="w-full btn-secondary"
+                className="group w-full flex items-center justify-center gap-2 py-3 px-6 bg-white/[0.03] backdrop-blur-sm text-gray-300 font-medium text-sm rounded-xl border border-white/10 hover:bg-white/[0.07] hover:border-accent-gold/30 hover:text-white hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300"
               >
+                <svg className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
                 Continuar Comprando
               </button>
 
-              <div className="flex items-center justify-center gap-2 text-xs text-gray-500 pt-2">
-                <svg className="w-4 h-4 text-accent-glow" fill="currentColor" viewBox="0 0 20 20">
+              <div className="flex items-center justify-center gap-2 text-xs text-gray-500/80 pt-1">
+                <svg className="w-3.5 h-3.5 text-emerald-500/70" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                 </svg>
-                <span>Pago seguro con Stripe</span>
+                <span>Pago 100% seguro con Stripe</span>
               </div>
             </div>
           </>

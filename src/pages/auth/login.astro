@@ -146,10 +146,10 @@ const successMessage = Astro.url.searchParams.get('success');
           <div>
             <button
               type="submit"
-              class="btn-primary w-full flex justify-center items-center gap-3"
+              class="group w-full relative flex justify-center items-center gap-3 py-3.5 px-6 bg-gradient-to-r from-accent-gold to-amber-500 text-dark-bg font-bold text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-accent-gold/25 hover:shadow-xl hover:shadow-accent-gold/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300"
             >
               <svg
-                class="h-5 w-5"
+                class="h-5 w-5 transition-transform duration-300 group-hover:scale-110"
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 20 20"
                 fill="currentColor"
@@ -179,7 +179,7 @@ const successMessage = Astro.url.searchParams.get('success');
             <button
               type="button"
               id="google-login-btn"
-              class="btn-secondary flex justify-center items-center gap-3 py-3 px-6 w-full max-w-sm"
+              class="group w-full max-w-sm flex justify-center items-center gap-3 py-3 px-6 bg-white/[0.04] backdrop-blur-sm text-white font-medium text-sm rounded-xl border border-white/10 hover:bg-white/[0.08] hover:border-white/25 hover:-translate-y-0.5 active:translate-y-0 shadow-sm hover:shadow-md transition-all duration-300"
             >
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
