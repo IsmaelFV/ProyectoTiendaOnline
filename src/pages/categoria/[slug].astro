@@ -40,66 +40,131 @@ const { data: products } = await supabase
   .from('products')
   .select('*')
   .eq('category_id', category.id)
+  .eq('is_active', true)
   .order('created_at', { ascending: false });
 
+// Obtener categorías del mismo género para navegación lateral
 const { data: allCategories } = await supabase
   .from('categories')
-  .select('*')
-  .order('name');
+  .select('id, name, slug, level, parent_id, gender_id')
+  .eq('is_active', true)
+  .order('display_order');
+
+// Encontrar categorías relacionadas (mismo género o misma categoría padre)
+const sameLevelCats = (allCategories || []).filter(c => 
+  c.gender_id === category.gender_id && c.level === category.level
+);
+
+// Deduplicar por nombre base (quitar sufijos "Mujer"/"Hombre")
+const clean = (name: string) => name.replace(/\s+(Mujer|Hombre)$/i, '').trim();
+const seen = new Map<string, any>();
+for (const c of sameLevelCats) {
+  const baseName = clean(c.name).toLowerCase();
+  if (!seen.has(baseName)) {
+    seen.set(baseName, c);
+  }
+}
+const relatedCategories = Array.from(seen.values()).slice(0, 12);
+
+// Si la categoría tiene parent (nivel 2), buscar hermanas
+let siblingCategories: any[] = [];
+if (category.parent_id) {
+  siblingCategories = (allCategories || []).filter(c => 
+    c.parent_id === category.parent_id && c.id !== category.id
+  );
+}
+
+// Si la categoría es nivel 1, buscar hijas
+let childCategories: any[] = [];
+if (category.level === 1) {
+  childCategories = (allCategories || []).filter(c => 
+    c.parent_id === category.id
+  );
+}
+
+// Elegir qué categorías mostrar: hermanas > hijas > relacionadas
+const displayCategories = siblingCategories.length > 0 
+  ? siblingCategories 
+  : childCategories.length > 0 
+    ? childCategories 
+    : relatedCategories.filter(c => c.id !== category.id);
 ---
 
 <PublicLayout 
   title={`${category.name} - Fashion Store`}
   description={category.description}
 >
-  <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <div class="mb-12">
-      <h1 class="font-serif text-4xl md:text-5xl font-bold text-brand-navy mb-4">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    
+    {/* Breadcrumb */}
+    <nav class="flex items-center gap-2 text-sm text-gray-500 mb-6">
+      <a href="/" class="hover:text-accent-gold transition-colors">Inicio</a>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+      <a href="/productos" class="hover:text-accent-gold transition-colors">Productos</a>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+      <span class="text-gray-300">{category.name}</span>
+    </nav>
+
+    <div class="mb-8">
+      <h1 class="font-serif text-3xl sm:text-4xl font-bold text-white mb-2">
         {category.name}
       </h1>
       {category.description && (
-        <p class="text-lg text-brand-slate">
+        <p class="text-gray-400">
           {category.description}
         </p>
       )}
+      <p class="text-sm text-gray-500 mt-2">
+        {products?.length || 0} producto{(products?.length || 0) !== 1 ? 's' : ''}
+      </p>
     </div>
 
-    {allCategories && allCategories.length > 0 && (
-      <div class="mb-8 flex flex-wrap gap-4">
+    {/* Categorías relacionadas - máximo unas pocas, estilo limpio */}
+    {displayCategories.length > 0 && (
+      <div class="mb-8 flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
         <a
           href="/productos"
-          class="px-6 py-2 border-2 border-brand-slate/30 hover:border-brand-navy transition-colors font-medium"
+          class="shrink-0 px-4 py-2 rounded-full text-sm font-medium border border-white/10 text-gray-400 hover:border-accent-gold/30 hover:text-white transition-all"
         >
           Todos
         </a>
-        {allCategories.map((cat) => (
+        {displayCategories.slice(0, 8).map((cat: any) => (
           <a
             href={`/categoria/${cat.slug}`}
-            class={`px-6 py-2 border-2 font-medium transition-colors ${
+            class={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
               cat.id === category.id
-                ? 'border-brand-navy bg-brand-navy text-white'
-                : 'border-brand-slate/30 hover:border-brand-navy'
+                ? 'bg-accent-gold text-dark-bg'
+                : 'border border-white/10 text-gray-400 hover:border-accent-gold/30 hover:text-white'
             }`}
           >
-            {cat.name}
+            {clean(cat.name)}
           </a>
         ))}
       </div>
     )}
 
+    {/* Grid de productos */}
     {products && products.length > 0 ? (
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         {products.map((product) => (
           <ProductCard product={product} />
         ))}
       </div>
     ) : (
-      <div class="text-center py-12">
-        <p class="text-brand-slate text-lg">
-          No hay productos disponibles en esta categoría.
-        </p>
-        <a href="/productos" class="inline-block mt-4 btn-secondary">
-          Ver Todos los Productos
+      <div class="text-center py-20">
+        <div class="w-24 h-24 mx-auto mb-6 rounded-2xl bg-dark-card/50 border border-white/5 flex items-center justify-center">
+          <svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-white mb-3">Sin productos</h2>
+        <p class="text-gray-400 mb-6">No hay productos disponibles en esta categoría.</p>
+        <a href="/productos" class="btn btn-primary">
+          Ver todos los productos
         </a>
       </div>
     )}
