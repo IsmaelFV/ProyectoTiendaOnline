@@ -218,50 +218,50 @@ function translateStatus(status: string) {
                 <div class="p-6 hover:bg-white/5 transition-colors">
                   <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center space-x-3">
-                      <span class="text-sm font-medium text-gray-900">
+                      <span class="text-sm font-medium text-white">
                         {order.order_number}
                       </span>
                       <span class={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                         {translateStatus(order.status)}
                       </span>
                     </div>
-                    <span class="text-lg font-bold text-gray-900">
+                    <span class="text-lg font-bold text-white">
                       {formatCurrency(order.total)}
                     </span>
                   </div>
 
-                  <div class="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-3">
+                  <div class="grid grid-cols-2 gap-4 text-sm text-gray-400 mb-3">
                     <div>
-                      <span class="font-medium">Fecha:</span> {formatDate(order.created_at)}
+                      <span class="font-medium text-gray-300">Fecha:</span> {formatDate(order.created_at)}
                     </div>
                     <div>
-                      <span class="font-medium">Método de pago:</span> {order.payment_method}
+                      <span class="font-medium text-gray-300">Método de pago:</span> {order.payment_method}
                     </div>
                   </div>
 
                   {order.shipping_address_line1 && (
-                    <div class="text-sm text-gray-600 mb-3">
-                      <span class="font-medium">Envío a:</span> {order.shipping_address_line1}, {order.shipping_city}
+                    <div class="text-sm text-gray-400 mb-3">
+                      <span class="font-medium text-gray-300">Envío a:</span> {order.shipping_address_line1}, {order.shipping_city}
                     </div>
                   )}
 
                   {order.tracking_number && (
-                    <div class="text-sm text-gray-600 mb-3">
-                      <span class="font-medium">Tracking:</span> 
-                      <code class="ml-2 bg-gray-100 px-2 py-1 rounded">{order.tracking_number}</code>
+                    <div class="text-sm text-gray-400 mb-3">
+                      <span class="font-medium text-gray-300">Tracking:</span> 
+                      <code class="ml-2 bg-white/10 text-gray-300 px-2 py-1 rounded">{order.tracking_number}</code>
                     </div>
                   )}
 
-                  <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <div class="flex items-center justify-between pt-3 border-t border-white/10">
                     <a
                       href={`/perfil/pedidos/${order.id}`}
-                      class="text-brand-gold hover:text-yellow-600 text-sm font-medium transition-colors"
+                      class="text-accent-gold hover:text-accent-gold-soft text-sm font-medium transition-colors"
                     >
                       Ver detalles →
                     </a>
                     {(order.status === 'delivered' || order.status === 'shipped') && (
                       <button
-                        class="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
+                        class="text-gray-400 hover:text-white text-sm font-medium transition-colors"
                       >
                         Necesito ayuda
                       </button>
