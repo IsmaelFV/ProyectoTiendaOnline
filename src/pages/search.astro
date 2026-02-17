@@ -10,40 +10,72 @@ const searchQuery = url.searchParams.get('q')?.trim() || '';
 const page = parseInt(url.searchParams.get('pagina') || '1');
 const sortBy = url.searchParams.get('ordenar') || 'relevance';
 const itemsPerPage = 24;
-const offset = (page - 1) * itemsPerPage;
 
 let productsArray: Product[] = [];
 let totalProducts = 0;
 let totalPages = 0;
 
 if (searchQuery) {
-  // Búsqueda por nombre y descripción con ilike
-  const searchPattern = `%${searchQuery}%`;
-  
-  // Count
-  const { count } = await supabase
-    .from('products')
-    .select('id', { count: 'exact', head: true })
-    .eq('is_active', true)
-    .or(`name.ilike.${searchPattern},description.ilike.${searchPattern}`);
+  // Mapear sortBy del frontend al formato que espera la función RPC
+  const sortMap: Record<string, string> = {
+    'relevance': 'relevance',
+    'price_asc': 'price_asc',
+    'price_desc': 'price_desc',
+    'name': 'relevance', // fallback - el RPC no tiene sort por nombre
+  };
 
-  totalProducts = count || 0;
+  // Usar la función RPC search_products (full-text search + ilike fallback)
+  const { data, error } = await supabase.rpc('search_products', {
+    search_query: searchQuery,
+    gender_filter: null,
+    category_filter: null,
+    min_price: null,
+    max_price: null,
+    colors_filter: null,
+    sizes_filter: null,
+    only_in_stock: false,
+    only_new: false,
+    only_on_sale: false,
+    sort_by: sortMap[sortBy] || 'relevance',
+    page_number: page,
+    page_size: itemsPerPage
+  });
+
+  if (error) {
+    console.error('Error en búsqueda RPC:', error);
+  }
+
+  const results = data || [];
+  totalProducts = results.length > 0 ? Number(results[0].total_count) : 0;
   totalPages = Math.ceil(totalProducts / itemsPerPage);
 
-  // Fetch products
-  let query = supabase
-    .from('products')
-    .select('*, category:categories(id, name, slug), gender:genders(id, name, slug)')
-    .eq('is_active', true)
-    .or(`name.ilike.${searchPattern},description.ilike.${searchPattern}`);
-
-  if (sortBy === 'price_asc') query = query.order('price', { ascending: true });
-  else if (sortBy === 'price_desc') query = query.order('price', { ascending: false });
-  else if (sortBy === 'name') query = query.order('name');
-  else query = query.order('created_at', { ascending: false });
-
-  const { data: products } = await query.range(offset, offset + itemsPerPage - 1);
-  productsArray = (products || []) as Product[];
+  // Mapear resultados del RPC al tipo Product que espera ProductCard
+  productsArray = results.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    description: p.description || '',
+    price: p.price,
+    sale_price: p.sale_price,
+    images: p.images || [],
+    category_id: p.category_id,
+    gender_id: p.gender_id,
+    is_new: p.is_new,
+    is_on_sale: p.is_on_sale,
+    is_active: true,
+    featured: p.featured || false,
+    sizes: p.available_sizes || [],
+    available_sizes: p.available_sizes || [],
+    stock: 1, // El RPC no devuelve stock, asumimos disponible
+    stock_by_size: {},
+    color_ids: p.color_ids || [],
+    popularity_score: 0,
+    sales_count: 0,
+    created_at: '',
+    updated_at: '',
+    category: p.category_name ? { id: p.category_id, name: p.category_name, slug: '' } : undefined,
+    gender: p.gender_name ? { id: p.gender_id, name: p.gender_name, slug: '' } : undefined,
+  })) as Product[];
 }
 
 // Título dinámico
