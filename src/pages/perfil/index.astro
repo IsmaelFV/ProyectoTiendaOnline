@@ -101,14 +101,8 @@ function translateStatus(status: string) {
       <div class="lg:col-span-1 space-y-6">
         {/* Información personal */}
         <div class="glass-panel p-6">
-          <div class="flex items-center justify-between mb-4">
+          <div class="mb-4">
             <h2 class="text-xl font-semibold text-white">Información Personal</h2>
-            <button
-              id="edit-profile-btn"
-              class="text-accent-gold hover:text-accent-gold-soft text-sm font-medium transition-colors"
-            >
-              Editar
-            </button>
           </div>
 
           <div class="space-y-4">
@@ -312,10 +306,6 @@ function translateStatus(status: string) {
       }
     });
 
-    // Editar perfil
-    document.getElementById('edit-profile-btn')?.addEventListener('click', () => {
-      customAlert('Funcionalidad de editar perfil en desarrollo', 'info');
-      // TODO: Implementar modal o página de edición de perfil
-    });
+
   </script>
 </PublicLayout>
