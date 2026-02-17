@@ -164,7 +164,7 @@ export default function SearchBar({
       <div className="relative">
         <input
           ref={inputRef}
-          type="text"
+          type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -172,7 +172,8 @@ export default function SearchBar({
             if (suggestions.length > 0) setIsOpen(true);
           }}
           placeholder={placeholder}
-          className="w-full px-4 py-3 pl-12 pr-12 text-white bg-dark-card/60 backdrop-blur-sm border border-white/10 rounded-xl placeholder:text-gray-500 focus:ring-2 focus:ring-accent-emerald/50 focus:border-accent-emerald/50 transition-all duration-300"
+          className="w-full px-4 py-3 pl-12 pr-12 text-white bg-dark-card/60 backdrop-blur-sm border border-white/10 rounded-xl placeholder:text-gray-500 focus:ring-2 focus:ring-accent-emerald/50 focus:border-accent-emerald/50 transition-all duration-300 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+          style={{ WebkitAppearance: 'none' }}
           aria-label="Buscar productos"
           aria-autocomplete="list"
           aria-controls="search-suggestions"
