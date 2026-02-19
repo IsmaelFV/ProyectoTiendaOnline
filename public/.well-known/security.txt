@@ -1,0 +1,12 @@
+# Security Policy for Fashion Store
+# https://securitytxt.org/
+
+Contact: mailto:security@fashion-store.es
+Preferred-Languages: es, en
+Canonical: https://fashion-store.es/.well-known/security.txt
+Expires: 2027-02-19T00:00:00.000Z
+
+# Policy
+# If you discover a security vulnerability, please report it responsibly.
+# We will acknowledge your report within 48 hours and work to resolve
+# verified vulnerabilities as quickly as possible.

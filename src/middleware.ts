@@ -20,7 +20,7 @@
  * ============================================================================
  */
 
-import { defineMiddleware } from 'astro:middleware';
+import { defineMiddleware, sequence } from 'astro:middleware';
 import { 
   verifyAdminSession, 
   updateAdminLastLogin,
@@ -28,6 +28,94 @@ import {
   type AdminUser 
 } from './lib/auth';
 import type { User } from '@supabase/supabase-js';
+
+// ============================================================================
+// MIDDLEWARE DE HEADERS DE SEGURIDAD HTTP
+// ============================================================================
+const securityHeaders = defineMiddleware(async (_context, next) => {
+  const response = await next();
+
+  // ---------- Strict-Transport-Security (HSTS) ----------
+  // Fuerza HTTPS durante 1 año, incluye subdominios, permite preload list
+  response.headers.set(
+    'Strict-Transport-Security',
+    'max-age=31536000; includeSubDomains; preload'
+  );
+
+  // ---------- Content-Security-Policy (CSP) ----------
+  // Política restrictiva adaptada a los servicios que usa la tienda
+  const cspDirectives = [
+    // Base: solo mismo origen
+    "default-src 'self'",
+
+    // Scripts: mismo origen + inline de Astro/Vite (necesario para islands)
+    "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+
+    // Estilos: mismo origen + inline (Tailwind/Astro) + Google Fonts
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+
+    // Imágenes: mismo origen + cualquier HTTPS (productos pueden tener URLs externas)
+    "img-src 'self' data: blob: https:",
+
+    // Fuentes: mismo origen + Google Fonts CDN
+    "font-src 'self' https://fonts.gstatic.com",
+
+    // Conexiones API: mismo origen + Supabase API + Stripe
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://api.cloudinary.com",
+
+    // Frames: solo Stripe (checkout embebido si se usa)
+    "frame-src https://js.stripe.com https://hooks.stripe.com",
+
+    // Objetos embebidos: ninguno
+    "object-src 'none'",
+
+    // Base URI: solo mismo origen (previene ataques de base-tag injection)
+    "base-uri 'self'",
+
+    // Form actions: mismo origen + Stripe checkout
+    "form-action 'self' https://checkout.stripe.com",
+
+    // Frame ancestors: ninguno (equivalente a X-Frame-Options DENY)
+    "frame-ancestors 'none'",
+
+    // Forzar HTTPS en recursos mixtos
+    "upgrade-insecure-requests",
+  ];
+
+  response.headers.set('Content-Security-Policy', cspDirectives.join('; '));
+
+  // ---------- X-Content-Type-Options ----------
+  // Previene MIME-type sniffing
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+
+  // ---------- X-Frame-Options ----------
+  // Previene clickjacking (legacy, CSP frame-ancestors es el moderno)
+  response.headers.set('X-Frame-Options', 'DENY');
+
+  // ---------- X-XSS-Protection ----------
+  // Legacy XSS filter del navegador
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+
+  // ---------- Referrer-Policy ----------
+  // Envía origen solo en same-origin, no leakea URLs completas a terceros
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  // ---------- Permissions-Policy ----------
+  // Restringe APIs del navegador que la tienda no necesita
+  response.headers.set(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), payment=(self "https://js.stripe.com"), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
+  );
+
+  // ---------- X-DNS-Prefetch-Control ----------
+  // Permite DNS prefetch para mejorar rendimiento
+  response.headers.set('X-DNS-Prefetch-Control', 'on');
+
+  // ---------- Cross-Origin Policies ----------
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+
+  return response;
+});
 
 // Extender el tipo de locals
 declare global {
@@ -52,7 +140,10 @@ const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutos
 // Rate limiting simple (en producción usar Redis)
 const loginAttempts = new Map<string, { count: number; firstAttempt: number }>();
 
-export const onRequest = defineMiddleware(async ({ locals, url, cookies, redirect, request }, next) => {
+// ============================================================================
+// MIDDLEWARE DE AUTENTICACIÓN Y AUTORIZACIÓN
+// ============================================================================
+const authMiddleware = defineMiddleware(async ({ locals, url, cookies, redirect, request }, next) => {
   // Inicializar locals
   locals.isAdmin = false;
   locals.isCustomer = false;
@@ -202,3 +293,8 @@ export function recordLoginAttempt(ip: string): void {
     }
   }
 }
+
+// ============================================================================
+// EXPORTAR MIDDLEWARE COMBINADO: Security Headers + Auth
+// ============================================================================
+export const onRequest = sequence(securityHeaders, authMiddleware);
