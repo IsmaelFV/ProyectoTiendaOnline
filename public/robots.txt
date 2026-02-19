@@ -1,7 +1,18 @@
 User-agent: *
+Disallow: /admin/
 Disallow: /internal-admin/
 Disallow: /api/
+Disallow: /auth/
+Disallow: /perfil/
+Disallow: /checkout/
+Disallow: /test-session
 
 Allow: /
 Allow: /productos/
 Allow: /categoria/
+Allow: /mujer/
+Allow: /hombre/
+Allow: /novedades
+Allow: /ofertas
+
+Sitemap: https://mccook8g4sw8kg8kw8kkwoko.victoriafp.online/sitemap.xml

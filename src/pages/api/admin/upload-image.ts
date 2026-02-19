@@ -60,8 +60,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         user = refreshData.user;
         // Actualizar cookies con nuevos tokens
         if (refreshData.session) {
-          cookies.set('sb-access-token', refreshData.session.access_token, { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' });
-          cookies.set('sb-refresh-token', refreshData.session.refresh_token, { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' });
+          cookies.set('sb-access-token', refreshData.session.access_token, { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax', secure: import.meta.env.PROD });
+          cookies.set('sb-refresh-token', refreshData.session.refresh_token, { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax', secure: import.meta.env.PROD });
         }
       } else {
         return new Response(JSON.stringify({ error: 'Usuario no válido' }), {
