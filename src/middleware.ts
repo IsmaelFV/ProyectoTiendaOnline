@@ -32,89 +32,46 @@ import type { User } from '@supabase/supabase-js';
 // ============================================================================
 // MIDDLEWARE DE HEADERS DE SEGURIDAD HTTP
 // ============================================================================
+const SECURITY_HEADERS: Record<string, string> = {
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' https://fonts.gstatic.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://api.cloudinary.com",
+    "frame-src https://js.stripe.com https://hooks.stripe.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self' https://checkout.stripe.com",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests",
+  ].join('; '),
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(self "https://js.stripe.com"), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
+  'X-DNS-Prefetch-Control': 'on',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+};
+
 const securityHeaders = defineMiddleware(async (_context, next) => {
   const response = await next();
 
-  // ---------- Strict-Transport-Security (HSTS) ----------
-  // Fuerza HTTPS durante 1 año, incluye subdominios, permite preload list
-  response.headers.set(
-    'Strict-Transport-Security',
-    'max-age=31536000; includeSubDomains; preload'
-  );
+  // Crear un Response NUEVO para garantizar que los headers se aplican
+  // (algunos Response de Astro pueden tener headers inmutables)
+  const newHeaders = new Headers(response.headers);
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    newHeaders.set(key, value);
+  }
 
-  // ---------- Content-Security-Policy (CSP) ----------
-  // Política restrictiva adaptada a los servicios que usa la tienda
-  const cspDirectives = [
-    // Base: solo mismo origen
-    "default-src 'self'",
-
-    // Scripts: mismo origen + inline de Astro/Vite (necesario para islands)
-    "script-src 'self' 'unsafe-inline' https://js.stripe.com",
-
-    // Estilos: mismo origen + inline (Tailwind/Astro) + Google Fonts
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-
-    // Imágenes: mismo origen + cualquier HTTPS (productos pueden tener URLs externas)
-    "img-src 'self' data: blob: https:",
-
-    // Fuentes: mismo origen + Google Fonts CDN
-    "font-src 'self' https://fonts.gstatic.com",
-
-    // Conexiones API: mismo origen + Supabase API + Stripe
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://api.cloudinary.com",
-
-    // Frames: solo Stripe (checkout embebido si se usa)
-    "frame-src https://js.stripe.com https://hooks.stripe.com",
-
-    // Objetos embebidos: ninguno
-    "object-src 'none'",
-
-    // Base URI: solo mismo origen (previene ataques de base-tag injection)
-    "base-uri 'self'",
-
-    // Form actions: mismo origen + Stripe checkout
-    "form-action 'self' https://checkout.stripe.com",
-
-    // Frame ancestors: ninguno (equivalente a X-Frame-Options DENY)
-    "frame-ancestors 'none'",
-
-    // Forzar HTTPS en recursos mixtos
-    "upgrade-insecure-requests",
-  ];
-
-  response.headers.set('Content-Security-Policy', cspDirectives.join('; '));
-
-  // ---------- X-Content-Type-Options ----------
-  // Previene MIME-type sniffing
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-
-  // ---------- X-Frame-Options ----------
-  // Previene clickjacking (legacy, CSP frame-ancestors es el moderno)
-  response.headers.set('X-Frame-Options', 'DENY');
-
-  // ---------- X-XSS-Protection ----------
-  // Legacy XSS filter del navegador
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-
-  // ---------- Referrer-Policy ----------
-  // Envía origen solo en same-origin, no leakea URLs completas a terceros
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-
-  // ---------- Permissions-Policy ----------
-  // Restringe APIs del navegador que la tienda no necesita
-  response.headers.set(
-    'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), payment=(self "https://js.stripe.com"), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
-  );
-
-  // ---------- X-DNS-Prefetch-Control ----------
-  // Permite DNS prefetch para mejorar rendimiento
-  response.headers.set('X-DNS-Prefetch-Control', 'on');
-
-  // ---------- Cross-Origin Policies ----------
-  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
-
-  return response;
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: newHeaders,
+  });
 });
 
 // Extender el tipo de locals
