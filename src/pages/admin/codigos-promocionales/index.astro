@@ -176,7 +176,7 @@ const now = new Date();
   </div>
 
   {/* Modal: Crear / Editar Código */}
-  <div id="codeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+  <div id="codeModal" class="hidden fixed inset-0 z-50 items-center justify-center">
     <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="codeModalOverlay"></div>
     <div class="relative bg-dark-surface border border-white/10 rounded-xl w-full max-w-lg mx-4 p-6 space-y-5 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between">
@@ -340,10 +340,12 @@ const now = new Date();
 
   function openModal() {
     modal?.classList.remove('hidden');
+    modal?.classList.add('flex');
   }
 
   function closeModal() {
     modal?.classList.add('hidden');
+    modal?.classList.remove('flex');
     resetModal();
   }
 

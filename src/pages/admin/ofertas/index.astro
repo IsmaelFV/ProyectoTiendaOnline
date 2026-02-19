@@ -159,7 +159,7 @@ if (noSaleError) console.error('Error cargando productos sin oferta:', noSaleErr
   </div>
 
   {/* Modal: Añadir Nueva Oferta */}
-  <div id="addOfferModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+  <div id="addOfferModal" class="hidden fixed inset-0 z-50 items-center justify-center">
     <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="addOfferOverlay"></div>
     <div class="relative bg-dark-surface border border-white/10 rounded-xl w-full max-w-lg mx-4 p-6 space-y-6">
       <div class="flex items-center justify-between">
@@ -218,7 +218,7 @@ if (noSaleError) console.error('Error cargando productos sin oferta:', noSaleErr
   </div>
 
   {/* Modal: Editar Oferta */}
-  <div id="editOfferModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+  <div id="editOfferModal" class="hidden fixed inset-0 z-50 items-center justify-center">
     <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="editOfferOverlay"></div>
     <div class="relative bg-dark-surface border border-white/10 rounded-xl w-full max-w-lg mx-4 p-6 space-y-6">
       <div class="flex items-center justify-between">
@@ -407,10 +407,12 @@ if (noSaleError) console.error('Error cargando productos sin oferta:', noSaleErr
 
     document.getElementById('openAddOfferModal')?.addEventListener('click', () => {
       addModal?.classList.remove('hidden');
+      addModal?.classList.add('flex');
     });
 
   function closeAddModal() {
     addModal?.classList.add('hidden');
+    addModal?.classList.remove('flex');
     if (addProductSelect) addProductSelect.value = '';
     if (addDiscountInput) addDiscountInput.value = '';
     if (addPreview) addPreview.textContent = '—';
@@ -489,11 +491,13 @@ if (noSaleError) console.error('Error cargando productos sin oferta:', noSaleErr
       if (editDiscountInput) editDiscountInput.value = discount;
       updateEditPreview();
       editModal?.classList.remove('hidden');
+      editModal?.classList.add('flex');
     });
   });
 
   function closeEditModal() {
     editModal?.classList.add('hidden');
+    editModal?.classList.remove('flex');
   }
 
   document.getElementById('closeEditModal')?.addEventListener('click', closeEditModal);

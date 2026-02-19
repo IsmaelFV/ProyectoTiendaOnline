@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
 
 interface Review {
   id: string;
   product_id: string;
   user_id: string;
+  user_name: string;
   rating: number;
   title: string | null;
   comment: string | null;
@@ -78,6 +80,8 @@ export default function ProductReviews({ productId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
 
   const fetchReviews = async () => {
     try {
@@ -87,11 +91,45 @@ export default function ProductReviews({ productId }: Props) {
         setReviews(data.reviews);
         setStats(data.stats);
       }
-    } catch { /* ignore */ }
-    setLoading(false);
+    } catch (err) {
+      console.error('[REVIEWS] Error loading reviews:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Obtener el usuario actual desde la sesión
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setCurrentUserId(session?.user?.id || null);
+      } catch (err) {
+        console.error('[REVIEWS] Error checking user session:', err);
+      }
+    };
+    checkUser();
+  }, []);
+
   useEffect(() => { fetchReviews(); }, [productId]);
+
+  const startEditing = (review: Review) => {
+    setEditingReview(review);
+    setFormRating(review.rating);
+    setFormTitle(review.title || '');
+    setFormComment(review.comment || '');
+    setShowForm(true);
+    setError('');
+  };
+
+  const cancelForm = () => {
+    setShowForm(false);
+    setEditingReview(null);
+    setFormRating(0);
+    setFormTitle('');
+    setFormComment('');
+    setError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,20 +151,18 @@ export default function ProductReviews({ productId }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      setSuccess('¡Reseña publicada! Gracias por tu opinión.');
-      setShowForm(false);
-      setFormRating(0);
-      setFormTitle('');
-      setFormComment('');
+      setSuccess(editingReview ? '¡Reseña actualizada!' : '¡Reseña publicada! Gracias por tu opinión.');
+      cancelForm();
       fetchReviews();
       setTimeout(() => setSuccess(''), 4000);
-    } catch (err: any) {
-      setError(err.message || 'Error al enviar la reseña');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al enviar la reseña');
     }
     setSubmitting(false);
   };
 
-  const maxDistribution = Math.max(...stats.distribution, 1);
+  // Verificar si el usuario actual ya tiene una reseña
+  const userReview = currentUserId ? reviews.find(r => r.user_id === currentUserId) : null;
 
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16 border-t border-white/5">
@@ -188,13 +224,22 @@ export default function ProductReviews({ productId }: Props) {
                 </div>
               )}
 
-              {/* Botón escribir reseña */}
-              <button
-                onClick={() => setShowForm(!showForm)}
-                className="w-full mt-5 px-4 py-2.5 text-sm font-medium bg-amber-400/10 text-amber-400 rounded-xl border border-amber-400/20 hover:bg-amber-400/20 transition-all"
-              >
-                {showForm ? 'Cancelar' : 'Escribir una opinión'}
-              </button>
+              {/* Botón escribir/editar reseña */}
+              {userReview && !showForm ? (
+                <button
+                  onClick={() => startEditing(userReview)}
+                  className="w-full mt-5 px-4 py-2.5 text-sm font-medium bg-amber-400/10 text-amber-400 rounded-xl border border-amber-400/20 hover:bg-amber-400/20 transition-all"
+                >
+                  ✏️ Editar mi opinión
+                </button>
+              ) : (
+                <button
+                  onClick={() => showForm ? cancelForm() : setShowForm(true)}
+                  className="w-full mt-5 px-4 py-2.5 text-sm font-medium bg-amber-400/10 text-amber-400 rounded-xl border border-amber-400/20 hover:bg-amber-400/20 transition-all"
+                >
+                  {showForm ? 'Cancelar' : 'Escribir una opinión'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -215,7 +260,9 @@ export default function ProductReviews({ productId }: Props) {
             {/* Formulario */}
             {showForm && (
               <form onSubmit={handleSubmit} className="bg-white/[0.02] rounded-2xl border border-white/5 p-6 space-y-4">
-                <h3 className="text-sm font-semibold text-white">Tu opinión</h3>
+                <h3 className="text-sm font-semibold text-white">
+                  {editingReview ? 'Editar tu opinión' : 'Tu opinión'}
+                </h3>
                 
                 <div>
                   <label className="block text-xs text-gray-400 mb-2">Valoración *</label>
@@ -250,7 +297,7 @@ export default function ProductReviews({ productId }: Props) {
                   disabled={submitting || formRating === 0}
                   className="px-6 py-2.5 text-sm font-medium bg-amber-400 text-gray-900 rounded-xl hover:bg-amber-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {submitting ? 'Enviando...' : 'Publicar opinión'}
+                  {submitting ? 'Enviando...' : editingReview ? 'Actualizar opinión' : 'Publicar opinión'}
                 </button>
               </form>
             )}
@@ -258,36 +305,66 @@ export default function ProductReviews({ productId }: Props) {
             {/* Lista de reseñas */}
             {reviews.length > 0 ? (
               <div className="space-y-4">
-                {reviews.map((review) => (
-                  <article
-                    key={review.id}
-                    className="bg-white/[0.02] rounded-xl border border-white/5 p-5"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-amber-400/10 flex items-center justify-center">
-                          <span className="text-amber-400 text-xs font-bold">
-                            {review.user_id.substring(0, 2).toUpperCase()}
+                {reviews.map((review) => {
+                  const initials = (review.user_name || 'AN')
+                    .split(' ')
+                    .filter(Boolean)
+                    .map(w => w[0])
+                    .slice(0, 2)
+                    .join('')
+                    .toUpperCase();
+                  const isOwn = currentUserId === review.user_id;
+
+                  return (
+                    <article
+                      key={review.id}
+                      className={`bg-white/[0.02] rounded-xl border p-5 ${isOwn ? 'border-amber-400/20' : 'border-white/5'}`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-amber-400/10 flex items-center justify-center">
+                            <span className="text-amber-400 text-xs font-bold">
+                              {initials}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-400">{review.user_name || 'Anónimo'}</span>
+                              {isOwn && (
+                                <span className="text-[10px] text-amber-400/60 bg-amber-400/10 px-1.5 py-0.5 rounded">Tu opinión</span>
+                              )}
+                            </div>
+                            <StarRating rating={review.rating} size="sm" />
+                            {review.title && (
+                              <h4 className="text-sm font-medium text-white mt-1">{review.title}</h4>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isOwn && !showForm && (
+                            <button
+                              onClick={() => startEditing(review)}
+                              className="text-[11px] text-amber-400/70 hover:text-amber-400 transition-colors"
+                              title="Editar mi opinión"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                              </svg>
+                            </button>
+                          )}
+                          <span className="text-[11px] text-gray-600 whitespace-nowrap">
+                            {timeAgo(review.created_at)}
                           </span>
                         </div>
-                        <div>
-                          <StarRating rating={review.rating} size="sm" />
-                          {review.title && (
-                            <h4 className="text-sm font-medium text-white mt-1">{review.title}</h4>
-                          )}
-                        </div>
                       </div>
-                      <span className="text-[11px] text-gray-600 whitespace-nowrap">
-                        {timeAgo(review.created_at)}
-                      </span>
-                    </div>
-                    {review.comment && (
-                      <p className="text-sm text-gray-400 leading-relaxed ml-11">
-                        {review.comment}
-                      </p>
-                    )}
-                  </article>
-                ))}
+                      {review.comment && (
+                        <p className="text-sm text-gray-400 leading-relaxed ml-11">
+                          {review.comment}
+                        </p>
+                      )}
+                    </article>
+                  );
+                })}
               </div>
             ) : !showForm && (
               <div className="text-center py-12 bg-white/[0.01] rounded-2xl border border-white/5">

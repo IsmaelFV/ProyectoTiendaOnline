@@ -60,10 +60,44 @@ const SIZE_CHARTS: Record<Gender, Record<string, { chest: [number, number]; wais
 
 const STORAGE_KEY = 'fm_size_profile';
 
+// Mapeo de tallas numéricas europeas → letras estándar, por género
+const NUMERIC_TO_LETTER_BY_GENDER: Record<Gender, Record<string, string>> = {
+  mujer: {
+    '34': 'XS', '36': 'S', '38': 'M', '40': 'L', '42': 'XL', '44': 'XXL',
+    '35': 'XS', '37': 'S', '39': 'M', '41': 'L', '43': 'XL', '45': 'XXL',
+  },
+  hombre: {
+    '28': 'XS', '30': 'XS', '32': 'S', '34': 'S', '36': 'M',
+    '38': 'M', '40': 'L', '42': 'L', '44': 'XL', '46': 'XXL',
+  },
+};
+
+// Inverso: letra → numéricas posibles (por género)
+function buildLetterToNumeric(gender: Gender): Record<string, string[]> {
+  const map: Record<string, string[]> = {};
+  for (const [num, letter] of Object.entries(NUMERIC_TO_LETTER_BY_GENDER[gender])) {
+    if (!map[letter]) map[letter] = [];
+    map[letter].push(num);
+  }
+  return map;
+}
+
 function loadProfile(): Partial<UserMeasures> | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+
+    // Validar estructura mínima para evitar datos corruptos/maliciosos
+    if (typeof data !== 'object' || data === null) return null;
+    const valid: Partial<UserMeasures> = {};
+    if (data.gender === 'mujer' || data.gender === 'hombre') valid.gender = data.gender;
+    if (typeof data.height === 'number' && data.height >= 100 && data.height <= 230) valid.height = data.height;
+    if (typeof data.chest === 'number' && data.chest >= 50 && data.chest <= 180) valid.chest = data.chest;
+    if (typeof data.waist === 'number' && data.waist >= 40 && data.waist <= 170) valid.waist = data.waist;
+    if (typeof data.hip === 'number' && data.hip >= 50 && data.hip <= 180) valid.hip = data.hip;
+    if (data.fit === 'ajustado' || data.fit === 'normal' || data.fit === 'holgado') valid.fit = data.fit;
+    return Object.keys(valid).length > 0 ? valid : null;
   } catch { return null; }
 }
 
@@ -73,13 +107,21 @@ function saveProfile(m: UserMeasures) {
 
 /** Puntuación 0–100 de cómo encaja un valor en un rango [min, max] */
 function measureScore(value: number, [min, max]: [number, number]): number {
+  const rangeSpan = max - min;
+
+  // Rango degenerado (min === max): match exacto = 100, distancia lineal desde ahí
+  if (rangeSpan === 0) {
+    const dist = Math.abs(value - min);
+    return Math.max(0, 100 - dist * 5);
+  }
+
   if (value >= min && value <= max) {
     const mid = (min + max) / 2;
-    const dist = Math.abs(value - mid) / ((max - min) / 2);
+    const dist = Math.abs(value - mid) / (rangeSpan / 2);
     return 100 - (dist * 20);
   }
+
   const dist = value < min ? min - value : value - max;
-  const rangeSpan = max - min;
   return Math.max(0, 80 - (dist / rangeSpan) * 80);
 }
 
@@ -89,25 +131,18 @@ function recommendSize(measures: UserMeasures, availableSizes: string[], customM
   // Si hay medidas personalizadas del producto, usarlas como fuente principal
   const useCustom = customMeasurements && Object.keys(customMeasurements).length > 0;
   
+  // Detectar si las tallas del producto son numéricas (ej: '36','38','40')
+  const hasNumericSizes = availableSizes.some(s => /^\d+$/.test(s));
+  const hasLetterSizes = availableSizes.some(s => /^[A-Z]/.test(s));
+  
   const allSizeKeys = useCustom ? Object.keys(customMeasurements) : Object.keys(chart);
   const results: SizeMatch[] = [];
 
-  for (const size of allSizeKeys) {
-    if (!availableSizes.includes(size)) continue;
-    
-    // Usar medidas personalizadas si están disponibles, si no las estándar
-    const customR = customMeasurements?.[size];
-    const standardR = chart[size];
-    
-    if (!customR && !standardR) continue;
-    
-    const ranges = {
-      chest: customR?.chest || standardR?.chest || [0, 999],
-      waist: customR?.waist || standardR?.waist || [0, 999],
-      hip: customR?.hip || standardR?.hip || [0, 999],
-      height: standardR?.height || [150, 200],
-    };
-
+  /** Calcula score y confianza para unas medidas dadas contra un rango */
+  function scoreSizeRanges(
+    ranges: { chest: [number, number]; waist: [number, number]; hip: [number, number]; height: [number, number] },
+    sizeLabel: string,
+  ): SizeMatch {
     const chestScore  = measureScore(measures.chest,  ranges.chest);
     const waistScore  = measureScore(measures.waist,  ranges.waist);
     const hipScore    = measureScore(measures.hip,    ranges.hip);
@@ -124,7 +159,78 @@ function recommendSize(measures: UserMeasures, availableSizes: string[], customM
     const confidence: SizeMatch['confidence'] =
       score >= 80 ? 'perfecto' : score >= 55 ? 'bueno' : 'aproximado';
 
-    results.push({ size, score, confidence });
+    return { size: sizeLabel, score, confidence };
+  }
+
+  // Si las tallas del producto son numéricas y no hay custom measurements,
+  // necesitamos iterar las tallas del chart y mapear a las numéricas del producto
+  if (hasNumericSizes && !hasLetterSizes && !useCustom) {
+    const letterToNumeric = buildLetterToNumeric(measures.gender);
+    for (const letterSize of Object.keys(chart)) {
+      // Buscar qué tallas numéricas disponibles corresponden a esta letra
+      const numericEquivalents = letterToNumeric[letterSize] || [];
+      const matchingNumeric = numericEquivalents.find(n => availableSizes.includes(n));
+      if (!matchingNumeric) continue;
+      
+      const standardR = chart[letterSize];
+      if (!standardR) continue;
+      
+      const ranges = {
+        chest: standardR.chest,
+        waist: standardR.waist,
+        hip: standardR.hip,
+        height: standardR.height || [150, 200] as [number, number],
+      };
+
+      // Guardar con la talla numérica real del producto
+      results.push(scoreSizeRanges(ranges, matchingNumeric));
+    }
+
+    // Aplicar ajustes de fit para tallas numéricas
+    if (measures.fit === 'holgado' && results.length >= 2) {
+      results.sort((a, b) => b.score - a.score);
+      const bestNumeric = parseInt(results[0].size, 10);
+      const nextUp = availableSizes
+        .filter(s => parseInt(s, 10) > bestNumeric)
+        .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))[0];
+      if (nextUp) {
+        const match = results.find(item => item.size === nextUp);
+        if (match) match.score = Math.min(100, match.score + 15);
+      }
+    }
+    if (measures.fit === 'ajustado' && results.length >= 2) {
+      results.sort((a, b) => b.score - a.score);
+      const bestNumeric = parseInt(results[0].size, 10);
+      const prevDown = availableSizes
+        .filter(s => parseInt(s, 10) < bestNumeric)
+        .sort((a, b) => parseInt(b, 10) - parseInt(a, 10))[0];
+      if (prevDown) {
+        const match = results.find(item => item.size === prevDown);
+        if (match) match.score = Math.min(100, match.score + 10);
+      }
+    }
+
+    return results.sort((a, b) => b.score - a.score);
+  }
+
+  // Flujo estándar: tallas en letras o con medidas personalizadas
+  for (const size of allSizeKeys) {
+    if (!availableSizes.includes(size)) continue;
+    
+    // Usar medidas personalizadas si están disponibles, si no las estándar
+    const customR = customMeasurements?.[size];
+    const standardR = chart[size];
+    
+    if (!customR && !standardR) continue;
+    
+    const ranges = {
+      chest: customR?.chest || standardR?.chest || [0, 999] as [number, number],
+      waist: customR?.waist || standardR?.waist || [0, 999] as [number, number],
+      hip: customR?.hip || standardR?.hip || [0, 999] as [number, number],
+      height: standardR?.height || [150, 200] as [number, number],
+    };
+
+    results.push(scoreSizeRanges(ranges, size));
   }
 
   // Ajuste de fit: favorecer talla superior/inferior según preferencia
@@ -133,8 +239,8 @@ function recommendSize(measures: UserMeasures, availableSizes: string[], customM
     const bestIdx = allSizeKeys.indexOf(results[0].size);
     const nextSize = allSizeKeys[bestIdx + 1];
     if (nextSize && availableSizes.includes(nextSize)) {
-      const r = results.find(r => r.size === nextSize);
-      if (r) r.score = Math.min(100, r.score + 15);
+      const match = results.find(item => item.size === nextSize);
+      if (match) match.score = Math.min(100, match.score + 15);
     }
   }
   if (measures.fit === 'ajustado' && results.length >= 2) {
@@ -142,8 +248,8 @@ function recommendSize(measures: UserMeasures, availableSizes: string[], customM
     const bestIdx = allSizeKeys.indexOf(results[0].size);
     const prevSize = allSizeKeys[bestIdx - 1];
     if (prevSize && availableSizes.includes(prevSize)) {
-      const r = results.find(r => r.size === prevSize);
-      if (r) r.score = Math.min(100, r.score + 10);
+      const match = results.find(item => item.size === prevSize);
+      if (match) match.score = Math.min(100, match.score + 10);
     }
   }
 
@@ -192,11 +298,14 @@ export default function SizeRecommender({ productSizes, onSelectSize, sizeMeasur
   };
 
   const calculate = () => {
-    const h = parseInt(height);
-    const c = parseInt(chest);
-    const w = parseInt(waist);
-    const hp = parseInt(hip);
+    const h = parseInt(height, 10);
+    const c = parseInt(chest, 10);
+    const w = parseInt(waist, 10);
+    const hp = parseInt(hip, 10);
     if (!gender || isNaN(h) || isNaN(c) || isNaN(w) || isNaN(hp)) return;
+
+    // Validar rangos razonables (cm)
+    if (h < 100 || h > 230 || c < 50 || c > 180 || w < 40 || w > 170 || hp < 50 || hp > 180) return;
 
     const measures: UserMeasures = { gender, height: h, chest: c, waist: w, hip: hp, fit };
     saveProfile(measures);
@@ -453,6 +562,28 @@ export default function SizeRecommender({ productSizes, onSelectSize, sizeMeasur
             )}
 
             {/* ─── PASO 4: Resultado ─── */}
+            {step === 'result' && results.length === 0 && (
+              <div className="space-y-4">
+                <div className="text-center p-6 rounded-xl bg-white/5 border border-white/10">
+                  <div className="text-4xl mb-3">🤔</div>
+                  <p className="text-white font-medium mb-1">No hemos podido determinar tu talla</p>
+                  <p className="text-sm text-gray-400">
+                    Este producto usa un sistema de tallas que no pudimos mapear con tus medidas.
+                    Te recomendamos consultar la guía de tallas del producto o contactar con nosotros.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => { setStep('measures'); setResults([]); }}
+                    className="flex-1 py-2.5 text-sm text-gray-400 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
+                    Volver a medir
+                  </button>
+                  <button onClick={closeModal}
+                    className="flex-1 py-2.5 text-sm bg-accent-gold text-[#1a1a2e] rounded-lg font-semibold hover:bg-accent-gold/90 transition-colors">
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            )}
             {step === 'result' && results.length > 0 && (
               <div className="space-y-4">
                 {/* Talla principal */}

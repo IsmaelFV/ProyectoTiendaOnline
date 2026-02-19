@@ -78,7 +78,7 @@ if (relatedProducts.length < 4 && product.gender_id) {
 }
 // JSON-LD de producto
 const productUrl = `${Astro.url.origin}/productos/${product.slug}`;
-const productJsonLd = JSON.stringify({
+const productJsonLd = {
   "@context": "https://schema.org",
   "@type": "Product",
   "name": product.name,
@@ -95,7 +95,7 @@ const productJsonLd = JSON.stringify({
     ...(product.is_on_sale && product.sale_price ? { "priceValidUntil": new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] } : {})
   },
   ...(product.brand ? { "brand": { "@type": "Brand", "name": product.brand } } : {}),
-});
+};
 
 // Calcular stock real desde stock_by_size para evitar desincronización con campo stock
 const stockBySize = product.stock_by_size as Record<string, number> | null;

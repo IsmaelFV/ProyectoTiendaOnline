@@ -1,9 +1,9 @@
 # Security Policy for Fashion Store
 # https://securitytxt.org/
 
-Contact: mailto:security@fashion-store.es
+Contact: mailto:security@victoriafp.online
 Preferred-Languages: es, en
-Canonical: https://fashion-store.es/.well-known/security.txt
+Canonical: https://mccook8g4sw8kg8kw8kkwoko.victoriafp.online/.well-known/security.txt
 Expires: 2027-02-19T00:00:00.000Z
 
 # Policy

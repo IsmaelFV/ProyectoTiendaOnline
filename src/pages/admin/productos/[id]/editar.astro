@@ -456,19 +456,19 @@ if (categories && genders) {
   const productImagesJson = dataEl?.dataset.images || '[]';
   const productStockBySizeJson = dataEl?.dataset.stockBySize || '{}';
   
-  const form = document.getElementById('editProductForm');
-  const message = document.getElementById('message');
-  const deleteBtn = document.getElementById('deleteBtn');
+  const form = document.getElementById('editProductForm') as HTMLFormElement;
+  const message = document.getElementById('message') as HTMLDivElement;
+  const deleteBtn = document.getElementById('deleteBtn') as HTMLButtonElement;
 
   // === Oferta: Toggle y cálculo ===
-  const saleCheckbox = document.getElementById('is_on_sale');
+  const saleCheckbox = document.getElementById('is_on_sale') as HTMLInputElement | null;
   const saleFields = document.getElementById('sale-fields');
-  const discountInput = document.getElementById('discount_percentage');
-  const priceInput = document.getElementById('price');
+  const discountInput = document.getElementById('discount_percentage') as HTMLInputElement | null;
+  const priceInput = document.getElementById('price') as HTMLInputElement | null;
   const salePreview = document.getElementById('sale-price-preview');
 
   function toggleSaleFields() {
-    if (saleCheckbox.checked) {
+    if (saleCheckbox?.checked) {
       saleFields?.classList.remove('hidden');
       saleFields?.classList.add('grid');
     } else {
@@ -493,7 +493,7 @@ if (categories && genders) {
   priceInput?.addEventListener('input', updateSalePreview);
 
   // Función para mostrar mensajes
-  function showMessage(text, isError = false) {
+  function showMessage(text: string, isError = false) {
     message.textContent = text;
     message.className = `p-4 rounded-lg ${isError ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'}`;
     message.classList.remove('hidden');
@@ -507,7 +507,7 @@ if (categories && genders) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const submitBtn = form.querySelector('button[type="submit"]');
+    const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
     const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
     submitBtn.textContent = 'Guardando...';
@@ -533,7 +533,7 @@ if (categories && genders) {
         window.location.href = '/admin/productos';
       }, 2000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
       showMessage(error.message, true);
       submitBtn.disabled = false;
@@ -582,7 +582,7 @@ if (categories && genders) {
         window.location.href = '/admin/productos';
       }, 1000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
       showMessage(error.message, true);
       deleteBtn.disabled = false;
@@ -601,24 +601,24 @@ if (categories && genders) {
   };
 
   // Tallas actuales del producto (inyectadas desde Astro)
-  const currentSizes = typeof productSizesJson === 'string' ? JSON.parse(productSizesJson) : (Array.isArray(productSizesJson) ? productSizesJson : []);
-  let selectedSizes = new Set(currentSizes);
+  const currentSizes: string[] = typeof productSizesJson === 'string' ? JSON.parse(productSizesJson) : (Array.isArray(productSizesJson) ? productSizesJson : []);
+  let selectedSizes = new Set<string>(currentSizes);
   let currentPreset = '';
-  const sizesGrid = document.getElementById('sizes-grid');
-  const sizesHidden = document.getElementById('sizes-hidden');
-  const sizesSummary = document.getElementById('sizes-summary');
-  const customInput = document.getElementById('custom-size-input');
-  const addCustomBtn = document.getElementById('add-custom-size');
+  const sizesGrid = document.getElementById('sizes-grid') as HTMLDivElement;
+  const sizesHidden = document.getElementById('sizes-hidden') as HTMLInputElement;
+  const sizesSummary = document.getElementById('sizes-summary') as HTMLDivElement;
+  const customInput = document.getElementById('custom-size-input') as HTMLInputElement | null;
+  const addCustomBtn = document.getElementById('add-custom-size') as HTMLButtonElement | null;
   const stockBySizeSection = document.getElementById('stock-by-size-section');
-  const stockBySizeGrid = document.getElementById('stock-by-size-grid');
-  const stockBySizeHidden = document.getElementById('stock-by-size-hidden');
-  const stockTotalInput = document.getElementById('stock');
+  const stockBySizeGrid = document.getElementById('stock-by-size-grid') as HTMLDivElement;
+  const stockBySizeHidden = document.getElementById('stock-by-size-hidden') as HTMLInputElement;
+  const stockTotalInput = document.getElementById('stock') as HTMLInputElement;
 
   // Cargar stock por talla existente
-  const currentStockBySize = typeof productStockBySizeJson === 'string' 
+  const currentStockBySize: Record<string, number> = typeof productStockBySizeJson === 'string' 
     ? JSON.parse(productStockBySizeJson) 
     : (productStockBySizeJson || {});
-  let stockBySize = { ...currentStockBySize };
+  let stockBySize: Record<string, number> = { ...currentStockBySize };
   const stockTotalBadge = document.getElementById('stock-total-badge');
   const stockSummaryEl = document.getElementById('stock-by-size-summary');
   const distributeBtn = document.getElementById('distribute-stock-btn');
@@ -629,50 +629,50 @@ if (categories && genders) {
     if (totalStock > 0) {
       const perSize = Math.floor(totalStock / currentSizes.length);
       const remainder = totalStock % currentSizes.length;
-      currentSizes.forEach((size, i) => {
+      currentSizes.forEach((size: string, i: number) => {
         stockBySize[size] = perSize + (i === currentSizes.length - 1 ? remainder : 0);
       });
     } else {
-      currentSizes.forEach(size => { stockBySize[size] = 0; });
+      currentSizes.forEach((size: string) => { stockBySize[size] = 0; });
     }
   }
 
   // Distribuir stock equitativamente
   distributeBtn?.addEventListener('click', () => {
-    const arr = Array.from(selectedSizes);
+    const arr = Array.from(selectedSizes) as string[];
     if (arr.length === 0) return;
-    const total = Object.values(stockBySize).reduce((sum, v) => sum + (v || 0), 0);
+    const total = Object.values(stockBySize).reduce((sum: number, v: number) => sum + (v || 0), 0);
     if (total === 0) {
-      arr.forEach(size => { stockBySize[size] = 0; });
+      arr.forEach((size: string) => { stockBySize[size] = 0; });
     } else {
       const perSize = Math.floor(total / arr.length);
       const remainder = total % arr.length;
-      arr.forEach((size, i) => {
+      arr.forEach((size: string, i: number) => {
         stockBySize[size] = perSize + (i === arr.length - 1 ? remainder : 0);
       });
     }
     updateStockBySizeUI();
   });
 
-  function detectPreset(sizes) {
+  function detectPreset(sizes: string[]): string {
     for (const [key, presetSizes] of Object.entries(SIZE_PRESETS)) {
-      if (sizes.every(s => presetSizes.includes(s))) return key;
+      if (sizes.every((s: string) => presetSizes.includes(s))) return key;
     }
     return 'letras';
   }
 
-  function renderSizeButtons(preset) {
-    const sizes = SIZE_PRESETS[preset] || [];
+  function renderSizeButtons(preset: string) {
+    const sizes = SIZE_PRESETS[preset as keyof typeof SIZE_PRESETS] || [];
     sizesGrid.innerHTML = '';
     // Primero poner los del preset
-    sizes.forEach(size => addSizeButton(size));
+    sizes.forEach((size: string) => addSizeButton(size));
     // Luego las custom que no están en el preset
-    selectedSizes.forEach(size => {
+    selectedSizes.forEach((size: string) => {
       if (!sizes.includes(size)) addSizeButton(size);
     });
   }
 
-  function addSizeButton(size) {
+  function addSizeButton(size: string) {
     if (sizesGrid.querySelector(`[data-size="${size}"]`)) return;
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -691,11 +691,11 @@ if (categories && genders) {
     sizesGrid.appendChild(btn);
   }
 
-  function updateSizesUI() {
-    const arr = Array.from(selectedSizes);
+  let updateSizesUI = () => {
+    const arr = Array.from(selectedSizes) as string[];
     sizesHidden.value = arr.join(',');
-    sizesGrid.querySelectorAll('.size-toggle-btn').forEach(btn => {
-      const s = btn.dataset.size;
+    sizesGrid.querySelectorAll<HTMLButtonElement>('.size-toggle-btn').forEach((btn) => {
+      const s = btn.dataset.size || '';
       if (selectedSizes.has(s)) {
         btn.className = 'size-toggle-btn px-4 py-2 text-sm rounded-lg border-2 font-medium transition-all cursor-pointer border-accent-gold bg-accent-gold/20 text-white';
       } else {
@@ -712,14 +712,14 @@ if (categories && genders) {
     updateStockBySizeUI();
   }
 
-  function getStockColor(stock) {
+  function getStockColor(stock: number) {
     if (stock === 0) return { border: 'border-red-500/40', bg: 'bg-red-500/5', badge: 'bg-red-500/20 text-red-400', text: 'text-red-400' };
     if (stock <= 3) return { border: 'border-orange-500/40', bg: 'bg-orange-500/5', badge: 'bg-orange-500/20 text-orange-400', text: 'text-orange-400' };
     if (stock <= 10) return { border: 'border-yellow-500/30', bg: 'bg-yellow-500/5', badge: 'bg-yellow-500/20 text-yellow-400', text: 'text-yellow-400' };
     return { border: 'border-emerald-500/30', bg: 'bg-emerald-500/5', badge: 'bg-emerald-500/20 text-emerald-400', text: 'text-emerald-400' };
   }
 
-  function getStockLabel(stock) {
+  function getStockLabel(stock: number) {
     if (stock === 0) return 'Sin stock';
     if (stock <= 3) return 'Muy bajo';
     if (stock <= 10) return 'Bajo';
@@ -727,7 +727,7 @@ if (categories && genders) {
   }
 
   function updateStockBySizeUI() {
-    const arr = Array.from(selectedSizes);
+    const arr = Array.from(selectedSizes) as string[];
     
     if (arr.length === 0) {
       stockBySizeSection?.classList.add('hidden');
@@ -739,14 +739,14 @@ if (categories && genders) {
     stockBySizeSection?.classList.remove('hidden');
 
     // Limpiar tallas que ya no están seleccionadas
-    Object.keys(stockBySize).forEach(size => {
+    Object.keys(stockBySize).forEach((size: string) => {
       if (!selectedSizes.has(size)) {
         delete stockBySize[size];
       }
     });
 
     // Añadir tallas nuevas con stock 0
-    arr.forEach(size => {
+    arr.forEach((size: string) => {
       if (!(size in stockBySize)) {
         stockBySize[size] = 0;
       }
@@ -754,7 +754,7 @@ if (categories && genders) {
 
     // Renderizar inputs con indicadores de color
     stockBySizeGrid.innerHTML = '';
-    arr.forEach(size => {
+    arr.forEach((size: string) => {
       const stock = stockBySize[size] || 0;
       const colors = getStockColor(stock);
       const div = document.createElement('div');
@@ -782,18 +782,18 @@ if (categories && genders) {
     });
 
     // Event listeners para inputs con actualización visual en tiempo real
-    stockBySizeGrid.querySelectorAll('.stock-size-input').forEach(input => {
+    stockBySizeGrid.querySelectorAll<HTMLInputElement>('.stock-size-input').forEach((input) => {
       input.addEventListener('input', () => {
         const size = input.dataset.size || '';
         const val = parseInt(input.value) || 0;
         stockBySize[size] = val;
         
         // Actualizar indicador visual de este input
-        const container = input.closest('[data-stock-size]');
+        const container = input.closest('[data-stock-size]') as HTMLElement | null;
         if (container) {
           const colors = getStockColor(val);
           container.className = `flex flex-col gap-1.5 rounded-lg p-3 border ${colors.border} ${colors.bg} transition-all duration-200`;
-          const label = container.querySelector('.stock-label');
+          const label = container.querySelector('.stock-label') as HTMLElement | null;
           if (label) {
             label.className = `stock-label text-[10px] font-medium px-1.5 py-0.5 rounded-full ${colors.badge}`;
             label.textContent = getStockLabel(val);
@@ -812,7 +812,7 @@ if (categories && genders) {
 
   function updateStockBySizeHidden() {
     stockBySizeHidden.value = JSON.stringify(stockBySize);
-    const total = Object.values(stockBySize).reduce((sum, v) => sum + (v || 0), 0);
+    const total = Object.values(stockBySize).reduce((sum: number, v: number) => sum + (v || 0), 0);
     stockTotalInput.value = total.toString();
     
     // Actualizar badge del total
@@ -822,9 +822,9 @@ if (categories && genders) {
 
     // Actualizar resumen
     if (stockSummaryEl) {
-      const arr = Array.from(selectedSizes);
-      const outOfStock = arr.filter(s => (stockBySize[s] || 0) === 0).length;
-      const lowStock = arr.filter(s => { const v = stockBySize[s] || 0; return v > 0 && v <= 3; }).length;
+      const arr = Array.from(selectedSizes) as string[];
+      const outOfStock = arr.filter((s: string) => (stockBySize[s] || 0) === 0).length;
+      const lowStock = arr.filter((s: string) => { const v = stockBySize[s] || 0; return v > 0 && v <= 3; }).length;
       
       let parts = [`<span class="text-gray-400">Total: <strong class="text-white">${total}</strong> unidades en <strong class="text-white">${arr.length}</strong> tallas</span>`];
       if (outOfStock > 0) parts.push(`<span class="text-red-400">${outOfStock} sin stock</span>`);
@@ -833,10 +833,10 @@ if (categories && genders) {
     }
   }
 
-  document.querySelectorAll('.size-preset-btn').forEach(btn => {
+  document.querySelectorAll<HTMLButtonElement>('.size-preset-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const preset = btn.dataset.preset;
-      document.querySelectorAll('.size-preset-btn').forEach(b => {
+      const preset = btn.dataset.preset || '';
+      document.querySelectorAll<HTMLButtonElement>('.size-preset-btn').forEach((b) => {
         b.className = 'size-preset-btn px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:border-accent-gold/50 hover:text-accent-gold transition-all bg-white/5';
       });
       btn.className = 'size-preset-btn px-3 py-1.5 text-xs rounded-lg border border-accent-gold text-accent-gold transition-all bg-accent-gold/10';
@@ -845,9 +845,9 @@ if (categories && genders) {
         selectedSizes.clear();
         selectedSizes.add('Única');
       } else {
-        const presetSizes = SIZE_PRESETS[preset];
-        const keep = new Set();
-        selectedSizes.forEach(s => { if (presetSizes.includes(s)) keep.add(s); });
+        const presetSizes = SIZE_PRESETS[preset as keyof typeof SIZE_PRESETS] || [];
+        const keep = new Set<string>();
+        selectedSizes.forEach((s: string) => { if (presetSizes.includes(s)) keep.add(s); });
         selectedSizes = keep;
       }
       renderSizeButtons(preset);
@@ -861,7 +861,7 @@ if (categories && genders) {
       selectedSizes.add(val);
       addSizeButton(val);
       updateSizesUI();
-      customInput.value = '';
+      if (customInput) customInput.value = '';
     }
   });
 
@@ -872,7 +872,7 @@ if (categories && genders) {
   // Inicializar: detectar preset y renderizar
   const detectedPreset = detectPreset(currentSizes);
   renderSizeButtons(detectedPreset);
-  const presetBtn = document.querySelector(`[data-preset="${detectedPreset}"]`);
+  const presetBtn = document.querySelector(`[data-preset="${detectedPreset}"]`) as HTMLElement | null;
   if (presetBtn) presetBtn.className = 'size-preset-btn px-3 py-1.5 text-xs rounded-lg border border-accent-gold text-accent-gold transition-all bg-accent-gold/10';
   updateSizesUI();
 
@@ -964,7 +964,7 @@ if (categories && genders) {
   });
 
   function renderMeasurementsEditor() {
-    const sizes = Array.from(selectedSizes);
+    const sizes = Array.from(selectedSizes) as string[];
     if (sizes.length === 0 || (sizes.length === 1 && sizes[0] === 'Única') || activeMeasureTypes.size === 0) {
       if (sizes.length === 0 || (sizes.length === 1 && sizes[0] === 'Única')) {
         measurementsSection?.classList.add('hidden');
@@ -1049,9 +1049,9 @@ if (categories && genders) {
     const gender = optgroupLabel.toLowerCase().includes('hombre') ? 'hombre' : 'mujer';
     const defaults = DEFAULT_MEASUREMENTS[gender] || DEFAULT_MEASUREMENTS['mujer'];
 
-    const sizes = Array.from(selectedSizes);
+    const sizes = Array.from(selectedSizes) as string[];
     sizes.forEach((size: string) => {
-      const sizeDefaults = defaults[size as keyof typeof defaults];
+      const sizeDefaults = defaults[size as keyof typeof defaults] as Record<string, [number, number]> | undefined;
       if (sizeDefaults) {
         if (!sizeMeasurements[size]) sizeMeasurements[size] = {};
         // Solo rellenar las medidas activas que tengan valores por defecto
@@ -1067,7 +1067,7 @@ if (categories && genders) {
 
   // Hook: actualizar editor de medidas cuando cambian las tallas
   const _origUpdateSizesUI = updateSizesUI;
-  updateSizesUI = function() {
+  updateSizesUI = function(): void {
     _origUpdateSizesUI();
     renderMeasurementsEditor();
   };
@@ -1170,7 +1170,6 @@ if (categories && genders) {
           credentials: 'same-origin',
         });
         const data = await res.json();
-        console.log('[Upload] Response:', res.status, data);
         if (res.ok && data.url) {
           imageUrls.push(data.url);
         } else {

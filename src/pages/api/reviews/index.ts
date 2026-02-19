@@ -1,6 +1,18 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../../lib/supabase';
+import { createServerSupabaseClient } from '../../../lib/auth';
+
+interface ReviewRow {
+  id: string;
+  product_id: string;
+  user_id: string;
+  rating: number;
+  title: string | null;
+  comment: string | null;
+  created_at: string;
+  updated_at?: string;
+}
 
 /**
  * Crea un cliente Supabase autenticado con el token del usuario.
@@ -36,16 +48,50 @@ export const GET: APIRoute = async ({ url }) => {
 
     if (error) throw error;
 
+    // Obtener nombres de usuarios desde auth (service role)
+    const userNames: Record<string, string> = {};
+    const uniqueUserIds = [...new Set(((reviews ?? []) as ReviewRow[]).map((r) => r.user_id))];
+    
+    if (uniqueUserIds.length > 0) {
+      try {
+        const adminClient = createServerSupabaseClient();
+        const userResults = await Promise.all(
+          uniqueUserIds.map(uid =>
+            adminClient.auth.admin.getUserById(uid)
+              .then(({ data: { user } }) => ({ uid, user }))
+              .catch(() => ({ uid, user: null }))
+          )
+        );
+        for (const { uid, user } of userResults) {
+          if (user) {
+            const name = user.user_metadata?.full_name 
+              || user.user_metadata?.name 
+              || user.email?.split('@')[0] 
+              || 'Anónimo';
+            userNames[uid] = name;
+          }
+        }
+      } catch (err) {
+        console.error('[REVIEWS] Failed to fetch user names:', err);
+      }
+    }
+
+    // Enriquecer reviews con user_name
+    const enrichedReviews = ((reviews ?? []) as ReviewRow[]).map((r) => ({
+      ...r,
+      user_name: userNames[r.user_id] || 'Anónimo',
+    }));
+
     // Calcular estadísticas
-    const total = reviews?.length || 0;
+    const total = enrichedReviews.length;
     const avgRating = total > 0
-      ? reviews!.reduce((sum: number, r: any) => sum + r.rating, 0) / total
+      ? enrichedReviews.reduce((sum, r) => sum + r.rating, 0) / total
       : 0;
     const distribution = [0, 0, 0, 0, 0]; // 1-5 estrellas
-    reviews?.forEach((r: any) => { distribution[r.rating - 1]++; });
+    enrichedReviews.forEach((r) => { distribution[r.rating - 1]++; });
 
     return new Response(JSON.stringify({
-      reviews: reviews || [],
+      reviews: enrichedReviews,
       stats: {
         total,
         average: Math.round(avgRating * 10) / 10,
@@ -55,8 +101,9 @@ export const GET: APIRoute = async ({ url }) => {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message || 'Error al obtener reseñas' }), {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Error al obtener reseñas';
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -108,14 +155,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const body = await request.json();
     const { product_id, rating, title, comment } = body;
 
-    if (!product_id || !rating) {
-      return new Response(JSON.stringify({ error: 'product_id y rating son requeridos' }), {
+    const numericRating = Number(rating);
+    if (!product_id || !Number.isFinite(numericRating)) {
+      return new Response(JSON.stringify({ error: 'product_id y rating numérico son requeridos' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    if (rating < 1 || rating > 5) {
+    if (numericRating < 1 || numericRating > 5) {
       return new Response(JSON.stringify({ error: 'La valoración debe ser entre 1 y 5' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -131,9 +179,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       .upsert({
         product_id,
         user_id: userId,
-        rating: Math.round(rating),
+        rating: Math.round(numericRating),
         title: title?.trim().substring(0, 150) || null,
-        comment: comment?.trim() || null,
+        comment: comment?.trim().substring(0, 2000) || null,
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'product_id,user_id',
@@ -153,8 +201,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message || 'Error interno' }), {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Error interno';
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -165,6 +214,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 export const DELETE: APIRoute = async ({ request, cookies }) => {
   try {
     const accessToken = cookies.get('sb-access-token')?.value;
+    const refreshToken = cookies.get('sb-refresh-token')?.value;
+
     if (!accessToken) {
       return new Response(JSON.stringify({ error: 'No autorizado' }), {
         status: 401,
@@ -172,8 +223,27 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       });
     }
 
+    let userId: string | null = null;
+    let validToken = accessToken;
+
     const { data: { user } } = await supabase.auth.getUser(accessToken);
-    if (!user) {
+    if (user) {
+      userId = user.id;
+    } else if (refreshToken) {
+      const { data: refreshed } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+      if (refreshed?.session && refreshed?.user) {
+        userId = refreshed.user.id;
+        validToken = refreshed.session.access_token;
+        cookies.set('sb-access-token', refreshed.session.access_token, {
+          path: '/', httpOnly: true, secure: import.meta.env.PROD, sameSite: 'lax', maxAge: 60 * 60 * 24 * 7,
+        });
+        cookies.set('sb-refresh-token', refreshed.session.refresh_token, {
+          path: '/', httpOnly: true, secure: import.meta.env.PROD, sameSite: 'lax', maxAge: 60 * 60 * 24 * 30,
+        });
+      }
+    }
+
+    if (!userId) {
       return new Response(JSON.stringify({ error: 'Sesión no válida' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
@@ -191,13 +261,13 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
     }
 
     // Usar cliente autenticado para que RLS permita la operación
-    const authClient = createAuthenticatedClient(accessToken);
+    const authClient = createAuthenticatedClient(validToken);
 
     const { error } = await authClient
       .from('reviews')
       .delete()
       .eq('id', review_id)
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
 
     if (error) throw error;
 
@@ -205,8 +275,9 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message || 'Error al eliminar' }), {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Error al eliminar';
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });

@@ -374,20 +374,22 @@ export async function verifyAdminFromCookies(
   accessToken: string | undefined,
   refreshToken: string | undefined
 ): Promise<string | null> {
-  console.log('[verifyAdminFromCookies] accessToken:', accessToken ? 'present' : 'missing');
-  console.log('[verifyAdminFromCookies] refreshToken:', refreshToken ? 'present' : 'missing');
+  if (import.meta.env.DEV) {
+    console.log('[verifyAdminFromCookies] accessToken:', accessToken ? 'present' : 'missing');
+    console.log('[verifyAdminFromCookies] refreshToken:', refreshToken ? 'present' : 'missing');
+  }
   
   if (!accessToken || !refreshToken) {
-    console.log('[verifyAdminFromCookies] Tokens missing, returning null');
+    if (import.meta.env.DEV) console.log('[verifyAdminFromCookies] Tokens missing, returning null');
     return null;
   }
 
   // Obtener el usuario desde los tokens
   const user = await getUserFromSession(accessToken, refreshToken);
-  console.log('[verifyAdminFromCookies] user:', user ? user.id : 'null');
+  if (import.meta.env.DEV) console.log('[verifyAdminFromCookies] user:', user ? user.id : 'null');
   
   if (!user) {
-    console.log('[verifyAdminFromCookies] No user from session, returning null');
+    if (import.meta.env.DEV) console.log('[verifyAdminFromCookies] No user from session, returning null');
     return null;
   }
 
@@ -399,8 +401,10 @@ export async function verifyAdminFromCookies(
     .eq('user_id', user.id)
     .maybeSingle();
 
-  console.log('[verifyAdminFromCookies] adminData:', adminData);
-  console.log('[verifyAdminFromCookies] error:', error);
+  if (import.meta.env.DEV) {
+    console.log('[verifyAdminFromCookies] adminData:', adminData);
+    console.log('[verifyAdminFromCookies] error:', error);
+  }
 
   return adminData ? user.id : null;
 }

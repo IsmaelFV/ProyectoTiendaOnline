@@ -184,7 +184,7 @@ export default function AddToCartButton({ product }: AddToCartButtonProps) {
 
         <button
           onClick={handleAddToCart}
-          disabled={isAdding || (hasSizes && selectedSize && getSizeStock(selectedSize) <= 0)}
+          disabled={isAdding || (hasSizes && !!selectedSize && getSizeStock(selectedSize) <= 0)}
           className={`w-full btn btn-primary ${isAdding ? 'opacity-75 cursor-not-allowed' : ''}`}
         >
           {isAdding ? 'Añadiendo...' : 'Añadir al Carrito'}
