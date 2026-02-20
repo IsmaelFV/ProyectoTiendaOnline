@@ -27,44 +27,49 @@ const currentYear = new Date().getFullYear();
         </p>
       </div>
       
-      <!-- Navigation -->
-      <div class="md:col-span-4">
-        <h4 class="footer-heading">Tienda</h4>
-        <ul class="space-y-3">
-          <li><a href="/productos" class="footer-link">Todos los Productos</a></li>
-          <li><a href="/novedades" class="footer-link">Novedades</a></li>
-          <li><a href="/ofertas" class="footer-link">Ofertas</a></li>
-          <li><a href="/mujer" class="footer-link">Mujer</a></li>
-          <li><a href="/hombre" class="footer-link">Hombre</a></li>
-        </ul>
-      </div>
-      
-      <!-- Categories -->
-      <div class="md:col-span-4">
-        <h4 class="footer-heading">Categorías</h4>
-        <ul class="space-y-3">
-          <li><a href="/mujer/camisas-blusas" class="footer-link">Camisas y Blusas</a></li>
-          <li><a href="/mujer/pantalones" class="footer-link">Pantalones</a></li>
-          <li><a href="/mujer/vestidos" class="footer-link">Vestidos</a></li>
-          <li><a href="/mujer/accesorios" class="footer-link">Accesorios</a></li>
-          <li><a href="/mujer/zapatos" class="footer-link">Zapatos</a></li>
-        </ul>
-      </div>
-      
-      <!-- Information -->
-      <div class="md:col-span-4">
-        <h4 class="footer-heading">Ayuda</h4>
-        <ul class="space-y-3">
-          <li><a href="/sobre-nosotros" class="footer-link">Sobre Nosotros</a></li>
-          <li><a href="/contacto" class="footer-link">Contacto</a></li>
-          <li><a href="/faq" class="footer-link">Preguntas Frecuentes</a></li>
-          <li><a href="/envios" class="footer-link">Envíos y Entregas</a></li>
-          <li><a href="/devoluciones" class="footer-link">Devoluciones</a></li>
-          <li><a href="/sostenibilidad" class="footer-link">Sostenibilidad</a></li>
-        </ul>
+      <!-- Navigation columns centered -->
+      <div class="md:col-span-12">
+        <div class="flex flex-col md:flex-row justify-center gap-16 md:gap-24">
+          <!-- Tienda -->
+          <div class="text-center">
+            <h4 class="footer-heading">Tienda</h4>
+            <ul class="space-y-3">
+              <li><a href="/productos" class="footer-link">Todos los Productos</a></li>
+              <li><a href="/novedades" class="footer-link">Novedades</a></li>
+              <li><a href="/ofertas" class="footer-link">Ofertas</a></li>
+              <li><a href="/mujer" class="footer-link">Mujer</a></li>
+              <li><a href="/hombre" class="footer-link">Hombre</a></li>
+            </ul>
+          </div>
+          
+          <!-- Categorías -->
+          <div class="text-center">
+            <h4 class="footer-heading">Categorías</h4>
+            <ul class="space-y-3">
+              <li><a href="/mujer/camisas-blusas" class="footer-link">Camisas y Blusas</a></li>
+              <li><a href="/mujer/pantalones" class="footer-link">Pantalones</a></li>
+              <li><a href="/mujer/vestidos" class="footer-link">Vestidos</a></li>
+              <li><a href="/mujer/accesorios" class="footer-link">Accesorios</a></li>
+              <li><a href="/mujer/zapatos" class="footer-link">Zapatos</a></li>
+            </ul>
+          </div>
+          
+          <!-- Ayuda -->
+          <div class="text-center">
+            <h4 class="footer-heading">Ayuda</h4>
+            <ul class="space-y-3">
+              <li><a href="/sobre-nosotros" class="footer-link">Sobre Nosotros</a></li>
+              <li><a href="/contacto" class="footer-link">Contacto</a></li>
+              <li><a href="/faq" class="footer-link">Preguntas Frecuentes</a></li>
+              <li><a href="/envios" class="footer-link">Envíos y Entregas</a></li>
+              <li><a href="/devoluciones" class="footer-link">Devoluciones</a></li>
+              <li><a href="/sostenibilidad" class="footer-link">Sostenibilidad</a></li>
+            </ul>
+          </div>
+        </div>
         
         <!-- Trust badges -->
-        <div class="mt-8 flex gap-3">
+        <div class="mt-10 flex justify-center gap-3">
           <div class="trust-badge">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -149,10 +154,11 @@ const currentYear = new Date().getFullYear();
     content: '';
     position: absolute;
     bottom: 0;
-    left: 0;
+    left: 50%;
+    transform: translateX(-50%);
     width: 24px;
     height: 2px;
-    background: linear-gradient(90deg, #d4af37, transparent);
+    background: linear-gradient(90deg, transparent, #d4af37, transparent);
     border-radius: 1px;
   }
   
