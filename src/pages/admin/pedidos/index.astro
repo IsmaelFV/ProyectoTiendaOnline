@@ -31,7 +31,11 @@ if (statusFilter !== 'all') {
 }
 
 if (searchQuery) {
-  query = query.or(`order_number.ilike.%${searchQuery}%,shipping_full_name.ilike.%${searchQuery}%`);
+  // Sanitizar: eliminar metacaracteres PostgREST para prevenir filter injection
+  const safeSearch = searchQuery.replace(/[,()]/g, '');
+  if (safeSearch) {
+    query = query.or(`order_number.ilike.%${safeSearch}%,shipping_full_name.ilike.%${safeSearch}%`);
+  }
 }
 
 const { data: orders, error } = await query;

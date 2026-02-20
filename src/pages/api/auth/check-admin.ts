@@ -12,14 +12,16 @@ import { logger } from '../../../lib/logger';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const { userId } = await request.json();
-
-    if (!userId) {
+    // Verificar autenticación mediante Bearer token
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ isAdmin: false }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
     }
+
+    const token = authHeader.replace('Bearer ', '');
 
     // Usar service_role para evitar RLS
     const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
@@ -37,10 +39,19 @@ export const POST: APIRoute = async ({ request }) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // Obtener userId desde el token (no desde el body)
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ isAdmin: false }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     const { data: adminData, error } = await supabaseAdmin
       .from('admin_users')
       .select('id, user_id, email')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .maybeSingle();
 
     if (error) {
@@ -50,8 +61,6 @@ export const POST: APIRoute = async ({ request }) => {
         headers: { 'Content-Type': 'application/json' },
       });
     }
-
-    console.log('[check-admin] userId:', userId, '→ isAdmin:', !!adminData);
 
     return new Response(JSON.stringify({ isAdmin: !!adminData }), {
       status: 200,

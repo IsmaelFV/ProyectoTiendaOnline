@@ -17,6 +17,16 @@ export function getBrevoClient() {
   return apiInstance;
 }
 
+/** Escapa caracteres peligrosos para interpolación en HTML */
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 /**
  * Enviar email simple
  */
@@ -76,25 +86,34 @@ export async function sendInvoiceEmail({
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
   sendSmtpEmail.subject = `Factura de tu pedido ${orderNumber} - Fashion Store`;
+
+  // Versiones escapadas para contextos HTML
+  const safeCustomerName = escapeHtml(customerName);
+  const safeOrderNumber = escapeHtml(orderNumber);
+  const safeTo = escapeHtml(to);
+
   // Generar filas de productos para el email
   const itemsHtml = items && items.length > 0 
-    ? items.map(item => `
+    ? items.map(item => {
+        const safeName = escapeHtml(item.name);
+        return `
         <tr>
           <td style="padding: 12px 8px; border-bottom: 1px solid #e5e7eb;">
             ${item.image 
-              ? `<img src="${item.image}" alt="${item.name}" width="50" height="50" style="border-radius: 6px; object-fit: cover; display: block;" />`
+              ? `<img src="${escapeHtml(item.image)}" alt="${safeName}" width="50" height="50" style="border-radius: 6px; object-fit: cover; display: block;" />`
               : `<div style="width: 50px; height: 50px; background: #f3f4f6; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 20px;">📦</div>`
             }
           </td>
           <td style="padding: 12px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: middle;">
-            <strong style="color: #1f2937;">${item.name}</strong><br>
+            <strong style="color: #1f2937;">${safeName}</strong><br>
             <span style="color: #6b7280; font-size: 13px;">Cantidad: ${item.quantity}</span>
           </td>
           <td style="padding: 12px 8px; border-bottom: 1px solid #e5e7eb; text-align: right; vertical-align: middle; white-space: nowrap;">
             <strong style="color: #1f2937;">${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(item.price / 100)}</strong>
           </td>
         </tr>
-      `).join('')
+      `;
+      }).join('')
     : '';
 
   const productsSection = itemsHtml 
@@ -128,9 +147,9 @@ export async function sendInvoiceEmail({
           <h1 style="margin: 0;">Pedido Confirmado</h1>
         </div>
         <div class="content">
-          <p>Hola <strong>${customerName}</strong>,</p>
+          <p>Hola <strong>${safeCustomerName}</strong>,</p>
           
-          <p>Gracias por realizar su compra en <strong>Fashion Store</strong>. Tu pedido <strong>${orderNumber}</strong> ha sido procesado correctamente.</p>
+          <p>Gracias por realizar su compra en <strong>Fashion Store</strong>. Tu pedido <strong>${safeOrderNumber}</strong> ha sido procesado correctamente.</p>
           
           <p>Adjuntamos tu factura en formato PDF.</p>
           
@@ -139,8 +158,8 @@ export async function sendInvoiceEmail({
           <div style="background: white; padding: 20px; border-radius: 6px; margin: 20px 0;">
             <h3 style="margin-top: 0;">Detalles del pedido:</h3>
             <ul style="list-style: none; padding: 0;">
-              <li><strong>Número de pedido:</strong> ${orderNumber}</li>
-              <li><strong>Email:</strong> ${to}</li>
+              <li><strong>Número de pedido:</strong> ${safeOrderNumber}</li>
+              <li><strong>Email:</strong> ${safeTo}</li>
             </ul>
           </div>
           
@@ -212,11 +231,10 @@ export async function sendContactEmailToAdmins({
   };
   sendSmtpEmail.to = adminEmails.map(email => ({ email }));
 
-  const escapedMessage = message
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>');
+  // Versiones escapadas solo para interpolación en cuerpo HTML
+  const safeName = escapeHtml(customerName);
+  const safeEmail = escapeHtml(customerEmail);
+  const escapedMessage = escapeHtml(message).replace(/\n/g, '<br>');
 
   sendSmtpEmail.htmlContent = `
     <!DOCTYPE html>
@@ -245,13 +263,13 @@ export async function sendContactEmailToAdmins({
             <tr>
               <td style="padding: 10px 12px; background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
                 <strong style="color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Nombre</strong><br>
-                <span style="color: #111827; font-size: 15px;">${customerName}</span>
+                <span style="color: #111827; font-size: 15px;">${safeName}</span>
               </td>
             </tr>
             <tr>
               <td style="padding: 10px 12px; background: #f9fafb; border-radius: 0 0 8px 8px;">
                 <strong style="color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Email del cliente</strong><br>
-                <a href="mailto:${customerEmail}" style="color: #2563eb; font-size: 15px; text-decoration: none;">${customerEmail}</a>
+                <a href="mailto:${customerEmail}" style="color: #2563eb; font-size: 15px; text-decoration: none;">${safeEmail}</a>
               </td>
             </tr>
           </table>

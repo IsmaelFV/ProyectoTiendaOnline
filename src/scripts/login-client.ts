@@ -106,8 +106,10 @@ function setupLogin() {
           console.log('[LOGIN PAGE] Verificando admin para userId:', userId);
           const res = await fetch('/api/auth/check-admin', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId }),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`,
+            },
           });
           if (res.ok) {
             const result = await res.json();

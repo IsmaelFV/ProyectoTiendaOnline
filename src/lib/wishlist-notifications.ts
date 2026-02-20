@@ -13,7 +13,7 @@
  */
 
 import { createServerSupabaseClient } from './auth';
-import { sendEmail } from './brevo';
+import { sendEmail, escapeHtml } from './brevo';
 
 /** Stock por debajo de este número se considera "bajo" */
 const LOW_STOCK_THRESHOLD = 5;
@@ -109,7 +109,7 @@ export async function notifyWishlistSale(data: SaleNotificationData): Promise<vo
       
       <div style="text-align:center;margin:20px 0;">
         ${imageHtml}
-        <h2 style="margin:0 0 8px;color:#111827;">${data.productName}</h2>
+        <h2 style="margin:0 0 8px;color:#111827;">${safeProductName}</h2>
         <p style="margin:4px 0;">
           <span style="text-decoration:line-through;color:#9ca3af;font-size:16px;">${formatPrice(data.originalPrice)}</span>
           <span style="color:#dc2626;font-size:22px;font-weight:bold;margin-left:10px;">${formatPrice(data.salePrice)}</span>
@@ -187,8 +187,9 @@ export async function notifyWishlistLowStock(data: LowStockNotificationData): Pr
     console.log(`[Wishlist Notify] Enviando alerta de stock bajo de "${data.productName}" (${data.currentStock} uds.) a ${users.length} usuario(s)...`);
 
     const productUrl = `${import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321'}/productos/${data.productSlug}`;
+    const safeProductName = escapeHtml(data.productName);
     const imageHtml = data.productImage
-      ? `<img src="${data.productImage}" alt="${data.productName}" style="max-width:100%;max-height:250px;border-radius:8px;object-fit:cover;margin-bottom:16px;" />`
+      ? `<img src="${escapeHtml(data.productImage)}" alt="${safeProductName}" style="max-width:100%;max-height:250px;border-radius:8px;object-fit:cover;margin-bottom:16px;" />`
       : '';
 
     const displayPrice = data.isOnSale && data.salePrice
@@ -213,7 +214,7 @@ export async function notifyWishlistLowStock(data: LowStockNotificationData): Pr
       
       <div style="text-align:center;margin:20px 0;">
         ${imageHtml}
-        <h2 style="margin:0 0 8px;color:#111827;">${data.productName}</h2>
+        <h2 style="margin:0 0 8px;color:#111827;">${safeProductName}</h2>
         <p style="margin:8px 0;font-size:16px;">${displayPrice}</p>
         <div style="display:inline-block;background:#fef3c7;color:#92400e;padding:8px 16px;border-radius:999px;font-weight:bold;font-size:15px;margin-top:8px;">
           Solo quedan ${data.currentStock} ${stockWord}

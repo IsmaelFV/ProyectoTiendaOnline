@@ -136,8 +136,10 @@ if (accessToken && refreshToken) {
           if (user) {
             const res = await fetch('/api/auth/check-admin', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: user.id }),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`,
+              },
             });
             if (res.ok) {
               const { isAdmin } = await res.json();

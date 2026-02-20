@@ -788,6 +788,16 @@ import SearchBar from '../search/SearchBar';
 </style>
 
 <script>
+  // Helper: escapar HTML para prevenir inyección
+  function escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;');
+  }
+
   // ==============================
   // SIDEBAR: Abrir / Cerrar
   // ==============================
@@ -859,25 +869,29 @@ import SearchBar from '../search/SearchBar';
     mainCats.forEach((cat: any) => {
       const name = cat.name.replace(new RegExp(genderSuffix + '$', 'i'), '');
       const subs = categories.filter((c: any) => c.parent_id === cat.id);
+      const safeName = escapeHtml(name);
+      const safeSlug = escapeHtml(cat.slug);
 
       // Categoría principal
-      html += `<a href="/productos?genero=${gender}&categoria=${cat.slug}" 
+      html += `<a href="/productos?genero=${gender}&categoria=${safeSlug}" 
         style="display:flex; align-items:center; padding:8px 10px; font-size:13px; color:#d4d4d4; border-radius:8px; transition:all 0.2s ease; text-decoration:none; margin-bottom:1px;"
         onmouseover="this.style.color='#d4af37'; this.style.background='rgba(212,175,55,0.06)';"
         onmouseout="this.style.color='#d4d4d4'; this.style.background='transparent';"
-      >${name}</a>`;
+      >${safeName}</a>`;
 
       // Subcategorías (si hay)
       if (subs.length > 0) {
         subs.forEach((sub: any) => {
           const subName = sub.name.replace(new RegExp(genderSuffix + '$', 'i'), '');
-          html += `<a href="/productos?genero=${gender}&categoria=${sub.slug}" 
+          const safeSubName = escapeHtml(subName);
+          const safeSubSlug = escapeHtml(sub.slug);
+          html += `<a href="/productos?genero=${gender}&categoria=${safeSubSlug}" 
             style="display:flex; align-items:center; padding:6px 10px 6px 22px; font-size:12px; color:#737373; border-radius:6px; transition:all 0.2s ease; text-decoration:none; margin-bottom:1px;"
             onmouseover="this.style.color='#d4af37'; this.style.background='rgba(212,175,55,0.04)';"
             onmouseout="this.style.color='#737373'; this.style.background='transparent';"
           >
             <span style="width:4px; height:4px; border-radius:50%; background:#404040; margin-right:8px; flex-shrink:0;"></span>
-            ${subName}
+            ${safeSubName}
           </a>`;
         });
       }

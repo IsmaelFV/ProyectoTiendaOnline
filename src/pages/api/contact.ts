@@ -7,15 +7,6 @@ const CONTACT_RATE_LIMIT = 3;           // máx envíos por ventana
 const CONTACT_RATE_WINDOW = 10 * 60_000; // 10 minutos
 const contactAttempts = new Map<string, { count: number; firstAttempt: number }>();
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
-}
-
 // Asuntos válidos (whitelist)
 const VALID_SUBJECTS: Record<string, string> = {
   pedido: 'Consulta sobre pedido',
@@ -144,8 +135,8 @@ export const POST: APIRoute = async ({ request }) => {
     // ── Enviar email (valores sanitizados) ───────────────────────────
     await sendContactEmailToAdmins({
       adminEmails,
-      customerName: escapeHtml(trimmedName),
-      customerEmail: escapeHtml(trimmedEmail),
+      customerName: trimmedName,
+      customerEmail: trimmedEmail,
       subject: subjectText,
       message: trimmedMessage,
     });

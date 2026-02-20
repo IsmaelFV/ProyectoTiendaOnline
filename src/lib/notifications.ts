@@ -41,17 +41,21 @@ class ToastManager {
       info: 'bg-blue-500/10 border-blue-500/50 text-blue-400',
     };
 
-    toastEl.innerHTML = `
-      <div class="flex items-center gap-3 bg-gray-900 border-2 rounded-lg px-4 py-3 shadow-2xl min-w-[320px] max-w-md ${colors[type]}">
-        <div class="flex-shrink-0">${icons[type]}</div>
-        <p class="flex-1 text-sm text-white font-medium leading-snug">${message}</p>
-        <button class="close-toast flex-shrink-0 text-gray-400 hover:text-white transition-colors">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    `;
+    const wrapper = document.createElement('div');
+    wrapper.className = `flex items-center gap-3 bg-gray-900 border-2 rounded-lg px-4 py-3 shadow-2xl min-w-[320px] max-w-md ${colors[type]}`;
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'flex-shrink-0';
+    iconDiv.innerHTML = icons[type]; // SVG estático — seguro
+    const messageP = document.createElement('p');
+    messageP.className = 'flex-1 text-sm text-white font-medium leading-snug';
+    messageP.textContent = message;
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'close-toast flex-shrink-0 text-gray-400 hover:text-white transition-colors';
+    closeBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>';
+    wrapper.appendChild(iconDiv);
+    wrapper.appendChild(messageP);
+    wrapper.appendChild(closeBtn);
+    toastEl.appendChild(wrapper);
 
     container.appendChild(toastEl);
 
@@ -61,9 +65,8 @@ class ToastManager {
       toastEl.classList.add('translate-x-0');
     });
 
-    // Close button handler
-    const closeBtn = toastEl.querySelector('.close-toast');
-    closeBtn?.addEventListener('click', () => this.remove(toastEl));
+    // Close button handler (ya tenemos referencia directa)
+    closeBtn.addEventListener('click', () => this.remove(toastEl));
 
     // Auto-remove
     setTimeout(() => this.remove(toastEl), duration);
@@ -103,24 +106,38 @@ class ConfirmManager {
         info: 'bg-blue-500 hover:bg-blue-600'
       };
 
-      dialogEl.innerHTML = `
-        <div class="confirm-dialog bg-gray-900 border border-gray-800 rounded-xl shadow-2xl max-w-md w-full mx-4 scale-95 transition-transform duration-200">
-          <div class="border-b border-gray-800 px-6 py-4">
-            <h3 class="text-xl font-bold text-white">${title}</h3>
-          </div>
-          <div class="px-6 py-6">
-            <p class="text-gray-300 leading-relaxed whitespace-pre-line">${message}</p>
-          </div>
-          <div class="border-t border-gray-800 px-6 py-4 flex gap-3 justify-end">
-            <button class="cancel-btn px-5 py-2.5 bg-gray-800 text-gray-300 rounded-lg font-medium hover:bg-gray-700 transition-colors">
-              ${cancelText}
-            </button>
-            <button class="confirm-btn px-5 py-2.5 ${buttonColors[type]} text-white rounded-lg font-medium transition-colors">
-              ${confirmText}
-            </button>
-          </div>
-        </div>
-      `;
+      const dialogContent = document.createElement('div');
+      dialogContent.className = 'confirm-dialog bg-gray-900 border border-gray-800 rounded-xl shadow-2xl max-w-md w-full mx-4 scale-95 transition-transform duration-200';
+
+      const headerDiv = document.createElement('div');
+      headerDiv.className = 'border-b border-gray-800 px-6 py-4';
+      const h3 = document.createElement('h3');
+      h3.className = 'text-xl font-bold text-white';
+      h3.textContent = title;
+      headerDiv.appendChild(h3);
+
+      const bodyDiv = document.createElement('div');
+      bodyDiv.className = 'px-6 py-6';
+      const bodyP = document.createElement('p');
+      bodyP.className = 'text-gray-300 leading-relaxed whitespace-pre-line';
+      bodyP.textContent = message;
+      bodyDiv.appendChild(bodyP);
+
+      const footerDiv = document.createElement('div');
+      footerDiv.className = 'border-t border-gray-800 px-6 py-4 flex gap-3 justify-end';
+      const cancelBtnEl = document.createElement('button');
+      cancelBtnEl.className = 'cancel-btn px-5 py-2.5 bg-gray-800 text-gray-300 rounded-lg font-medium hover:bg-gray-700 transition-colors';
+      cancelBtnEl.textContent = cancelText;
+      const confirmBtnEl = document.createElement('button');
+      confirmBtnEl.className = `confirm-btn px-5 py-2.5 ${buttonColors[type]} text-white rounded-lg font-medium transition-colors`;
+      confirmBtnEl.textContent = confirmText;
+      footerDiv.appendChild(cancelBtnEl);
+      footerDiv.appendChild(confirmBtnEl);
+
+      dialogContent.appendChild(headerDiv);
+      dialogContent.appendChild(bodyDiv);
+      dialogContent.appendChild(footerDiv);
+      dialogEl.appendChild(dialogContent);
 
       document.body.appendChild(dialogEl);
 
