@@ -2,71 +2,133 @@ import type { APIRoute } from 'astro';
 import { createServerSupabaseClient } from '@lib/auth';
 import { sendContactEmailToAdmins } from '@lib/brevo';
 
+// ── Rate limiting para formulario de contacto ────────────────────────
+const CONTACT_RATE_LIMIT = 3;           // máx envíos por ventana
+const CONTACT_RATE_WINDOW = 10 * 60_000; // 10 minutos
+const contactAttempts = new Map<string, { count: number; firstAttempt: number }>();
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+// Asuntos válidos (whitelist)
+const VALID_SUBJECTS: Record<string, string> = {
+  pedido: 'Consulta sobre pedido',
+  producto: 'Información de producto',
+  devolucion: 'Devoluciones y cambios',
+  talla: 'Consulta de tallas',
+  envio: 'Información de envío',
+  otro: 'Consulta general',
+};
+
 export const POST: APIRoute = async ({ request }) => {
   try {
+    // ── Rate limiting por IP ─────────────────────────────────────────
+    const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip')
+      || 'unknown';
+
+    const now = Date.now();
+    const attempts = contactAttempts.get(clientIP);
+
+    if (attempts) {
+      if (now - attempts.firstAttempt > CONTACT_RATE_WINDOW) {
+        contactAttempts.set(clientIP, { count: 1, firstAttempt: now });
+      } else if (attempts.count >= CONTACT_RATE_LIMIT) {
+        console.warn(`[Contact] Rate limit exceeded for IP: ${clientIP}`);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Has enviado demasiados mensajes. Inténtalo de nuevo en unos minutos.',
+        }), { status: 429, headers: { 'Content-Type': 'application/json' } });
+      } else {
+        attempts.count++;
+      }
+    } else {
+      contactAttempts.set(clientIP, { count: 1, firstAttempt: now });
+    }
+
+    // Limpiar entradas expiradas (evitar memory leak)
+    if (contactAttempts.size > 500) {
+      for (const [ip, data] of contactAttempts) {
+        if (now - data.firstAttempt > CONTACT_RATE_WINDOW) contactAttempts.delete(ip);
+      }
+    }
+
+    // ── Parsear y validar body ───────────────────────────────────────
     const body = await request.json();
     const { name, email, subject, message } = body;
 
-    // Validar campos obligatorios
     if (!name || !email || !subject || !message) {
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Todos los campos son obligatorios' 
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
-    // Validar formato de email básico
+    // Validar que los inputs sean strings y truncar longitudes
+    if (typeof name !== 'string' || typeof email !== 'string' ||
+        typeof subject !== 'string' || typeof message !== 'string') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Datos de formulario inválidos',
+      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    const trimmedName = name.trim().slice(0, 200);
+    const trimmedEmail = email.trim().slice(0, 254);
+    const trimmedMessage = message.trim();
+
+    // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(trimmedEmail)) {
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'El formato del email no es válido' 
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
     // Validar longitud del mensaje
-    if (message.length < 10) {
+    if (trimmedMessage.length < 10) {
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'El mensaje debe tener al menos 10 caracteres' 
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
-    if (message.length > 5000) {
+    if (trimmedMessage.length > 5000) {
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'El mensaje no puede superar los 5000 caracteres' 
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
-    // Obtener emails de todos los administradores activos
+    // Validar asunto contra whitelist (P2 — no aceptar valores arbitrarios)
+    if (!VALID_SUBJECTS[subject]) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Selecciona un asunto válido',
+      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    const subjectText = VALID_SUBJECTS[subject];
+
+    // ── Obtener emails de administradores ────────────────────────────
     const supabase = createServerSupabaseClient();
     const { data: admins, error: adminsError } = await supabase
       .from('admin_users')
-      .select('email, full_name')
-      .eq('is_active', true);
+      .select('email, full_name');
 
     if (adminsError || !admins || admins.length === 0) {
       console.error('[Contact] Error obteniendo admins:', adminsError);
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'No se pudo procesar tu mensaje. Inténtalo más tarde.' 
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 
     const adminEmails = admins.map((a: any) => a.email).filter(Boolean);
@@ -76,49 +138,28 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'No se pudo procesar tu mensaje. Inténtalo más tarde.' 
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 
-    // Mapear asuntos a texto legible
-    const subjectLabels: Record<string, string> = {
-      pedido: 'Consulta sobre pedido',
-      producto: 'Información de producto',
-      devolucion: 'Devoluciones y cambios',
-      talla: 'Consulta de tallas',
-      envio: 'Información de envío',
-      otro: 'Consulta general',
-    };
-
-    const subjectText = subjectLabels[subject] || subject;
-
-    // Enviar email a todos los administradores
+    // ── Enviar email (valores sanitizados) ───────────────────────────
     await sendContactEmailToAdmins({
       adminEmails,
-      customerName: name.trim(),
-      customerEmail: email.trim(),
+      customerName: escapeHtml(trimmedName),
+      customerEmail: escapeHtml(trimmedEmail),
       subject: subjectText,
-      message: message.trim(),
+      message: trimmedMessage,
     });
 
     return new Response(JSON.stringify({ 
       success: true, 
       message: 'Tu mensaje ha sido enviado correctamente. Te responderemos lo antes posible.' 
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
   } catch (error: any) {
     console.error('[Contact] Error procesando formulario:', error);
     return new Response(JSON.stringify({ 
       success: false, 
       error: 'Error al enviar el mensaje. Inténtalo de nuevo.' 
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 };

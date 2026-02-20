@@ -321,41 +321,54 @@ import PublicLayout from '../layouts/PublicLayout.astro';
 
       const result = await response.json();
 
-      if (result.success) {
-        alert.className = 'mb-6 rounded-xl p-4 text-sm bg-emerald-500/10 border border-emerald-500/30 text-emerald-300';
-        alert.innerHTML = `
-          <div class="flex items-center space-x-2">
-            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <span><strong>¡Mensaje enviado!</strong> ${result.message}</span>
-          </div>
-        `;
+      // Helper seguro: construir alerta sin innerHTML con datos del servidor
+      function showAlert(type: 'success' | 'error', text: string) {
+        const isOk = type === 'success';
+        alert.className = `mb-6 rounded-xl p-4 text-sm ${
+          isOk
+            ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+            : 'bg-red-500/10 border border-red-500/30 text-red-300'
+        }`;
+        alert.textContent = '';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex items-center space-x-2';
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'w-5 h-5 shrink-0');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('d', isOk
+          ? 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+          : 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z');
+        svg.appendChild(path);
+        const span = document.createElement('span');
+        span.textContent = text;
+        wrapper.appendChild(svg);
+        wrapper.appendChild(span);
+        alert.appendChild(wrapper);
         alert.classList.remove('hidden');
+      }
+
+      if (result.success) {
+        showAlert('success', '¡Mensaje enviado! ' + (result.message || ''));
         form.reset();
         charCount.textContent = '0';
       } else {
-        alert.className = 'mb-6 rounded-xl p-4 text-sm bg-red-500/10 border border-red-500/30 text-red-300';
-        alert.innerHTML = `
-          <div class="flex items-center space-x-2">
-            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-            </svg>
-            <span>${result.error}</span>
-          </div>
-        `;
-        alert.classList.remove('hidden');
+        showAlert('error', result.error || 'Error desconocido');
       }
     } catch (error) {
       alert.className = 'mb-6 rounded-xl p-4 text-sm bg-red-500/10 border border-red-500/30 text-red-300';
-      alert.innerHTML = `
-        <div class="flex items-center space-x-2">
-          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-          </svg>
-          <span>Error de conexión. Comprueba tu conexión e inténtalo de nuevo.</span>
-        </div>
-      `;
+      alert.textContent = '';
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex items-center space-x-2';
+      const span = document.createElement('span');
+      span.textContent = 'Error de conexión. Comprueba tu conexión e inténtalo de nuevo.';
+      wrapper.appendChild(span);
+      alert.appendChild(wrapper);
       alert.classList.remove('hidden');
     } finally {
       submitBtn.disabled = false;
