@@ -23,8 +23,10 @@ function setAuthCookie(name: string, value: string, maxAge: number) {
  * Limpiar cookies de autenticacion
  */
 function clearAuthCookies() {
-  document.cookie = 'sb-access-token=; Path=/; Max-Age=0; SameSite=Lax';
-  document.cookie = 'sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax';
+  const isSecure = window.location.protocol === 'https:';
+  const securePart = isSecure ? '; Secure' : '';
+  document.cookie = `sb-access-token=; Path=/; Max-Age=0; SameSite=Lax${securePart}`;
+  document.cookie = `sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax${securePart}`;
 }
 
 // Separa la logica en un script empaquetado para que los imports funcionen en el navegador

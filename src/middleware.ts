@@ -96,6 +96,17 @@ const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutos
 
 // Rate limiting simple (en producción usar Redis)
 const loginAttempts = new Map<string, { count: number; firstAttempt: number }>();
+const MAX_RATE_LIMIT_ENTRIES = 1000;
+
+/** Purgar entradas expiradas del rate limiter para evitar memory leak */
+function purgeExpiredEntries(): void {
+  const now = Date.now();
+  for (const [ip, data] of loginAttempts) {
+    if (now - data.firstAttempt > RATE_LIMIT_WINDOW) {
+      loginAttempts.delete(ip);
+    }
+  }
+}
 
 // ============================================================================
 // MIDDLEWARE DE AUTENTICACIÓN Y AUTORIZACIÓN
@@ -125,6 +136,11 @@ const authMiddleware = defineMiddleware(async ({ locals, url, cookies, redirect,
     // 1.2 Permitir acceso a login sin autenticación
     // -----------------
     if (url.pathname === `${ADMIN_BASE_PATH}/login`) {
+      // Purgar entradas expiradas para evitar memory leak
+      if (loginAttempts.size > MAX_RATE_LIMIT_ENTRIES) {
+        purgeExpiredEntries();
+      }
+
       // Rate limiting en login
       const attempts = loginAttempts.get(clientIP);
       const now = Date.now();
