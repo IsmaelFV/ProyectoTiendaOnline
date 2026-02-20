@@ -2,6 +2,128 @@ import type { APIRoute } from 'astro';
 import { createServerSupabaseClient, verifyAdminFromCookies } from '../../../../lib/auth';
 import { notifyWishlistSale } from '../../../../lib/wishlist-notifications';
 
+// ============================================================================
+// PATCH: Edición rápida de campos individuales (toggles, nombre, precio, color)
+// ============================================================================
+export const PATCH: APIRoute = async ({ request, cookies, params }) => {
+  try {
+    const accessToken = cookies.get('sb-access-token')?.value;
+    const refreshToken = cookies.get('sb-refresh-token')?.value;
+
+    if (!accessToken) {
+      return new Response(JSON.stringify({ error: 'No autorizado' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'No tienes permisos de administrador' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const supabase = createServerSupabaseClient();
+    const { id } = params;
+    if (!id) {
+      return new Response(JSON.stringify({ error: 'ID de producto no proporcionado' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const body = await request.json();
+
+    // Solo permitir campos específicos para edición rápida
+    const allowedFields = ['is_active', 'is_new', 'is_sustainable', 'name', 'price', 'color', 'images'];
+    const updateData: Record<string, any> = {};
+
+    for (const field of allowedFields) {
+      if (field in body) {
+        if (field === 'price') {
+          const price = parseFloat(body.price);
+          if (isNaN(price) || price < 0) {
+            return new Response(JSON.stringify({ error: 'Precio inválido' }), {
+              status: 400, headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          updateData.price = Math.round(price * 100);
+        } else if (field === 'name') {
+          const name = body.name?.trim();
+          if (!name || name.length < 2) {
+            return new Response(JSON.stringify({ error: 'Nombre inválido' }), {
+              status: 400, headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          updateData.name = name;
+          updateData.slug = name
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+        } else if (field === 'images') {
+          if (!Array.isArray(body.images) || body.images.length === 0) {
+            return new Response(JSON.stringify({ error: 'Debe haber al menos una imagen' }), {
+              status: 400, headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          updateData.images = body.images.filter((url: string) => {
+            try {
+              const parsed = new URL(url);
+              return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+            } catch { return false; }
+          });
+          if (updateData.images.length === 0) {
+            return new Response(JSON.stringify({ error: 'Ninguna URL de imagen es válida' }), {
+              status: 400, headers: { 'Content-Type': 'application/json' }
+            });
+          }
+        } else {
+          updateData[field] = body[field];
+        }
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return new Response(JSON.stringify({ error: 'No se proporcionaron campos válidos' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    updateData.updated_at = new Date().toISOString();
+
+    const { data: updated, error: updateError } = await supabase
+      .from('products')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Error en PATCH producto:', updateError);
+      return new Response(JSON.stringify({ error: 'Error al actualizar el producto' }), {
+        status: 500, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true, product: updated }), {
+      status: 200, headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    console.error('Error en PATCH producto:', error);
+    return new Response(JSON.stringify({ error: 'Error interno del servidor' }), {
+      status: 500, headers: { 'Content-Type': 'application/json' }
+    });
+  }
+};
+
+// ============================================================================
+// PUT: Edición completa del producto (formulario completo)
+// ============================================================================
+
 export const PUT: APIRoute = async ({ request, cookies, params }) => {
   try {
     // Verificar autenticación de admin
