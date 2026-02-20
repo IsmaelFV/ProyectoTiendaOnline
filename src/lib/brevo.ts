@@ -181,3 +181,124 @@ export async function sendInvoiceEmail({
     throw error;
   }
 }
+
+/**
+ * Enviar email de contacto a todos los administradores
+ */
+export async function sendContactEmailToAdmins({
+  adminEmails,
+  customerName,
+  customerEmail,
+  subject,
+  message,
+}: {
+  adminEmails: string[];
+  customerName: string;
+  customerEmail: string;
+  subject: string;
+  message: string;
+}) {
+  const apiInstance = getBrevoClient();
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = `[Contacto] ${subject} — de ${customerName}`;
+  sendSmtpEmail.sender = {
+    name: 'Fashion Store - Contacto',
+    email: import.meta.env.EMAIL_FROM,
+  };
+  sendSmtpEmail.replyTo = {
+    name: customerName,
+    email: customerEmail,
+  };
+  sendSmtpEmail.to = adminEmails.map(email => ({ email }));
+
+  const escapedMessage = message
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+
+  sendSmtpEmail.htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background: #f3f4f6; }
+      </style>
+    </head>
+    <body>
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #111827 0%, #1f2937 100%); padding: 32px; text-align: center; border-radius: 12px 12px 0 0;">
+          <h1 style="margin: 0; color: #d4af37; font-size: 22px; font-weight: 700;">Nuevo Mensaje de Contacto</h1>
+          <p style="margin: 8px 0 0; color: #9ca3af; font-size: 14px;">Se ha recibido una consulta desde la web</p>
+        </div>
+        
+        <div style="background: white; padding: 32px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 10px 12px; background: #f9fafb; border-radius: 8px 8px 0 0; border-bottom: 1px solid #e5e7eb;">
+                <strong style="color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Asunto</strong><br>
+                <span style="color: #111827; font-size: 15px; font-weight: 600;">${subject}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 12px; background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                <strong style="color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Nombre</strong><br>
+                <span style="color: #111827; font-size: 15px;">${customerName}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 12px; background: #f9fafb; border-radius: 0 0 8px 8px;">
+                <strong style="color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Email del cliente</strong><br>
+                <a href="mailto:${customerEmail}" style="color: #2563eb; font-size: 15px; text-decoration: none;">${customerEmail}</a>
+              </td>
+            </tr>
+          </table>
+          
+          <div style="background: #fafbfc; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+            <strong style="color: #374151; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 10px;">Mensaje</strong>
+            <div style="color: #1f2937; font-size: 15px; line-height: 1.7;">
+              ${escapedMessage}
+            </div>
+          </div>
+          
+          <div style="text-align: center; margin-top: 24px;">
+            <a href="mailto:${customerEmail}?subject=Re: ${encodeURIComponent(subject)}" 
+               style="display: inline-block; background: #d4af37; color: #111827; padding: 12px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+              Responder al cliente
+            </a>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px; color: #9ca3af; font-size: 12px;">
+          <p>Este mensaje fue enviado desde el formulario de contacto de Fashion Store</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  sendSmtpEmail.textContent = `
+Nuevo mensaje de contacto - Fashion Store
+
+Asunto: ${subject}
+Nombre: ${customerName}
+Email: ${customerEmail}
+
+Mensaje:
+${message}
+
+---
+Responder a: ${customerEmail}
+  `.trim();
+
+  try {
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log(`[EMAIL] Email de contacto enviado a ${adminEmails.length} admins`);
+    return { success: true, data };
+  } catch (error: any) {
+    console.error('[EMAIL] Error al enviar email de contacto:', error);
+    throw error;
+  }
+}
