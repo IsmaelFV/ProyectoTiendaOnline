@@ -32,39 +32,21 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
       });
     }
 
-    // Obtener el pedido
+    // Obtener el pedido con lock optimista: marcarlo como 'refunding' atómicamente
+    // para prevenir doble reembolso por peticiones concurrentes
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('*')
+      .update({ status: 'refunding', updated_at: new Date().toISOString() })
       .eq('id', id)
+      .eq('payment_status', 'paid')
+      .not('status', 'in', '(refunded,refunding)')
+      .select('*')
       .single();
 
     if (orderError || !order) {
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'Order not found' 
-      }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Verificar que el pedido esté pagado
-    if (order.payment_status !== 'paid') {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Solo se pueden reembolsar pedidos pagados' 
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Verificar que no esté ya reembolsado
-    if (order.status === 'refunded' || order.payment_status === 'refunded') {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Este pedido ya está reembolsado' 
+        error: 'Pedido no encontrado, ya reembolsado, o no está pagado' 
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }

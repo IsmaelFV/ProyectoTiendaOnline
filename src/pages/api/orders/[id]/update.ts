@@ -30,6 +30,18 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
     const body = await request.json();
     const { status, shipping_method, tracking_number, admin_notes } = body;
 
+    // Validar status contra allowlist
+    const VALID_STATUSES = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+    if (status && !VALID_STATUSES.includes(status)) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: `Estado inválido: ${status}. Valores permitidos: ${VALID_STATUSES.join(', ')}` 
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     // Preparar datos de actualización
     const updateData: any = {
       updated_at: new Date().toISOString(),

@@ -177,6 +177,7 @@ export const POST: APIRoute = async ({ request }) => {
     console.log(`[VERIFY-ORDER] Pedido creado: ${order.order_number} (ID: ${order.id})`);
 
     // 4. Crear order_items y decrementar stock
+    const verifyProductImages: Map<string, string> = new Map();
     for (const lineItem of lineItems) {
       const productName = lineItem.description || 'Producto';
       const quantity = lineItem.quantity || 1;
@@ -189,6 +190,10 @@ export const POST: APIRoute = async ({ request }) => {
         .maybeSingle();
 
       if (product?.id) {
+        const productImage = product.images?.[0] || null;
+        if (productImage) {
+          verifyProductImages.set(productName, productImage);
+        }
         const itemSizeInfo = orderItemsSizes.find(oi => oi.id === product.id);
         const itemSize = itemSizeInfo?.size || 'Unica';
 
@@ -244,14 +249,15 @@ export const POST: APIRoute = async ({ request }) => {
           name: item.description || 'Producto',
           quantity: item.quantity || 1,
           price: item.price?.unit_amount || 0,
-          total: (item.price?.unit_amount || 0) * (item.quantity || 1)
+          total: (item.price?.unit_amount || 0) * (item.quantity || 1),
+          image: verifyProductImages.get(item.description || '') || undefined
         }));
 
         const shippingAddress = session.customer_details?.address 
           ? `${session.customer_details.address.line1 || ''}${session.customer_details.address.line2 ? ', ' + session.customer_details.address.line2 : ''}, ${session.customer_details.address.city || ''}, ${session.customer_details.address.postal_code || ''}, ${session.customer_details.address.country || ''}`
           : 'Direccion no proporcionada';
 
-        const pdfBase64 = generateInvoicePDF({
+        const pdfBase64 = await generateInvoicePDF({
           orderNumber: order.order_number,
           orderDate: new Date().toISOString(),
           customerName,
@@ -268,7 +274,8 @@ export const POST: APIRoute = async ({ request }) => {
           to: customerEmail,
           customerName,
           orderNumber: order.order_number,
-          pdfBase64
+          pdfBase64,
+          items: invoiceItems
         });
 
         console.log(`[VERIFY-ORDER] Factura enviada a ${customerEmail}`);

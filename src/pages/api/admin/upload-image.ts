@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createServerSupabaseClient, verifyAdminFromCookies } from '../../../lib/auth';
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/svg+xml'];
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 const BUCKET_NAME = 'product-images';
 

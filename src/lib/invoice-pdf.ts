@@ -12,6 +12,7 @@ interface InvoiceItem {
   quantity: number;
   price: number; // en centavos
   total: number; // en centavos
+  image?: string; // URL de la imagen del producto
 }
 
 interface InvoiceData {
@@ -38,9 +39,36 @@ function formatCurrency(cents: number): string {
 }
 
 /**
+ * Descarga una imagen y la convierte a base64 para jsPDF
+ */
+async function fetchImageAsBase64(url: string): Promise<{ data: string; format: string } | null> {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return null;
+    
+    const contentType = response.headers.get('content-type') || '';
+    const buffer = await response.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    
+    let format = 'JPEG';
+    if (contentType.includes('png')) format = 'PNG';
+    else if (contentType.includes('webp')) format = 'PNG'; // jsPDF no soporta webp nativo, skip
+    
+    // jsPDF solo soporta JPEG y PNG de forma fiable
+    if (!contentType.includes('jpeg') && !contentType.includes('jpg') && !contentType.includes('png')) {
+      return null;
+    }
+    
+    return { data: `data:${contentType};base64,${base64}`, format };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Genera factura en PDF y retorna como base64
  */
-export function generateInvoicePDF(data: InvoiceData): string {
+export async function generateInvoicePDF(data: InvoiceData): Promise<string> {
   const doc = new jsPDF();
   
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -109,12 +137,31 @@ export function generateInvoicePDF(data: InvoiceData): string {
   // ============================================================================
   // TABLA DE PRODUCTOS
   // ============================================================================
+  
+  // Pre-cargar imágenes de productos
+  const imageCache: Map<string, { data: string; format: string }> = new Map();
+  await Promise.all(
+    data.items.map(async (item) => {
+      if (item.image) {
+        const img = await fetchImageAsBase64(item.image);
+        if (img) imageCache.set(item.image, img);
+      }
+    })
+  );
+
+  const hasImages = imageCache.size > 0;
+  const imgColWidth = hasImages ? 18 : 0; // ancho columna imagen
+  const productColStart = 25 + imgColWidth;
+
   doc.setFillColor(249, 250, 251);
   doc.rect(20, yPos, pageWidth - 40, 8, 'F');
   
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  doc.text('Producto', 25, yPos + 5);
+  if (hasImages) {
+    doc.text('', 25, yPos + 5); // columna imagen (sin header)
+  }
+  doc.text('Producto', productColStart, yPos + 5);
   doc.text('Cant.', pageWidth - 90, yPos + 5);
   doc.text('Precio', pageWidth - 65, yPos + 5);
   doc.text('Total', pageWidth - 25, yPos + 5, { align: 'right' });
@@ -127,18 +174,31 @@ export function generateInvoicePDF(data: InvoiceData): string {
   
   data.items.forEach((item) => {
     // Verificar si necesitamos nueva página
-    if (yPos > 250) {
+    if (yPos > 245) {
       doc.addPage();
       yPos = 20;
     }
     
-    const productName = doc.splitTextToSize(item.name, 90);
-    doc.text(productName, 25, yPos);
-    doc.text(item.quantity.toString(), pageWidth - 90, yPos);
-    doc.text(formatCurrency(item.price), pageWidth - 65, yPos);
-    doc.text(formatCurrency(item.total), pageWidth - 25, yPos, { align: 'right' });
+    const rowHeight = hasImages ? 16 : 8;
     
-    yPos += productName.length * 5 + 3;
+    // Dibujar imagen si existe
+    if (item.image && imageCache.has(item.image)) {
+      const img = imageCache.get(item.image)!;
+      try {
+        doc.addImage(img.data, img.format, 25, yPos - 4, 14, 14);
+      } catch {
+        // Si falla la imagen, continuar sin ella
+      }
+    }
+    
+    const productName = doc.splitTextToSize(item.name, hasImages ? 72 : 90);
+    const textYOffset = hasImages ? Math.max(0, (14 - productName.length * 5) / 2) : 0;
+    doc.text(productName, productColStart, yPos + textYOffset);
+    doc.text(item.quantity.toString(), pageWidth - 90, yPos + textYOffset);
+    doc.text(formatCurrency(item.price), pageWidth - 65, yPos + textYOffset);
+    doc.text(formatCurrency(item.total), pageWidth - 25, yPos + textYOffset, { align: 'right' });
+    
+    yPos += Math.max(rowHeight, productName.length * 5 + 3);
   });
 
   yPos += 5;

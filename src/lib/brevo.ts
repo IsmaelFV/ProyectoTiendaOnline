@@ -57,23 +57,57 @@ export async function sendEmail({
 }
 
 /**
- * Enviar factura por email con PDF adjunto
+ * Enviar factura por email con PDF adjunto y detalle de productos
  */
 export async function sendInvoiceEmail({
   to,
   customerName,
   orderNumber,
   pdfBase64,
+  items,
 }: {
   to: string;
   customerName: string;
   orderNumber: string;
   pdfBase64: string;
+  items?: Array<{ name: string; quantity: number; price: number; image?: string }>;
 }) {
   const apiInstance = getBrevoClient();
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
   sendSmtpEmail.subject = `Factura de tu pedido ${orderNumber} - Fashion Store`;
+  // Generar filas de productos para el email
+  const itemsHtml = items && items.length > 0 
+    ? items.map(item => `
+        <tr>
+          <td style="padding: 12px 8px; border-bottom: 1px solid #e5e7eb;">
+            ${item.image 
+              ? `<img src="${item.image}" alt="${item.name}" width="50" height="50" style="border-radius: 6px; object-fit: cover; display: block;" />`
+              : `<div style="width: 50px; height: 50px; background: #f3f4f6; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 20px;">📦</div>`
+            }
+          </td>
+          <td style="padding: 12px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: middle;">
+            <strong style="color: #1f2937;">${item.name}</strong><br>
+            <span style="color: #6b7280; font-size: 13px;">Cantidad: ${item.quantity}</span>
+          </td>
+          <td style="padding: 12px 8px; border-bottom: 1px solid #e5e7eb; text-align: right; vertical-align: middle; white-space: nowrap;">
+            <strong style="color: #1f2937;">${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(item.price / 100)}</strong>
+          </td>
+        </tr>
+      `).join('')
+    : '';
+
+  const productsSection = itemsHtml 
+    ? `
+      <div style="background: white; padding: 20px; border-radius: 6px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #1f2937;">Productos de tu pedido:</h3>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+          ${itemsHtml}
+        </table>
+      </div>
+    `
+    : '';
+
   sendSmtpEmail.htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -99,6 +133,8 @@ export async function sendInvoiceEmail({
           <p>Gracias por realizar su compra en <strong>Fashion Store</strong>. Tu pedido <strong>${orderNumber}</strong> ha sido procesado correctamente.</p>
           
           <p>Adjuntamos tu factura en formato PDF.</p>
+          
+          ${productsSection}
           
           <div style="background: white; padding: 20px; border-radius: 6px; margin: 20px 0;">
             <h3 style="margin-top: 0;">Detalles del pedido:</h3>

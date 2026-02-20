@@ -217,6 +217,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     // 2. Procesar line_items de Stripe para crear order_items y actualizar stock
     // Primero crear los order_items y recopilar info para decrement atómico
     const stockDecrementItems: Array<{ product_id: string; size: string; quantity: number }> = [];
+    const productImagesMap: Map<string, string> = new Map(); // productName → imageUrl
 
     for (const lineItem of lineItems.data) {
       const productName = lineItem.description || 'Producto';
@@ -236,6 +237,11 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
 
       // Solo crear order_item si encontramos el producto (product_id es requerido)
       if (product?.id) {
+        // Guardar imagen para la factura
+        const productImage = product.images?.[0] || null;
+        if (productImage) {
+          productImagesMap.set(productName, productImage);
+        }
         // Buscar la talla de este item desde los metadata
         const itemSizeInfo = orderItemsSizes.find(oi => oi.id === product.id);
         const itemSize = itemSizeInfo?.size || 'Única';
@@ -381,7 +387,8 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
         name: item.description || 'Producto',
         quantity: item.quantity || 1,
         price: item.price?.unit_amount || 0,
-        total: (item.price?.unit_amount || 0) * (item.quantity || 1)
+        total: (item.price?.unit_amount || 0) * (item.quantity || 1),
+        image: productImagesMap.get(item.description || '') || undefined
       }));
 
       const shippingAddress = session.customer_details?.address 
@@ -389,7 +396,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
         : 'Dirección no proporcionada';
 
       // Generar PDF
-      const pdfBase64 = generateInvoicePDF({
+      const pdfBase64 = await generateInvoicePDF({
         orderNumber,
         orderDate: new Date().toISOString(),
         customerName,
@@ -407,7 +414,8 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
         to: customerEmail,
         customerName,
         orderNumber,
-        pdfBase64
+        pdfBase64,
+        items: invoiceItems
       });
 
       console.log(`[WEBHOOK] Factura enviada correctamente a ${customerEmail}`);

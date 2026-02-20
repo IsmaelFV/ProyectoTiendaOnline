@@ -1,28 +1,19 @@
 import type { APIRoute } from 'astro';
-import { supabase } from '@lib/supabase';
 import { verifyAdminFromCookies, createServerSupabaseClient } from '@lib/auth';
 
-// GET - Obtener estado de ofertas flash
+// GET - Obtener estado de ofertas flash (público)
 export const GET: APIRoute = async ({ cookies }) => {
   try {
-    // Verificar autenticación
-    const accessToken = cookies.get('sb-access-token')?.value;
-    if (!accessToken) {
-      return new Response(
-        JSON.stringify({ enabled: true }), // Valor por defecto público
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Obtener configuración de la base de datos
-    const { data, error } = await supabase
+    // Usar server client para evitar problemas de RLS
+    const serverSupabase = createServerSupabaseClient();
+    const { data, error } = await serverSupabase
       .from('site_settings')
       .select('value')
       .eq('key', 'flash_offers_enabled')
       .single();
 
-    if (error) {
-      // Si no existe, devolver habilitado por defecto
+    if (error || !data) {
+      // Si no existe la configuración, habilitado por defecto
       return new Response(
         JSON.stringify({ enabled: true }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }

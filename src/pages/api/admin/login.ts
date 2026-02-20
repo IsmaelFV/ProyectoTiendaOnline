@@ -39,15 +39,11 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     }
 
     // 2. Verificar que sea administrador (usar service_role para evitar RLS)
-    console.log('[Admin Login] Verificando admin para user_id:', data.user.id);
-    
     const adminSupabase = createServerSupabaseClient();
     const { data: adminUsers, error: adminError } = await adminSupabase
       .from('admin_users')
       .select('*')
       .eq('user_id', data.user.id);
-
-    console.log('[Admin Login] Query resultado:', { adminUsers, adminError });
 
     if (adminError || !adminUsers || adminUsers.length === 0) {
       console.error('[Admin Login] Usuario no es admin:', email, 'Error:', adminError?.message);

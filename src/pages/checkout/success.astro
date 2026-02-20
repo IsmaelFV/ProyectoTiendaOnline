@@ -121,6 +121,7 @@ if (sessionId) {
         console.log(`[SUCCESS] Pedido creado (fallback): ${orderNumber}`);
 
         // Crear order_items y decrementar stock
+        const successProductImages: Map<string, string> = new Map();
         for (const lineItem of lineItems) {
           const productName = lineItem.description || 'Producto';
           const quantity = lineItem.quantity || 1;
@@ -133,6 +134,10 @@ if (sessionId) {
             .maybeSingle();
 
           if (product?.id) {
+            const productImage = product.images?.[0] || null;
+            if (productImage) {
+              successProductImages.set(productName, productImage);
+            }
             const itemSizeInfo = orderItemsSizes.find(oi => oi.id === product.id);
             const itemSize = itemSizeInfo?.size || 'Unica';
 
@@ -181,14 +186,15 @@ if (sessionId) {
               name: item.description || 'Producto',
               quantity: item.quantity || 1,
               price: item.price?.unit_amount || 0,
-              total: (item.price?.unit_amount || 0) * (item.quantity || 1)
+              total: (item.price?.unit_amount || 0) * (item.quantity || 1),
+              image: successProductImages.get(item.description || '') || undefined
             }));
 
             const shippingAddress = session.customer_details?.address 
               ? `${session.customer_details.address.line1 || ''}${session.customer_details.address.line2 ? ', ' + session.customer_details.address.line2 : ''}, ${session.customer_details.address.city || ''}, ${session.customer_details.address.postal_code || ''}, ${session.customer_details.address.country || ''}`
               : 'Direccion no proporcionada';
 
-            const pdfBase64 = generateInvoicePDF({
+            const pdfBase64 = await generateInvoicePDF({
               orderNumber: order.order_number,
               orderDate: new Date().toISOString(),
               customerName,
@@ -205,7 +211,8 @@ if (sessionId) {
               to: customerEmail,
               customerName,
               orderNumber: order.order_number,
-              pdfBase64
+              pdfBase64,
+              items: invoiceItems
             });
             console.log(`[SUCCESS] Factura enviada a ${customerEmail}`);
           }

@@ -1,17 +1,7 @@
 import type { APIRoute } from 'astro';
-import { createClient } from '@supabase/supabase-js';
+import { verifyAdminFromCookies, createServerSupabaseClient } from '@lib/auth';
+import { supabase as anonSupabase } from '@lib/supabase';
 import { generateInvoicePDF } from '../../../../lib/invoice-pdf';
-
-const supabaseAdmin = createClient(
-  import.meta.env.PUBLIC_SUPABASE_URL,
-  import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
 
 export const GET: APIRoute = async ({ params, request, cookies }) => {
   try {
@@ -23,6 +13,45 @@ export const GET: APIRoute = async ({ params, request, cookies }) => {
         headers: { 'Content-Type': 'application/json' }
       });
     }
+
+    // Verificar autenticación: admin o propietario del pedido
+    const accessToken = cookies.get('sb-access-token')?.value;
+    const refreshToken = cookies.get('sb-refresh-token')?.value;
+
+    if (!accessToken) {
+      return new Response(JSON.stringify({ error: 'No autorizado' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Intentar verificar como admin
+    const adminUserId = await verifyAdminFromCookies(accessToken, refreshToken);
+    let isAuthorized = !!adminUserId;
+
+    // Si no es admin, verificar si el usuario es el propietario del pedido
+    if (!isAuthorized) {
+      const { data: { user } } = await anonSupabase.auth.getUser(accessToken);
+      if (user) {
+        const supabaseAdmin = createServerSupabaseClient();
+        const { data: ownerCheck } = await supabaseAdmin
+          .from('orders')
+          .select('id')
+          .eq('id', orderId)
+          .eq('user_id', user.id)
+          .single();
+        isAuthorized = !!ownerCheck;
+      }
+    }
+
+    if (!isAuthorized) {
+      return new Response(JSON.stringify({ error: 'No autorizado para esta factura' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const supabaseAdmin = createServerSupabaseClient();
 
     // Obtener el pedido con sus items
     const { data: order, error: orderError } = await supabaseAdmin
@@ -46,13 +75,14 @@ export const GET: APIRoute = async ({ params, request, cookies }) => {
       name: item.product_name,
       quantity: item.quantity,
       price: Math.round(item.price * 100), // Convertir a céntimos
-      total: Math.round(item.subtotal * 100)
+      total: Math.round(item.subtotal * 100),
+      image: item.product_image || undefined
     }));
 
     const shippingAddress = `${order.shipping_address_line1}${order.shipping_address_line2 ? ', ' + order.shipping_address_line2 : ''}, ${order.shipping_city}, ${order.shipping_postal_code}, ${order.shipping_country}`;
 
     // Generar PDF
-    const pdfBase64 = generateInvoicePDF({
+    const pdfBase64 = await generateInvoicePDF({
       orderNumber: order.order_number,
       orderDate: order.created_at,
       customerName: order.shipping_full_name,
