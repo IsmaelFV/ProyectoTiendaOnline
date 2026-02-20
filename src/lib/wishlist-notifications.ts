@@ -88,9 +88,11 @@ export async function notifyWishlistSale(data: SaleNotificationData): Promise<vo
 
     console.log(`[Wishlist Notify] Enviando notificación de oferta de "${data.productName}" a ${users.length} usuario(s)...`);
 
-    const productUrl = `${import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321'}/productos/${data.productSlug}`;
+    const productUrl = `${import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321'}/productos/${encodeURIComponent(data.productSlug)}`;
+    const safeProductUrl = escapeHtml(productUrl);
+    const safeProductName = escapeHtml(data.productName);
     const imageHtml = data.productImage
-      ? `<img src="${data.productImage}" alt="${data.productName}" style="max-width:100%;max-height:250px;border-radius:8px;object-fit:cover;margin-bottom:16px;" />`
+      ? `<img src="${escapeHtml(data.productImage)}" alt="${safeProductName}" style="max-width:100%;max-height:250px;border-radius:8px;object-fit:cover;margin-bottom:16px;" />`
       : '';
 
     const htmlContent = `
@@ -120,7 +122,7 @@ export async function notifyWishlistSale(data: SaleNotificationData): Promise<vo
       </div>
 
       <div style="text-align:center;margin:28px 0;">
-        <a href="${productUrl}" style="display:inline-block;background:#dc2626;color:#fff;padding:14px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">
+        <a href="${safeProductUrl}" style="display:inline-block;background:#dc2626;color:#fff;padding:14px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">
           Ver oferta →
         </a>
       </div>
@@ -186,7 +188,8 @@ export async function notifyWishlistLowStock(data: LowStockNotificationData): Pr
 
     console.log(`[Wishlist Notify] Enviando alerta de stock bajo de "${data.productName}" (${data.currentStock} uds.) a ${users.length} usuario(s)...`);
 
-    const productUrl = `${import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321'}/productos/${data.productSlug}`;
+    const productUrl = `${import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321'}/productos/${encodeURIComponent(data.productSlug)}`;
+    const safeProductUrl = escapeHtml(productUrl);
     const safeProductName = escapeHtml(data.productName);
     const imageHtml = data.productImage
       ? `<img src="${escapeHtml(data.productImage)}" alt="${safeProductName}" style="max-width:100%;max-height:250px;border-radius:8px;object-fit:cover;margin-bottom:16px;" />`
@@ -222,7 +225,7 @@ export async function notifyWishlistLowStock(data: LowStockNotificationData): Pr
       </div>
 
       <div style="text-align:center;margin:28px 0;">
-        <a href="${productUrl}" style="display:inline-block;background:#f59e0b;color:#fff;padding:14px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">
+        <a href="${safeProductUrl}" style="display:inline-block;background:#f59e0b;color:#fff;padding:14px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">
           Comprar ahora →
         </a>
       </div>

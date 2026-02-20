@@ -9,8 +9,17 @@
 import type { APIRoute } from 'astro';
 import { supabase } from '../../../lib/supabase';
 import { createServerSupabaseClient } from '../../../lib/auth';
+import { RateLimiter, getClientIP } from '../../../lib/rate-limit';
+
+const adminLoginLimiter = new RateLimiter({ maxAttempts: 5, windowMs: 15 * 60_000 });
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+  // Rate limiting
+  const ip = getClientIP(request);
+  if (!adminLoginLimiter.check(ip)) {
+    return redirect('/auth/login?error=too_many_attempts');
+  }
+
   const formData = await request.formData();
   const email = formData.get('email')?.toString()?.trim();
   const password = formData.get('password')?.toString();

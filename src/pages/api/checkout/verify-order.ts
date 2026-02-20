@@ -32,8 +32,16 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const { sessionId } = await request.json();
 
-    if (!sessionId) {
+    if (!sessionId || typeof sessionId !== 'string') {
       return new Response(JSON.stringify({ error: 'sessionId requerido' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validar formato de sessionId para prevenir PostgREST injection
+    if (!/^cs_(test|live)_[a-zA-Z0-9]+$/.test(sessionId)) {
+      return new Response(JSON.stringify({ error: 'sessionId inválido' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });

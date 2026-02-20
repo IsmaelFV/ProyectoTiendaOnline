@@ -1,11 +1,10 @@
 import type { APIRoute } from 'astro';
 import { createServerSupabaseClient } from '@lib/auth';
 import { sendContactEmailToAdmins } from '@lib/brevo';
+import { RateLimiter, getClientIP } from '@lib/rate-limit';
 
-// ── Rate limiting para formulario de contacto ────────────────────────
-const CONTACT_RATE_LIMIT = 3;           // máx envíos por ventana
-const CONTACT_RATE_WINDOW = 10 * 60_000; // 10 minutos
-const contactAttempts = new Map<string, { count: number; firstAttempt: number }>();
+// ── Rate limiting para formulario de contacto ────────────────────
+const contactLimiter = new RateLimiter({ maxAttempts: 3, windowMs: 10 * 60_000 });
 
 // Asuntos válidos (whitelist)
 const VALID_SUBJECTS: Record<string, string> = {
@@ -20,34 +19,13 @@ const VALID_SUBJECTS: Record<string, string> = {
 export const POST: APIRoute = async ({ request }) => {
   try {
     // ── Rate limiting por IP ─────────────────────────────────────────
-    const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      || request.headers.get('x-real-ip')
-      || 'unknown';
-
-    const now = Date.now();
-    const attempts = contactAttempts.get(clientIP);
-
-    if (attempts) {
-      if (now - attempts.firstAttempt > CONTACT_RATE_WINDOW) {
-        contactAttempts.set(clientIP, { count: 1, firstAttempt: now });
-      } else if (attempts.count >= CONTACT_RATE_LIMIT) {
-        console.warn(`[Contact] Rate limit exceeded for IP: ${clientIP}`);
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Has enviado demasiados mensajes. Inténtalo de nuevo en unos minutos.',
-        }), { status: 429, headers: { 'Content-Type': 'application/json' } });
-      } else {
-        attempts.count++;
-      }
-    } else {
-      contactAttempts.set(clientIP, { count: 1, firstAttempt: now });
-    }
-
-    // Limpiar entradas expiradas (evitar memory leak)
-    if (contactAttempts.size > 500) {
-      for (const [ip, data] of contactAttempts) {
-        if (now - data.firstAttempt > CONTACT_RATE_WINDOW) contactAttempts.delete(ip);
-      }
+    const clientIP = getClientIP(request);
+    if (!contactLimiter.check(clientIP)) {
+      console.warn(`[Contact] Rate limit exceeded for IP: ${clientIP}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Has enviado demasiados mensajes. Inténtalo de nuevo en unos minutos.',
+      }), { status: 429, headers: { 'Content-Type': 'application/json' } });
     }
 
     // ── Parsear y validar body ───────────────────────────────────────

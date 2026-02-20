@@ -9,8 +9,17 @@
 import type { APIRoute } from 'astro';
 import { supabase } from '../../../lib/supabase';
 import { logger } from '../../../lib/logger';
+import { RateLimiter, getClientIP } from '../../../lib/rate-limit';
+
+const registerLimiter = new RateLimiter({ maxAttempts: 3, windowMs: 10 * 60_000 });
 
 export const POST: APIRoute = async ({ request, redirect }) => {
+  // Rate limiting
+  const ip = getClientIP(request);
+  if (!registerLimiter.check(ip)) {
+    return redirect(`/auth/register?error=${encodeURIComponent('Demasiados intentos. Espera unos minutos.')}`);
+  }
+
   // Obtener datos del formulario
   const formData = await request.formData();
   const name = formData.get('name')?.toString()?.trim();

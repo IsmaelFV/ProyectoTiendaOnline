@@ -9,8 +9,17 @@
 import type { APIRoute } from 'astro';
 import { supabase } from '../../../lib/supabase';
 import { logger } from '../../../lib/logger';
+import { RateLimiter, getClientIP } from '../../../lib/rate-limit';
+
+const loginLimiter = new RateLimiter({ maxAttempts: 5, windowMs: 15 * 60_000 });
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+  // Rate limiting
+  const ip = getClientIP(request);
+  if (!loginLimiter.check(ip)) {
+    return redirect(`/auth/login?error=${encodeURIComponent('Demasiados intentos. Espera unos minutos.')}`);
+  }
+
   // Obtener credenciales del formulario
   const formData = await request.formData();
   const email = formData.get('email')?.toString()?.trim();
@@ -68,10 +77,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       maxAge: 60 * 60 * 24 * 30, // 30 días
     });
 
-    // CRÍTICO: También guardar en cookie NO httpOnly para que el cliente pueda establecer la sesión
+    // Guardar datos de sesión NO sensibles para el cliente (sin tokens)
     cookies.set('sb-session-data', JSON.stringify({
-      access_token: data.session.access_token,
-      refresh_token: data.session.refresh_token,
       expires_at: data.session.expires_at,
       user: {
         id: data.session.user.id,

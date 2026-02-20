@@ -305,15 +305,21 @@ if (noSaleError) console.error('Error cargando productos sin oferta:', noSaleErr
     };
 
     toast.className += ` ${styles[type]}`;
-    toast.innerHTML = `
-      ${icons[type]}
-      <span class="flex-1 text-sm font-medium">${message}</span>
-      <button class="toast-close ml-2 hover:opacity-70 transition-opacity">
-        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-        </svg>
-      </button>
-    `;
+
+    // Icono (SVG estático, seguro)
+    const iconSpan = document.createElement('span');
+    iconSpan.innerHTML = icons[type];
+    // Mensaje (textContent para prevenir XSS)
+    const msgSpan = document.createElement('span');
+    msgSpan.className = 'flex-1 text-sm font-medium';
+    msgSpan.textContent = message;
+    // Botón cerrar
+    const closeBtnEl = document.createElement('button');
+    closeBtnEl.className = 'toast-close ml-2 hover:opacity-70 transition-opacity';
+    closeBtnEl.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>';
+    toast.appendChild(iconSpan);
+    toast.appendChild(msgSpan);
+    toast.appendChild(closeBtnEl);
 
     container.appendChild(toast);
 
@@ -322,9 +328,8 @@ if (noSaleError) console.error('Error cargando productos sin oferta:', noSaleErr
       toast.style.transform = 'translateX(0)';
     }, 10);
 
-    // Botón de cerrar
-    const closeBtn = toast.querySelector('.toast-close');
-    closeBtn?.addEventListener('click', () => removeToast(toast));
+    // Botón de cerrar (referencia directa)
+    closeBtnEl.addEventListener('click', () => removeToast(toast));
 
     // Auto-cerrar después de 4 segundos
     setTimeout(() => removeToast(toast), 4000);
@@ -342,54 +347,68 @@ if (noSaleError) console.error('Error cargando productos sin oferta:', noSaleErr
   function showConfirmDialog(message: string, onConfirm: () => void) {
     const overlay = document.createElement('div');
     overlay.className = 'fixed inset-0 z-[9998] flex items-center justify-center';
-    overlay.innerHTML = `
-      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm confirm-overlay"></div>
-      <div class="relative bg-dark-surface border border-white/10 rounded-xl w-full max-w-md mx-4 p-6 space-y-6 transform scale-95 opacity-0 transition-all duration-200">
-        <div class="flex items-start gap-4">
-          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-            <svg class="w-6 h-6 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-            </svg>
-          </div>
-          <div class="flex-1">
-            <h3 class="text-lg font-semibold text-white mb-2">¿Estás seguro?</h3>
-            <p class="text-sm text-gray-400">${message}</p>
-          </div>
-        </div>
-        <div class="flex justify-end gap-3">
-          <button class="confirm-cancel px-4 py-2 text-gray-400 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
-            Cancelar
-          </button>
-          <button class="confirm-accept px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium">
-            Confirmar
-          </button>
-        </div>
-      </div>
-    `;
+
+    // Backdrop
+    const backdrop = document.createElement('div');
+    backdrop.className = 'absolute inset-0 bg-black/70 backdrop-blur-sm';
+
+    // Dialog container
+    const dialog = document.createElement('div');
+    dialog.className = 'relative bg-dark-surface border border-white/10 rounded-xl w-full max-w-md mx-4 p-6 space-y-6 transform scale-95 opacity-0 transition-all duration-200';
+
+    // Header con icono + título
+    const headerRow = document.createElement('div');
+    headerRow.className = 'flex items-start gap-4';
+    const iconWrap = document.createElement('div');
+    iconWrap.className = 'flex-shrink-0 w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center';
+    iconWrap.innerHTML = '<svg class="w-6 h-6 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>';
+    const textCol = document.createElement('div');
+    textCol.className = 'flex-1';
+    const h3El = document.createElement('h3');
+    h3El.className = 'text-lg font-semibold text-white mb-2';
+    h3El.textContent = '¿Estás seguro?';
+    const msgP = document.createElement('p');
+    msgP.className = 'text-sm text-gray-400';
+    msgP.textContent = message;
+    textCol.appendChild(h3El);
+    textCol.appendChild(msgP);
+    headerRow.appendChild(iconWrap);
+    headerRow.appendChild(textCol);
+
+    // Botones
+    const btnRow = document.createElement('div');
+    btnRow.className = 'flex justify-end gap-3';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'px-4 py-2 text-gray-400 bg-white/10 rounded-lg hover:bg-white/20 transition-colors';
+    cancelBtn.textContent = 'Cancelar';
+    const acceptBtn = document.createElement('button');
+    acceptBtn.className = 'px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium';
+    acceptBtn.textContent = 'Confirmar';
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(acceptBtn);
+
+    dialog.appendChild(headerRow);
+    dialog.appendChild(btnRow);
+    overlay.appendChild(backdrop);
+    overlay.appendChild(dialog);
 
     document.body.appendChild(overlay);
 
     // Animación de entrada
     setTimeout(() => {
-      const dialog = overlay.querySelector('.relative');
-      if (dialog) {
-        (dialog as HTMLElement).style.transform = 'scale(1)';
-        (dialog as HTMLElement).style.opacity = '1';
-      }
+      dialog.style.transform = 'scale(1)';
+      dialog.style.opacity = '1';
     }, 10);
 
     const closeDialog = () => {
-      const dialog = overlay.querySelector('.relative');
-      if (dialog) {
-        (dialog as HTMLElement).style.transform = 'scale(0.95)';
-        (dialog as HTMLElement).style.opacity = '0';
-      }
+      dialog.style.transform = 'scale(0.95)';
+      dialog.style.opacity = '0';
       setTimeout(() => overlay.remove(), 200);
     };
 
-    overlay.querySelector('.confirm-overlay')?.addEventListener('click', closeDialog);
-    overlay.querySelector('.confirm-cancel')?.addEventListener('click', closeDialog);
-    overlay.querySelector('.confirm-accept')?.addEventListener('click', () => {
+    backdrop.addEventListener('click', closeDialog);
+    cancelBtn.addEventListener('click', closeDialog);
+    acceptBtn.addEventListener('click', () => {
       closeDialog();
       onConfirm();
     });

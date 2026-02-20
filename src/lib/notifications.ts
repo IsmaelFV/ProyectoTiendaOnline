@@ -151,18 +151,17 @@ class ConfirmManager {
 
       const cleanup = (result: boolean) => {
         dialogEl.classList.add('opacity-0');
-        const dialog = dialogEl.querySelector('.confirm-dialog');
-        dialog?.classList.remove('scale-100');
-        dialog?.classList.add('scale-95');
+        dialogContent.classList.remove('scale-100');
+        dialogContent.classList.add('scale-95');
         setTimeout(() => {
           dialogEl.remove();
           resolve(result);
         }, 200);
       };
 
-      // Event listeners
-      dialogEl.querySelector('.confirm-btn')?.addEventListener('click', () => cleanup(true));
-      dialogEl.querySelector('.cancel-btn')?.addEventListener('click', () => cleanup(false));
+      // Event listeners (referencias directas, sin querySelector)
+      confirmBtnEl.addEventListener('click', () => cleanup(true));
+      cancelBtnEl.addEventListener('click', () => cleanup(false));
       dialogEl.addEventListener('click', (e) => {
         if (e.target === dialogEl) cleanup(false);
       });

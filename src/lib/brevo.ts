@@ -234,6 +234,7 @@ export async function sendContactEmailToAdmins({
   // Versiones escapadas solo para interpolación en cuerpo HTML
   const safeName = escapeHtml(customerName);
   const safeEmail = escapeHtml(customerEmail);
+  const safeSubject = escapeHtml(subject);
   const escapedMessage = escapeHtml(message).replace(/\n/g, '<br>');
 
   sendSmtpEmail.htmlContent = `
@@ -257,7 +258,7 @@ export async function sendContactEmailToAdmins({
             <tr>
               <td style="padding: 10px 12px; background: #f9fafb; border-radius: 8px 8px 0 0; border-bottom: 1px solid #e5e7eb;">
                 <strong style="color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Asunto</strong><br>
-                <span style="color: #111827; font-size: 15px; font-weight: 600;">${subject}</span>
+                <span style="color: #111827; font-size: 15px; font-weight: 600;">${safeSubject}</span>
               </td>
             </tr>
             <tr>
@@ -269,7 +270,7 @@ export async function sendContactEmailToAdmins({
             <tr>
               <td style="padding: 10px 12px; background: #f9fafb; border-radius: 0 0 8px 8px;">
                 <strong style="color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Email del cliente</strong><br>
-                <a href="mailto:${customerEmail}" style="color: #2563eb; font-size: 15px; text-decoration: none;">${safeEmail}</a>
+                <a href="mailto:${encodeURIComponent(customerEmail)}" style="color: #2563eb; font-size: 15px; text-decoration: none;">${safeEmail}</a>
               </td>
             </tr>
           </table>
@@ -282,7 +283,7 @@ export async function sendContactEmailToAdmins({
           </div>
           
           <div style="text-align: center; margin-top: 24px;">
-            <a href="mailto:${customerEmail}?subject=Re: ${encodeURIComponent(subject)}" 
+            <a href="mailto:${encodeURIComponent(customerEmail)}?subject=Re: ${encodeURIComponent(subject)}" 
                style="display: inline-block; background: #d4af37; color: #111827; padding: 12px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
               Responder al cliente
             </a>

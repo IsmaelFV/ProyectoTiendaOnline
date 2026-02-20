@@ -1,8 +1,32 @@
 import type { APIRoute } from 'astro';
-import { supabase } from '@lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
+    // ── Autenticación via cookie ──────────────────────────────────────
+    const accessToken = cookies.get('sb-access-token')?.value;
+    if (!accessToken) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'No autenticado' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseAdmin = createClient(
+      import.meta.env.PUBLIC_SUPABASE_URL,
+      import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    // Verificar token y obtener usuario
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(accessToken);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Token inválido o expirado' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const body = await request.json();
     const { orderId, reason } = body;
 
@@ -13,11 +37,29 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
-    // Verificar que el pedido existe y es elegible para devolución
-    const { data: order, error: orderError } = await supabase
+    // Validación de tipos y longitud
+    if (typeof orderId !== 'string' || typeof reason !== 'string') {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Datos con formato inválido' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // UUID v4 format check para orderId + límite de razón
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(orderId) || reason.length > 1000) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Datos con formato inválido' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verificar que el pedido existe, pertenece al usuario, y es elegible
+    const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .select('*')
       .eq('id', orderId)
+      .eq('user_id', user.id)
       .single();
 
     if (orderError || !order) {
@@ -55,7 +97,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // Verificar que no hay ya una devolución en proceso
-    const { data: existingReturn } = await supabase
+    const { data: existingReturn } = await supabaseAdmin
       .from('returns')
       .select('id, status')
       .eq('order_id', orderId)
@@ -73,7 +115,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // Crear la solicitud de devolución
-    const { data: newReturn, error: returnError } = await supabase
+    const { data: newReturn, error: returnError } = await supabaseAdmin
       .from('returns')
       .insert({
         order_id: orderId,
@@ -95,7 +137,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // Actualizar el estado del pedido
-    await supabase
+    await supabaseAdmin
       .from('orders')
       .update({ 
         status: 'return_requested',

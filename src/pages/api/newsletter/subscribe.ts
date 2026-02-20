@@ -1,37 +1,19 @@
 import type { APIRoute } from 'astro';
 import { supabase } from '@lib/supabase';
+import { RateLimiter, getClientIP } from '@lib/rate-limit';
 
 // ── Rate limiting para newsletter ─────────────────────────────────────────────
-const NL_RATE_LIMIT = 5;
-const NL_RATE_WINDOW = 10 * 60_000; // 10 minutos
-const nlAttempts = new Map<string, { count: number; firstAttempt: number }>();
+const nlLimiter = new RateLimiter({ maxAttempts: 5, windowMs: 10 * 60_000 });
 
 export const POST: APIRoute = async ({ request }) => {
   try {
     // Rate limiting por IP
-    const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      || request.headers.get('x-real-ip')
-      || 'unknown';
-    const now = Date.now();
-    const attempts = nlAttempts.get(clientIP);
-    if (attempts) {
-      if (now - attempts.firstAttempt > NL_RATE_WINDOW) {
-        nlAttempts.set(clientIP, { count: 1, firstAttempt: now });
-      } else if (attempts.count >= NL_RATE_LIMIT) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Demasiados intentos. Espera unos minutos.' }),
-          { status: 429, headers: { 'Content-Type': 'application/json' } }
-        );
-      } else {
-        attempts.count++;
-      }
-    } else {
-      nlAttempts.set(clientIP, { count: 1, firstAttempt: now });
-    }
-    if (nlAttempts.size > 500) {
-      for (const [ip, d] of nlAttempts) {
-        if (now - d.firstAttempt > NL_RATE_WINDOW) nlAttempts.delete(ip);
-      }
+    const clientIP = getClientIP(request);
+    if (!nlLimiter.check(clientIP)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Demasiados intentos. Espera unos minutos.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     const body = await request.json();
