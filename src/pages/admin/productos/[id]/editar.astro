@@ -533,9 +533,10 @@ if (categories && genders) {
         window.location.href = '/admin/productos';
       }, 2000);
 
-    } catch (error: any) {
-      console.error('Error:', error);
-      showMessage(error.message, true);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      console.error('Error:', message);
+      showMessage(message, true);
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
     }
@@ -582,9 +583,10 @@ if (categories && genders) {
         window.location.href = '/admin/productos';
       }, 1000);
 
-    } catch (error: any) {
-      console.error('Error:', error);
-      showMessage(error.message, true);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      console.error('Error:', message);
+      showMessage(message, true);
       deleteBtn.disabled = false;
       deleteBtn.textContent = 'Eliminar';
     }

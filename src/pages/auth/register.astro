@@ -190,34 +190,17 @@ const successMessage = Astro.url.searchParams.get('success');
 
   <script>
     import { customAlert } from '../../lib/notifications';
-    import { supabase } from '../../lib/supabase';
     
     // Validar que las contraseñas coincidan
     const form = document.querySelector('form');
     const password = document.getElementById('password') as HTMLInputElement;
     const confirmPassword = document.getElementById('confirmPassword') as HTMLInputElement;
-    const googleBtn = document.getElementById('google-register-btn');
 
     form?.addEventListener('submit', (e) => {
       if (password.value !== confirmPassword.value) {
         e.preventDefault();
         customAlert('Las contraseñas no coinciden', 'error');
         confirmPassword.focus();
-      }
-    });
-
-    // Google OAuth para registro
-    googleBtn?.addEventListener('click', async () => {
-      console.log('[REGISTER PAGE] Iniciando Google OAuth...');
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        }
-      });
-      
-      if (error) {
-        customAlert('Error al registrarse con Google: ' + error.message, 'error');
       }
     });
   </script>

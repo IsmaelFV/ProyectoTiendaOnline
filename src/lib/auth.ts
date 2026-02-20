@@ -18,6 +18,7 @@
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { logger } from './logger';
 import type { User } from '@supabase/supabase-js';
 
 /**
@@ -374,22 +375,20 @@ export async function verifyAdminFromCookies(
   accessToken: string | undefined,
   refreshToken: string | undefined
 ): Promise<string | null> {
-  if (import.meta.env.DEV) {
-    console.log('[verifyAdminFromCookies] accessToken:', accessToken ? 'present' : 'missing');
-    console.log('[verifyAdminFromCookies] refreshToken:', refreshToken ? 'present' : 'missing');
-  }
+  logger.debug('[verifyAdminFromCookies] accessToken:', accessToken ? 'present' : 'missing');
+  logger.debug('[verifyAdminFromCookies] refreshToken:', refreshToken ? 'present' : 'missing');
   
   if (!accessToken || !refreshToken) {
-    if (import.meta.env.DEV) console.log('[verifyAdminFromCookies] Tokens missing, returning null');
+    logger.debug('[verifyAdminFromCookies] Tokens missing, returning null');
     return null;
   }
 
   // Obtener el usuario desde los tokens
   const user = await getUserFromSession(accessToken, refreshToken);
-  if (import.meta.env.DEV) console.log('[verifyAdminFromCookies] user:', user ? user.id : 'null');
+  logger.debug('[verifyAdminFromCookies] user:', user ? user.id : 'null');
   
   if (!user) {
-    if (import.meta.env.DEV) console.log('[verifyAdminFromCookies] No user from session, returning null');
+    logger.debug('[verifyAdminFromCookies] No user from session, returning null');
     return null;
   }
 
@@ -401,10 +400,8 @@ export async function verifyAdminFromCookies(
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (import.meta.env.DEV) {
-    console.log('[verifyAdminFromCookies] adminData:', adminData);
-    console.log('[verifyAdminFromCookies] error:', error);
-  }
+  logger.debug('[verifyAdminFromCookies] adminData:', adminData);
+  logger.debug('[verifyAdminFromCookies] error:', error);
 
   return adminData ? user.id : null;
 }

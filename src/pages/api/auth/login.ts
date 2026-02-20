@@ -8,6 +8,7 @@
 
 import type { APIRoute } from 'astro';
 import { supabase } from '../../../lib/supabase';
+import { logger } from '../../../lib/logger';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   // Obtener credenciales del formulario
@@ -17,13 +18,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   // Validación básica
   if (!email || !password) {
-    return redirect('/auth/login?error=Por favor ingresa email y contraseña');
+    return redirect(`/auth/login?error=${encodeURIComponent('Por favor ingresa email y contraseña')}`);
   }
 
   // Validación de formato de email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    return redirect('/auth/login?error=El formato del email no es válido');
+    return redirect(`/auth/login?error=${encodeURIComponent('El formato del email no es válido')}`);
   }
 
   try {
@@ -34,7 +35,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     });
 
     if (error) {
-      console.error('[Login] Error:', error);
+      logger.error('[Login] Error:', error);
       let errorMessage = 'Credenciales inválidas';
       
       if (error.message.includes('Invalid login credentials')) {
@@ -84,8 +85,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       maxAge: 60 * 60 * 24 * 7,
     });
 
-    console.log('[Login] Usuario autenticado:', email);
-    console.log('[Login] Session data guardada para cliente');
+    logger.debug('[Login] Usuario autenticado:', email);
+    logger.debug('[Login] Session data guardada para cliente');
 
     // Verificar si el usuario es administrador (usar service_role para evitar RLS)
     try {
@@ -103,19 +104,19 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
         .maybeSingle();
 
       if (adminData) {
-        console.log('[Login] Usuario es ADMIN, redirigiendo a /admin');
+        logger.debug('[Login] Usuario es ADMIN, redirigiendo a /admin');
         return redirect('/admin');
       }
     } catch (adminCheckErr) {
-      console.warn('[Login] Error verificando admin (no crítico):', adminCheckErr);
+      logger.warn('[Login] Error verificando admin (no crítico):', adminCheckErr);
     }
 
     // Redirigir a la página principal (usuario normal)
     return redirect('/');
 
   } catch (error) {
-    console.error('[Login] Error inesperado:', error);
-    return redirect('/auth/login?error=Error al iniciar sesión. Inténtalo de nuevo');
+    logger.error('[Login] Error inesperado:', error);
+    return redirect(`/auth/login?error=${encodeURIComponent('Error al iniciar sesión. Inténtalo de nuevo')}`);
   }
 };
 

@@ -8,6 +8,7 @@
 
 import type { APIRoute } from 'astro';
 import { supabase } from '../../../lib/supabase';
+import { logger } from '../../../lib/logger';
 
 export const POST: APIRoute = async ({ request, redirect }) => {
   // Obtener datos del formulario
@@ -21,27 +22,27 @@ export const POST: APIRoute = async ({ request, redirect }) => {
 
   // Validaciones
   if (!name || !email || !password || !confirmPassword) {
-    return redirect('/auth/register?error=Por favor completa todos los campos');
+    return redirect(`/auth/register?error=${encodeURIComponent('Por favor completa todos los campos')}`);
   }
 
   if (!terms) {
-    return redirect('/auth/register?error=Debes aceptar los términos y condiciones');
+    return redirect(`/auth/register?error=${encodeURIComponent('Debes aceptar los términos y condiciones')}`);
   }
 
   // Validar formato de email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    return redirect('/auth/register?error=El formato del email no es válido');
+    return redirect(`/auth/register?error=${encodeURIComponent('El formato del email no es válido')}`);
   }
 
   // Validar longitud de contraseña
   if (password.length < 6) {
-    return redirect('/auth/register?error=La contraseña debe tener al menos 6 caracteres');
+    return redirect(`/auth/register?error=${encodeURIComponent('La contraseña debe tener al menos 6 caracteres')}`);
   }
 
   // Validar que las contraseñas coincidan
   if (password !== confirmPassword) {
-    return redirect('/auth/register?error=Las contraseñas no coinciden');
+    return redirect(`/auth/register?error=${encodeURIComponent('Las contraseñas no coinciden')}`);
   }
 
   try {
@@ -58,7 +59,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     });
 
     if (error) {
-      console.error('[Register] Error:', error);
+      logger.error('[Register] Error:', error);
       let errorMessage = 'Error al crear la cuenta';
       
       if (error.message.includes('already registered')) {
@@ -71,20 +72,24 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     }
 
     if (!data.user) {
-      return redirect('/auth/register?error=Error al crear la cuenta');
+      return redirect(`/auth/register?error=${encodeURIComponent('Error al crear la cuenta')}`);
     }
 
-    console.log('[Register] Usuario registrado:', email);
+    // Detectar si Supabase devolvió un usuario "fake" (email ya registrado)
+    // Cuando email confirmation está habilitado y el email ya existe,
+    // Supabase devuelve un user sin identities para no revelar que existe
+    if (!data.user.identities || data.user.identities.length === 0) {
+      logger.debug('[Register] Email posiblemente ya registrado (identities vacías):', email);
+      return redirect(`/auth/register?error=${encodeURIComponent('Este email ya está registrado. Si olvidaste tu contraseña, puedes recuperarla.')}`);
+    }
 
-    // Redirigir con mensaje de éxito
-    const successMessage = data.user.identities && data.user.identities.length > 0
-      ? 'Cuenta creada exitosamente. Por favor revisa tu email para confirmar tu cuenta.'
-      : 'Cuenta creada exitosamente. Ya puedes iniciar sesión.';
+    logger.debug('[Register] Usuario registrado:', email);
 
+    const successMessage = 'Cuenta creada exitosamente. Por favor revisa tu email para confirmar tu cuenta.';
     return redirect(`/auth/login?success=${encodeURIComponent(successMessage)}`);
 
   } catch (error) {
-    console.error('[Register] Error inesperado:', error);
-    return redirect('/auth/register?error=Error al crear la cuenta. Inténtalo de nuevo');
+    logger.error('[Register] Error inesperado:', error);
+    return redirect(`/auth/register?error=${encodeURIComponent('Error al crear la cuenta. Inténtalo de nuevo')}`);
   }
 };

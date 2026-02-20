@@ -8,6 +8,7 @@
 
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '../../../lib/logger';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -25,7 +26,7 @@ export const POST: APIRoute = async ({ request }) => {
     const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('[check-admin] Missing Supabase env vars');
+      logger.error('[check-admin] Missing Supabase env vars');
       return new Response(JSON.stringify({ isAdmin: false }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -43,7 +44,7 @@ export const POST: APIRoute = async ({ request }) => {
       .maybeSingle();
 
     if (error) {
-      console.error('[check-admin] Error consultando admin_users:', error);
+      logger.error('[check-admin] Error consultando admin_users:', error);
       return new Response(JSON.stringify({ isAdmin: false }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -57,7 +58,7 @@ export const POST: APIRoute = async ({ request }) => {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    console.error('[check-admin] Error inesperado:', err);
+    logger.error('[check-admin] Error inesperado:', err);
     return new Response(JSON.stringify({ isAdmin: false }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

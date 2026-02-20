@@ -5,7 +5,7 @@
 import type { APIRoute } from 'astro';
 import { supabase } from '../lib/supabase';
 
-const SITE_URL = 'https://mccook8g4sw8kg8kw8kkwoko.victoriafp.online';
+const SITE_URL = (import.meta.env.SITE || 'https://mccook8g4sw8kg8kw8kkwoko.victoriafp.online').replace(/\/$/, '');
 
 /** Páginas estáticas públicas con prioridad y frecuencia de cambio */
 const STATIC_PAGES: Array<{ path: string; priority: string; changefreq: string }> = [

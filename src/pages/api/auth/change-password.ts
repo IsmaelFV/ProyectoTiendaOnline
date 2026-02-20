@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '../../../lib/logger';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -80,7 +81,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     });
 
     if (updateError) {
-      console.error('Error updating password:', updateError);
+      logger.error('[ChangePassword] Error updating password:', updateError);
       return new Response(
         JSON.stringify({ success: false, error: 'Error al actualizar la contraseña' }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -93,7 +94,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     );
 
   } catch (error) {
-    console.error('Change password error:', error);
+    logger.error('[ChangePassword] Error:', error);
     return new Response(
       JSON.stringify({ success: false, error: 'Error interno del servidor' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

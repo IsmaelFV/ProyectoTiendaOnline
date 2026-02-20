@@ -15,6 +15,7 @@ import {
   getRequestMetadata,
 } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
+import { logger } from '../../../lib/logger';
 
 export const POST: APIRoute = async ({ cookies, redirect, locals, request }) => {
   // Registrar logout si hay un admin activo
@@ -30,19 +31,20 @@ export const POST: APIRoute = async ({ cookies, redirect, locals, request }) => 
       userAgent: metadata.userAgent,
     });
 
-    console.info(`[Logout] Admin logged out: ${locals.admin.email}`);
+    logger.info(`[Logout] Admin logged out: ${locals.admin.email}`);
   }
 
   // Cerrar sesión en Supabase (usa el cliente con la sesión actual)
   const { error } = await supabase.auth.signOut();
   
   if (error) {
-    console.error('[Logout] Error cerrando sesión:', error);
+    logger.error('[Logout] Error cerrando sesión:', error);
   }
 
   // Eliminar cookies
   cookies.delete('sb-access-token', { path: '/' });
   cookies.delete('sb-refresh-token', { path: '/' });
+  cookies.delete('sb-session-data', { path: '/' });
 
   return redirect('/auth/login');
 };

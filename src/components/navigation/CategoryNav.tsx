@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from 'react';
 import type { Category } from '../../lib/supabase';
+import { logger } from '../../lib/logger';
 
 interface CategoryNavProps {
   currentGender: 'mujer' | 'hombre';
@@ -41,30 +42,26 @@ export default function CategoryNav({ currentGender, currentCategory }: Category
       const response = await fetch(`/api/categories/${currentGender}?t=${Date.now()}`);
       const data = await response.json();
       
-      if (import.meta.env.DEV) {
-        console.log('[CategoryNav] DATOS DEL API:', data);
-        console.log('[CategoryNav] Total categorías recibidas:', data.categories.length);
-      }
+      logger.debug('[CategoryNav] DATOS DEL API:', data);
+      logger.debug('[CategoryNav] Total categorías recibidas:', data.categories.length);
       
       // Organizar en árbol
       const tree: CategoryTree[] = [];
       // Solo categorías principales (sin parent_id)
       const mainCategories = data.categories.filter((c: Category) => !c.parent_id);
       
-      if (import.meta.env.DEV) {
-        console.log('[CategoryNav] Categorías PRINCIPALES (sin parent_id):', mainCategories.map((c: Category) => ({
-          name: c.name,
-          slug: c.slug,
-          level: c.level,
-          has_parent: !!c.parent_id
-        })));
-      }
+      logger.debug('[CategoryNav] Categorías PRINCIPALES (sin parent_id):', mainCategories.map((c: Category) => ({
+        name: c.name,
+        slug: c.slug,
+        level: c.level,
+        has_parent: !!c.parent_id
+      })));
       
       mainCategories.forEach((main: Category) => {
         const subcategories = data.categories.filter(
           (c: Category) => c.parent_id === main.id
         );
-        if (import.meta.env.DEV) console.log(`[CategoryNav] Subcategorías de "${main.name}":`, subcategories.map((s: Category) => s.name));
+        logger.debug(`[CategoryNav] Subcategorías de "${main.name}":`, subcategories.map((s: Category) => s.name));
         tree.push({ main, subcategories });
       });
       
