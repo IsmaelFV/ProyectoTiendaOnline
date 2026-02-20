@@ -1,6 +1,6 @@
 ---
-import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { verifyAdminFromCookies, createServerSupabaseClient } from '../../../lib/auth';
+import AdminLayout from '@layouts/AdminLayout.astro';
+import { verifyAdminFromCookies, createServerSupabaseClient } from '@lib/auth';
 
 // Protección: solo admins
 const accessToken = Astro.cookies.get('sb-access-token')?.value;

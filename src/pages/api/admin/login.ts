@@ -8,6 +8,7 @@
 
 import type { APIRoute } from 'astro';
 import { supabase } from '../../../lib/supabase';
+import { createServerSupabaseClient } from '../../../lib/auth';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const formData = await request.formData();
@@ -37,10 +38,11 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       return redirect('/auth/login?error=invalid_credentials');
     }
 
-    // 2. Verificar que sea administrador
+    // 2. Verificar que sea administrador (usar service_role para evitar RLS)
     console.log('[Admin Login] Verificando admin para user_id:', data.user.id);
     
-    const { data: adminUsers, error: adminError } = await supabase
+    const adminSupabase = createServerSupabaseClient();
+    const { data: adminUsers, error: adminError } = await adminSupabase
       .from('admin_users')
       .select('*')
       .eq('user_id', data.user.id);
@@ -73,8 +75,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       maxAge: 60 * 60 * 24 * 30, // 30 días
     });
 
-    // 4. Actualizar último acceso
-    await supabase
+    // 4. Actualizar último acceso (con service_role)
+    await adminSupabase
       .from('admin_users')
       .update({ updated_at: new Date().toISOString() })
       .eq('id', adminUser.id);

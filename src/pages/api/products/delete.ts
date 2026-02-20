@@ -1,37 +1,20 @@
 import type { APIRoute } from 'astro';
-import { supabase } from '../../../lib/supabase';
+import { verifyAdminFromCookies, createServerSupabaseClient } from '@lib/auth';
 
 export const DELETE: APIRoute = async ({ request, cookies }) => {
   try {
-    // Verificar autenticación
+    // Verificar autenticación admin
     const accessToken = cookies.get('sb-access-token')?.value;
-    if (!accessToken) {
+    const refreshToken = cookies.get('sb-refresh-token')?.value;
+    const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+    if (!userId) {
       return new Response(JSON.stringify({ error: 'No autorizado' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    // Verificar que es admin
-    const { data: { user } } = await supabase.auth.getUser(accessToken);
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Usuario no válido' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const { data: adminUser } = await supabase
-      .from('admin_users')
-      .select('*')
-      .eq('user_id', user.id);
-
-    if (!adminUser || adminUser.length === 0) {
-      return new Response(JSON.stringify({ error: 'No tienes permisos de administrador' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    const supabase = createServerSupabaseClient();
 
     // Obtener ID del producto
     const body = await request.json();

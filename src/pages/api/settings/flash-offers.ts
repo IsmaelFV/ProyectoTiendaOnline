@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { supabase } from '@lib/supabase';
+import { verifyAdminFromCookies, createServerSupabaseClient } from '@lib/auth';
 
 // GET - Obtener estado de ofertas flash
 export const GET: APIRoute = async ({ cookies }) => {
@@ -42,51 +43,32 @@ export const GET: APIRoute = async ({ cookies }) => {
   }
 };
 
-// POST - Actualizar estado de ofertas flash
+// POST - Actualizar estado de ofertas flash (solo admin)
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     // Verificar autenticación admin
     const accessToken = cookies.get('sb-access-token')?.value;
-    if (!accessToken) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'No autenticado' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Verificar que es admin
-    const { data: { user } } = await supabase.auth.getUser(accessToken);
-    if (!user) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'No autenticado' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const { data: adminCheck } = await supabase
-      .from('admin_users')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!adminCheck) {
+    const refreshToken = cookies.get('sb-refresh-token')?.value;
+    const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+    if (!userId) {
       return new Response(
         JSON.stringify({ success: false, error: 'No autorizado' }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } }
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
+    const adminSupabase = createServerSupabaseClient();
     const body = await request.json();
     const { enabled } = body;
 
     // Upsert la configuración
-    const { error } = await supabase
+    const { error } = await adminSupabase
       .from('site_settings')
       .upsert({
         key: 'flash_offers_enabled',
         value: String(enabled),
         updated_at: new Date().toISOString(),
-        updated_by: user.id
+        updated_by: userId
       }, {
         onConflict: 'key'
       });

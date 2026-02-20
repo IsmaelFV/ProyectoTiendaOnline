@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
-import { createServerSupabaseClient } from '../../../lib/auth';
-import { supabase } from '../../../lib/supabase';
+import { createServerSupabaseClient, verifyAdminFromCookies } from '../../../lib/auth';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/svg+xml'];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
@@ -29,65 +28,22 @@ async function ensureBucketExists(client: ReturnType<typeof createServerSupabase
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
-    // 1. Verificar autenticación
+    // 1. Verificar autenticación admin
     const accessToken = cookies.get('sb-access-token')?.value;
     const refreshToken = cookies.get('sb-refresh-token')?.value;
-    console.info(`[Upload] accessToken: ${accessToken ? 'present (' + accessToken.substring(0, 20) + '...)' : 'MISSING'}`);
-    console.info(`[Upload] refreshToken: ${refreshToken ? 'present' : 'MISSING'}`);
     
-    if (!accessToken) {
-      return new Response(JSON.stringify({ error: 'No autorizado - sin token de acceso. Cierra sesión y vuelve a entrar.' }), {
+    const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'No autorizado. Cierra sesión y vuelve a entrar.' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // Intentar obtener usuario, si falla con access token, intentar refresh
-    let user = null;
-    const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
-    
-    if (userError || !userData?.user) {
-      console.warn('[Upload] Token expirado o inválido, intentando refresh...');
-      if (refreshToken) {
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
-        if (refreshError || !refreshData?.user) {
-          console.error('[Upload] Refresh falló:', refreshError?.message);
-          return new Response(JSON.stringify({ error: 'Sesión expirada. Cierra sesión y vuelve a entrar.' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        }
-        user = refreshData.user;
-        // Actualizar cookies con nuevos tokens
-        if (refreshData.session) {
-          cookies.set('sb-access-token', refreshData.session.access_token, { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax', secure: import.meta.env.PROD });
-          cookies.set('sb-refresh-token', refreshData.session.refresh_token, { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax', secure: import.meta.env.PROD });
-        }
-      } else {
-        return new Response(JSON.stringify({ error: 'Usuario no válido' }), {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-    } else {
-      user = userData.user;
-    }
-    
-    console.info(`[Upload] Usuario verificado: ${user.id}`);
+    console.info(`[Upload] Admin verificado: ${userId}`);
 
-    // 2. Verificar que es admin
+    // 2. Cliente service_role para operaciones de storage
     const adminSupabase = createServerSupabaseClient();
-    const { data: adminUser } = await adminSupabase
-      .from('admin_users')
-      .select('*')
-      .eq('user_id', user.id);
-
-    if (!adminUser || adminUser.length === 0) {
-      return new Response(JSON.stringify({ error: 'No tienes permisos de administrador' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
 
     // 3. Obtener archivo del formulario
     const formData = await request.formData();

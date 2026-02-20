@@ -1,13 +1,25 @@
 import type { APIRoute } from 'astro';
-import { supabase } from '@lib/supabase';
+import { verifyAdminFromCookies, createServerSupabaseClient } from '@lib/auth';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-12-15.clover',
 });
 
-export const POST: APIRoute = async ({ params, request }) => {
+export const POST: APIRoute = async ({ params, request, cookies }) => {
   try {
+    // Verificar autenticación admin
+    const accessToken = cookies.get('sb-access-token')?.value;
+    const refreshToken = cookies.get('sb-refresh-token')?.value;
+    const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+    if (!userId) {
+      return new Response(JSON.stringify({ success: false, error: 'No autorizado' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const supabase = createServerSupabaseClient();
     const { id } = params;
     
     if (!id) {
