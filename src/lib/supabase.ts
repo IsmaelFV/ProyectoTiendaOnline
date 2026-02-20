@@ -126,6 +126,8 @@ export interface Product {
   care_instructions?: string;
   is_new: boolean;
   is_on_sale: boolean;
+  is_sustainable?: boolean;
+  color?: string;
   sale_price?: number;
   popularity_score: number;
   sales_count: number;

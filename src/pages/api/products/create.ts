@@ -52,6 +52,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const sizesString = formData.get('sizes')?.toString();
   const imagesString = formData.get('images')?.toString();
   const featured = formData.get('featured') === 'on';
+  const isSustainable = formData.get('is_sustainable') === 'on';
+  const color = formData.get('color')?.toString()?.trim() || null;
   const sku = formData.get('sku')?.toString()?.trim();
   const isOnSale = formData.get('is_on_sale') === 'on';
   const discountPercentageInput = formData.get('discount_percentage')?.toString();
@@ -217,6 +219,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     size_measurements: Object.keys(sizeMeasurements).length > 0 ? sizeMeasurements : null,
     images,
     featured,
+    is_sustainable: isSustainable,
+    color: color,
     sku: sku || generateSKU(),
     is_active: true,
     is_on_sale: isOnSale && salePriceInCents !== null,

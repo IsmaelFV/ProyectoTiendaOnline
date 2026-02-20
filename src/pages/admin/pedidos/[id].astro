@@ -1,6 +1,17 @@
 ---
 import AdminLayout from '@layouts/AdminLayout.astro';
-import { supabase } from '@lib/supabase';
+import { verifyAdminFromCookies, createServerSupabaseClient } from '@lib/auth';
+
+// Protección: solo admins
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+if (!userId) {
+  return Astro.redirect('/auth/login');
+}
+
+const supabase = createServerSupabaseClient();
 
 const { id } = Astro.params;
 

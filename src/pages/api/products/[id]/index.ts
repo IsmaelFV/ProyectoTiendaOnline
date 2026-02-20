@@ -63,6 +63,9 @@ export const PUT: APIRoute = async ({ request, cookies, params }) => {
     const stockBySizeString = formData.get('stock_by_size')?.toString();
     const isOnSale = formData.get('is_on_sale') === 'on';
     const discountPercentageInput = formData.get('discount_percentage')?.toString();
+    const featured = formData.get('featured') === 'on';
+    const isSustainable = formData.get('is_sustainable') === 'on';
+    const color = formData.get('color')?.toString()?.trim() || null;
 
     // Validaciones
     if (!name || !description || !price || !stock || !category_id || !gender_id) {
@@ -176,6 +179,9 @@ export const PUT: APIRoute = async ({ request, cookies, params }) => {
         size_measurements: sizeMeasurements,
         category_id,
         gender_id,
+        featured,
+        is_sustainable: isSustainable,
+        color: color,
         is_on_sale: isOnSale && salePriceInCents !== null,
         sale_price: salePriceInCents,
         updated_at: new Date().toISOString()
