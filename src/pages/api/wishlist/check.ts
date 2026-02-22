@@ -24,7 +24,12 @@ export const GET: APIRoute = async ({ url, cookies }) => {
       return new Response(JSON.stringify({ ids: [] }), { status: 200, headers });
     }
 
-    const productIds = productIdsParam.split(',').filter(Boolean).slice(0, 100);
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const productIds = productIdsParam.split(',').filter(id => UUID_RE.test(id.trim())).slice(0, 100);
+
+    if (productIds.length === 0) {
+      return new Response(JSON.stringify({ ids: [] }), { status: 200, headers });
+    }
 
     const { data, error } = await serverSupabase
       .from('wishlist_items')

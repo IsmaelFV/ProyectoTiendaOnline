@@ -35,7 +35,8 @@ if (authError || !user) {
   return Astro.redirect('/auth/login?redirect=/perfil/mis-pedidos');
 }
 
-console.log('[MIS-PEDIDOS] Usuario autenticado:', user.id, user.email);
+// No loguear PII (email) en producción
+console.log('[MIS-PEDIDOS] Usuario autenticado:', user.id);
 
 // Obtener pedidos del usuario (con RLS activo)
 const { data: orders, error } = await supabase

@@ -79,8 +79,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // 6. Asegurar que el bucket existe
     await ensureBucketExists(adminSupabase);
 
-    // 7. Generar nombre único
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    // 7. Generar nombre único (extensión derivada del MIME type validado, no del nombre)
+    const MIME_TO_EXT: Record<string, string> = {
+      'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png',
+      'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif',
+    };
+    const ext = MIME_TO_EXT[file.type] || 'jpg';
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 8);
     const safeName = file.name

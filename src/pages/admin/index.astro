@@ -35,10 +35,11 @@ try {
       .order('created_at', { ascending: false })
       .limit(10),
       
-    // Productos más vendidos (top 10 agregado en DB)
+    // Productos más vendidos (top items con límite de seguridad)
     supabase
       .from('order_items')
       .select('product_id, product_name, product_image, quantity')
+      .limit(5000)
   ]);
 
   // Registrar errores de cada query

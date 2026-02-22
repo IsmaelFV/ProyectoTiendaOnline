@@ -45,7 +45,8 @@ export const GET: APIRoute = async ({ url }) => {
       .from('reviews')
       .select('*')
       .eq('product_id', productId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (error) throw error;
 

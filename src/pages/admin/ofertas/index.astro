@@ -18,7 +18,8 @@ const { data: productsOnSale, error: saleError } = await supabase
   .from('products')
   .select('id, name, price, sale_price, is_on_sale, images, stock')
   .eq('is_on_sale', true)
-  .order('updated_at', { ascending: false });
+  .order('updated_at', { ascending: false })
+  .limit(500);
 
 if (saleError) console.error('Error cargando ofertas:', saleError);
 
@@ -28,7 +29,8 @@ const { data: productsNoSale, error: noSaleError } = await supabase
   .select('id, name, price, images, stock')
   .eq('is_on_sale', false)
   .eq('is_active', true)
-  .order('name');
+  .order('name')
+  .limit(1000);
 
 if (noSaleError) console.error('Error cargando productos sin oferta:', noSaleError);
 ---

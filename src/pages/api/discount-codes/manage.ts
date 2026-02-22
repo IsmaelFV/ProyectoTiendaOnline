@@ -36,6 +36,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
+    // Validar tipo contra allowlist
+    const VALID_DISCOUNT_TYPES = ['percentage', 'fixed_amount'];
+    if (!VALID_DISCOUNT_TYPES.includes(discount_type)) {
+      return new Response(JSON.stringify({ error: 'Tipo de descuento inválido' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validar longitud del código
+    if (typeof code !== 'string' || code.trim().length < 2 || code.trim().length > 50) {
+      return new Response(JSON.stringify({ error: 'El código debe tener entre 2 y 50 caracteres' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     const discountVal = parseFloat(discount_value);
     if (isNaN(discountVal) || discountVal <= 0) {
       return new Response(JSON.stringify({ error: 'Valor de descuento inválido' }), {
@@ -125,9 +142,24 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
 
     const updateData: Record<string, any> = { updated_at: new Date().toISOString() };
 
-    if (updateFields.code !== undefined) updateData.code = updateFields.code.toUpperCase().trim();
+    if (updateFields.code !== undefined) {
+      if (typeof updateFields.code !== 'string' || updateFields.code.trim().length < 2 || updateFields.code.trim().length > 50) {
+        return new Response(JSON.stringify({ error: 'El código debe tener entre 2 y 50 caracteres' }), {
+          status: 400, headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      updateData.code = updateFields.code.toUpperCase().trim();
+    }
     if (updateFields.description !== undefined) updateData.description = updateFields.description;
-    if (updateFields.discount_type !== undefined) updateData.discount_type = updateFields.discount_type;
+    if (updateFields.discount_type !== undefined) {
+      const VALID_DISCOUNT_TYPES = ['percentage', 'fixed_amount'];
+      if (!VALID_DISCOUNT_TYPES.includes(updateFields.discount_type)) {
+        return new Response(JSON.stringify({ error: 'Tipo de descuento inválido' }), {
+          status: 400, headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      updateData.discount_type = updateFields.discount_type;
+    }
     if (updateFields.discount_value !== undefined) updateData.discount_value = parseFloat(updateFields.discount_value);
     if (updateFields.valid_from !== undefined) updateData.valid_from = updateFields.valid_from || null;
     if (updateFields.valid_until !== undefined) updateData.valid_until = updateFields.valid_until || null;

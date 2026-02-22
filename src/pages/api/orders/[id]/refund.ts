@@ -22,11 +22,12 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
 
     const supabase = createServerSupabaseClient();
     const { id } = params;
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     
-    if (!id) {
+    if (!id || !UUID_RE.test(id)) {
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'Order ID required' 
+        error: 'ID de pedido inválido' 
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }

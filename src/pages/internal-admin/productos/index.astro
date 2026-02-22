@@ -2,8 +2,17 @@
 export const prerender = false;
 
 import AdminLayout from '@layouts/AdminLayout.astro';
+import { verifyAdminFromCookies } from '@lib/auth';
 import { supabase } from '@lib/supabase';
 import { formatPrice } from '@lib/utils';
+
+// Defensa en profundidad: verificar admin aunque el middleware ya protege esta ruta
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+const userId = await verifyAdminFromCookies(accessToken, refreshToken);
+if (!userId) {
+  return Astro.redirect('/auth/login');
+}
 
 const { data: products } = await supabase
   .from('products')

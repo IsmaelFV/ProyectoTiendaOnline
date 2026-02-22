@@ -84,14 +84,15 @@ export const POST: APIRoute = async ({ request }) => {
     if (error) {
       console.error('Error subscribing to newsletter:', error);
       
-      // Si la tabla no existe, crear respuesta genérica exitosa
+      // Si la tabla no existe, reportar error de servicio (no fingir éxito)
       if (error.code === '42P01') {
+        console.error('[Newsletter] Tabla newsletter_subscribers no existe');
         return new Response(
           JSON.stringify({ 
-            success: true, 
-            message: '¡Gracias por suscribirte! Recibirás nuestras novedades pronto.' 
+            success: false, 
+            error: 'Servicio de newsletter no disponible temporalmente' 
           }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
+          { status: 503, headers: { 'Content-Type': 'application/json' } }
         );
       }
 

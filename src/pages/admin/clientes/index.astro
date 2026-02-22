@@ -18,7 +18,8 @@ const supabase = createServerSupabaseClient();
 const { data: orders, error } = await supabase
   .from('orders')
   .select('user_id, shipping_full_name, total, status, created_at')
-  .order('created_at', { ascending: false });
+  .order('created_at', { ascending: false })
+  .limit(5000);
 
 // Agrupar por usuario
 const clientsMap = new Map();

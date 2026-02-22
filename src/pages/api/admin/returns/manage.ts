@@ -31,9 +31,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const supabase = createServerSupabaseClient();
     const { action, returnId, notes } = await request.json();
 
-    if (!returnId || !action) {
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!returnId || typeof returnId !== 'string' || !UUID_RE.test(returnId)) {
+      return json({ success: false, message: 'returnId inválido' }, 400);
+    }
+    if (!action || typeof action !== 'string') {
       return json({ success: false, message: 'Faltan parámetros' }, 400);
     }
+    const safeNotes = typeof notes === 'string' ? notes.slice(0, 2000) : '';
 
     // Obtener la devolución con lock atómico según la acción
     let returnData: any;
@@ -166,7 +171,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           .from('returns')
           .update({
             status: 'rejected',
-            admin_notes: `${returnData.admin_notes || ''}\n[ADMIN] Devolución rechazada. Motivo: ${notes || 'Sin especificar'}. (${new Date().toLocaleString('es-ES')})`.trim(),
+            admin_notes: `${returnData.admin_notes || ''}\n[ADMIN] Devolución rechazada. Motivo: ${safeNotes || 'Sin especificar'}. (${new Date().toLocaleString('es-ES')})`.trim(),
             updated_at: new Date().toISOString()
           })
           .eq('id', returnId);
