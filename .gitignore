@@ -35,3 +35,10 @@ pnpm-debug.log*
 *.backup
 *.backup-*/
 src.backup-*/
+
+# Debug & test scripts (pueden contener claves)
+test-*.js
+debug-*.js
+diagnose-*.js
+check-*.js
+verificar-estado-*.js

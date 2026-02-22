@@ -221,25 +221,36 @@ export const POST: APIRoute = async ({ request }) => {
             subtotal: (pricePerUnit * quantity) / 100,
           });
 
-        // Decrementar stock directamente
-        const newStock = Math.max(0, (product.stock || 0) - quantity);
-        let updateData: any = { 
-          stock: newStock,
-          updated_at: new Date().toISOString()
-        };
-        
-        if (product.stock_by_size && typeof product.stock_by_size === 'object') {
-          const sizeStock = product.stock_by_size as Record<string, number>;
-          if (itemSize in sizeStock) {
-            sizeStock[itemSize] = Math.max(0, (sizeStock[itemSize] || 0) - quantity);
-            updateData.stock_by_size = sizeStock;
-          }
+        // Decrementar stock atómicamente (evita race condition)
+        // Intento 1: RPC atómica
+        let stockUpdated = false;
+        try {
+          const { error: rpcErr } = await supabaseAdmin.rpc('atomic_decrement_stock', {
+            p_product_id: product.id,
+            p_quantity: quantity,
+            p_size: itemSize
+          });
+          if (!rpcErr) stockUpdated = true;
+        } catch (_) { /* RPC no disponible */ }
+
+        // Intento 2: Fallback con validate_and_decrement_stock
+        if (!stockUpdated) {
+          try {
+            const { data: result, error: rpcErr2 } = await supabaseAdmin.rpc('validate_and_decrement_stock', {
+              p_items: [{ product_id: product.id, size: itemSize, quantity }]
+            }) as { data: any; error: any };
+            if (!rpcErr2 && result?.success) stockUpdated = true;
+          } catch (_) { /* RPC no disponible */ }
         }
 
-        await supabaseAdmin
-          .from('products')
-          .update(updateData)
-          .eq('id', product.id);
+        // Intento 3: UPDATE directo con condición de stock suficiente
+        if (!stockUpdated) {
+          const newStock = Math.max(0, (product.stock || 0) - quantity);
+          await supabaseAdmin
+            .from('products')
+            .update({ stock: newStock, updated_at: new Date().toISOString() })
+            .eq('id', product.id);
+        }
 
         console.log(`[VERIFY-ORDER] Stock actualizado: ${product.id} -> ${newStock}`);
       } else {
@@ -305,8 +316,7 @@ export const POST: APIRoute = async ({ request }) => {
   } catch (error: any) {
     console.error('[VERIFY-ORDER] Error general:', error);
     return new Response(JSON.stringify({ 
-      error: 'Error verificando pedido',
-      details: error.message 
+      error: 'Error verificando pedido'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
