@@ -25,7 +25,12 @@ let customerEmail = '';
 let totalAmount = 0;
 let orderStatus = 'unknown';
 
-if (sessionId) {
+// Validar formato de sessionId para prevenir PostgREST filter injection (defensa en profundidad)
+const STRIPE_SESSION_RE = /^cs_(test|live)_[a-zA-Z0-9]+$/;
+if (sessionId && !STRIPE_SESSION_RE.test(sessionId)) {
+  console.warn('[SUCCESS] sessionId con formato inválido, ignorando:', sessionId.substring(0, 20));
+  // No procesar — dejar orderStatus como 'unknown'
+} else if (sessionId) {
   try {
     // 1. Recuperar sesion de Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
@@ -35,12 +40,28 @@ if (sessionId) {
     customerEmail = session.customer_email || session.customer_details?.email || '';
     totalAmount = session.amount_total || 0;
 
-    // 2. Verificar si el pedido ya existe
-    const { data: existingOrder } = await supabaseAdmin
-      .from('orders')
-      .select('id, order_number, status')
-      .or(`payment_id.eq.${session.payment_intent},admin_notes.ilike.%${sessionId}%`)
-      .maybeSingle();
+    // 2. Verificar si el pedido ya existe (buscar por payment_id primario)
+    const paymentIntent = session.payment_intent as string;
+    let existingOrder: { id: string; order_number: string; status: string } | null = null;
+
+    if (paymentIntent) {
+      const { data } = await supabaseAdmin
+        .from('orders')
+        .select('id, order_number, status')
+        .eq('payment_id', paymentIntent)
+        .maybeSingle();
+      existingOrder = data;
+    }
+
+    // Fallback: buscar por session_id en admin_notes (si no se encontró por payment_id)
+    if (!existingOrder && sessionId) {
+      const { data } = await supabaseAdmin
+        .from('orders')
+        .select('id, order_number, status')
+        .ilike('admin_notes', `%${sessionId.replace(/%/g, '')}%`)
+        .maybeSingle();
+      existingOrder = data;
+    }
 
     if (existingOrder) {
       // El webhook ya lo creo
@@ -169,25 +190,34 @@ if (sessionId) {
                 subtotal: (pricePerUnit * quantity) / 100,
               });
 
-            // Decrementar stock
-            const newStock = Math.max(0, (product.stock || 0) - quantity);
-            const updateData: any = { 
-              stock: newStock,
-              updated_at: new Date().toISOString()
-            };
-            
-            if (product.stock_by_size && typeof product.stock_by_size === 'object') {
-              const sizeStock = product.stock_by_size as Record<string, number>;
-              if (itemSize in sizeStock) {
-                sizeStock[itemSize] = Math.max(0, (sizeStock[itemSize] || 0) - quantity);
-                updateData.stock_by_size = sizeStock;
+            // Decrementar stock atómicamente (mismo patrón que webhook)
+            let stockDecremented = false;
+            try {
+              const { error: rpcErr } = await supabaseAdmin.rpc('atomic_decrement_stock', {
+                p_product_id: product.id,
+                p_size: itemSize,
+                p_quantity: quantity
+              });
+              if (!rpcErr) {
+                stockDecremented = true;
+              } else {
+                // Intentar fallback RPC alternativo
+                const { error: rpcErr2 } = await supabaseAdmin.rpc('validate_and_decrement_stock', {
+                  p_product_id: product.id,
+                  p_size: itemSize,
+                  p_quantity: quantity
+                });
+                if (!rpcErr2) {
+                  stockDecremented = true;
+                }
               }
+            } catch (rpcCatchErr) {
+              console.warn('[SUCCESS] RPC stock decrement not available:', rpcCatchErr);
             }
 
-            await supabaseAdmin
-              .from('products')
-              .update(updateData)
-              .eq('id', product.id);
+            if (!stockDecremented) {
+              console.error(`[SUCCESS][CRITICAL] Atomic stock decrement failed for product ${product.id} size ${itemSize} qty ${quantity} — requires manual stock adjustment`);
+            }
           }
         }
 

@@ -93,11 +93,26 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // 2. Verificar si ya existe un pedido para esta sesion (el webhook ya lo creo)
-    const { data: existingOrder } = await supabaseAdmin
-      .from('orders')
-      .select('id, order_number, status')
-      .or(`payment_id.eq.${session.payment_intent},admin_notes.ilike.%${sessionId}%`)
-      .maybeSingle();
+    const paymentIntent = session.payment_intent as string;
+    let existingOrder: { id: string; order_number: string; status: string } | null = null;
+
+    if (paymentIntent) {
+      const { data } = await supabaseAdmin
+        .from('orders')
+        .select('id, order_number, status')
+        .eq('payment_id', paymentIntent)
+        .maybeSingle();
+      existingOrder = data;
+    }
+
+    if (!existingOrder) {
+      const { data } = await supabaseAdmin
+        .from('orders')
+        .select('id, order_number, status')
+        .ilike('admin_notes', `%${sessionId}%`)
+        .maybeSingle();
+      existingOrder = data;
+    }
 
     if (existingOrder) {
       console.log(`[VERIFY-ORDER] Pedido ya existe: ${existingOrder.order_number}`);
