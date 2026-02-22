@@ -71,8 +71,7 @@ export const GET: APIRoute = async ({ params }) => {
     
     return new Response(
       JSON.stringify({ 
-        error: 'Error interno del servidor',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Error interno del servidor'
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );

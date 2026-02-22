@@ -122,8 +122,7 @@ export const GET: APIRoute = async ({ params, cookies }) => {
   } catch (error: any) {
     console.error('Error generating credit note:', error);
     return new Response(JSON.stringify({
-      error: 'Error generando factura de abono',
-      details: error.message
+      error: 'Error generando factura de abono'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

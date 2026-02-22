@@ -54,7 +54,7 @@ export const GET: APIRoute = async ({ request }) => {
       console.error('[CRON] Error al limpiar reservas:', error);
       return new Response(JSON.stringify({ 
         success: false,
-        error: error.message 
+        error: 'Error al limpiar reservas expiradas' 
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -89,7 +89,7 @@ export const GET: APIRoute = async ({ request }) => {
     console.error('[CRON] Error crítico:', error);
     return new Response(JSON.stringify({ 
       success: false,
-      error: error.message 
+      error: 'Error interno del servidor' 
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

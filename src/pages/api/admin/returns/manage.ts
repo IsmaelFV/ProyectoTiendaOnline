@@ -174,7 +174,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       }
 
       default:
-        return json({ success: false, message: `Acción no válida: ${action}` }, 400);
+        return json({ success: false, message: 'Acción no válida' }, 400);
     }
 
   } catch (error: any) {
