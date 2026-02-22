@@ -49,6 +49,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const priceInput = formData.get('price')?.toString();
   const stockInput = formData.get('stock')?.toString();
   const category_id = formData.get('category_id')?.toString();
+  let gender_id = formData.get('gender_id')?.toString() || null;
   const sizesString = formData.get('sizes')?.toString();
   const imagesString = formData.get('images')?.toString();
   const featured = formData.get('featured') === 'on';
@@ -77,6 +78,18 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       category_id: !category_id, sizes: !sizesString
     });
     return redirect('/admin/productos/nuevo?error=missing_fields');
+  }
+
+  // Inferir gender_id de la categoría si no viene en el formulario
+  if (!gender_id && category_id) {
+    const { data: cat } = await supabase
+      .from('categories')
+      .select('gender_id')
+      .eq('id', category_id)
+      .single();
+    if (cat?.gender_id) {
+      gender_id = cat.gender_id;
+    }
   }
 
   // Validación de nombre
@@ -215,12 +228,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     stock: totalStock,
     stock_by_size: stockBySize,
     category_id,
+    gender_id,
     sizes,
     size_measurements: Object.keys(sizeMeasurements).length > 0 ? sizeMeasurements : null,
     images,
     featured,
     is_sustainable: isSustainable,
     color: color,
+    colors: color ? [color] : [],
     sku: sku || generateSKU(),
     is_active: true,
     is_on_sale: isOnSale && salePriceInCents !== null,

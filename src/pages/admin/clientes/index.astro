@@ -37,7 +37,7 @@ if (orders) {
       const client = clientsMap.get(order.user_id);
       if (order.status !== 'cancelled' && order.status !== 'refunded') {
         client.orderCount += 1;
-        client.totalSpent += parseFloat(order.total);
+        client.totalSpent += parseFloat(order.total?.toString() ?? '0') || 0;
       }
     }
   });

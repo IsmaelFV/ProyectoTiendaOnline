@@ -304,6 +304,7 @@ export const PUT: APIRoute = async ({ request, cookies, params }) => {
         featured,
         is_sustainable: isSustainable,
         color: color,
+        colors: color ? [color] : [],
         is_on_sale: isOnSale && salePriceInCents !== null,
         sale_price: salePriceInCents,
         updated_at: new Date().toISOString()

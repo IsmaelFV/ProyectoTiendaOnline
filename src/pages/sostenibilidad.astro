@@ -3,10 +3,12 @@ import PublicLayout from '@layouts/PublicLayout.astro';
 import ProductCard from '@components/product/ProductCard.astro';
 import { supabase } from '@lib/supabase';
 
-// Obtener productos sostenibles (por ahora mostramos featured, pero se puede agregar campo is_sustainable)
+// Obtener productos sostenibles
 const { data: sustainableProducts } = await supabase
   .from('products')
   .select('*, category:categories!products_category_id_fkey(name, slug)')
+  .eq('is_sustainable', true)
+  .eq('is_active', true)
   .limit(12);
 ---
 
