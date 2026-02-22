@@ -10,6 +10,7 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { createAndSendCreditNote } from '../../../lib/credit-note-service';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -177,6 +178,19 @@ export const POST: APIRoute = async ({ request }) => {
       })
       .eq('id', orderId);
 
+    // d) Generar y enviar Factura de Abono (Rectificativa)
+    let creditNoteNumber: string | null = null;
+    if (stripeRefundId) {
+      creditNoteNumber = await createAndSendCreditNote({
+        supabase,
+        order,
+        orderItems: orderItems || null,
+        stripeRefundId,
+        reason: 'Cancelación del pedido por el cliente (dentro del plazo de 2 horas)',
+        logPrefix: '[CANCEL]',
+      });
+    }
+
     console.log(`[CANCEL] Pedido ${order.order_number} cancelado (<2h). User: ${user.id}. Stock: ${restoredItems} items.`);
 
     return json({ 
@@ -184,6 +198,7 @@ export const POST: APIRoute = async ({ request }) => {
       type: 'cancellation',
       message: 'Pedido cancelado correctamente. El reembolso se ha procesado y recibirás el dinero en 3-5 días laborables.',
       refundId: stripeRefundId,
+      creditNote: creditNoteNumber || null,
       restored_items: restoredItems
     });
 
