@@ -22,9 +22,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // 2. Leer body
     const body = await request.json();
     const productId = body.productId;
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (!productId) {
-      return new Response(JSON.stringify({ error: 'productId requerido' }), { status: 400, headers });
+    if (!productId || typeof productId !== 'string' || !UUID_RE.test(productId)) {
+      return new Response(JSON.stringify({ error: 'productId inválido' }), { status: 400, headers });
     }
 
     // 3. Comprobar si ya está en favoritos

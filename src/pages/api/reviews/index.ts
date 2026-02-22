@@ -33,8 +33,9 @@ function createAuthenticatedClient(accessToken: string) {
 export const GET: APIRoute = async ({ url }) => {
   try {
     const productId = url.searchParams.get('product_id');
-    if (!productId) {
-      return new Response(JSON.stringify({ error: 'product_id es requerido' }), {
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!productId || !UUID_RE.test(productId)) {
+      return new Response(JSON.stringify({ error: 'product_id inválido' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -155,8 +156,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const body = await request.json();
     const { product_id, rating, title, comment } = body;
 
+    const UUID_RE_POST = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const numericRating = Number(rating);
-    if (!product_id || !Number.isFinite(numericRating)) {
+    if (!product_id || typeof product_id !== 'string' || !UUID_RE_POST.test(product_id) || !Number.isFinite(numericRating)) {
       return new Response(JSON.stringify({ error: 'product_id y rating numérico son requeridos' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -252,9 +254,10 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
 
     const body = await request.json();
     const { review_id } = body;
+    const UUID_RE_DEL = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (!review_id) {
-      return new Response(JSON.stringify({ error: 'review_id es requerido' }), {
+    if (!review_id || typeof review_id !== 'string' || !UUID_RE_DEL.test(review_id)) {
+      return new Response(JSON.stringify({ error: 'review_id inválido' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });

@@ -54,8 +54,12 @@ export const POST: APIRoute = async ({ request }) => {
     const { orderId, reason, description } = body;
 
     // 2. Validaciones
-    if (!orderId) {
-      return json({ success: false, message: 'ID de pedido requerido' }, 400);
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!orderId || typeof orderId !== 'string' || !UUID_RE.test(orderId)) {
+      return json({ success: false, message: 'ID de pedido inválido' }, 400);
+    }
+    if (typeof description === 'string' && description.length > 2000) {
+      return json({ success: false, message: 'La descripción es demasiado larga' }, 400);
     }
     if (!reason || !VALID_REASONS.includes(reason)) {
       return json({ success: false, message: 'Motivo de devolución inválido' }, 400);

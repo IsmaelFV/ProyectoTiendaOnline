@@ -18,9 +18,10 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
     const { product_id, discount_percentage } = body;
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (!product_id || !discount_percentage) {
-      return new Response(JSON.stringify({ error: 'Faltan campos requeridos' }), {
+    if (!product_id || typeof product_id !== 'string' || !UUID_RE.test(product_id) || !discount_percentage) {
+      return new Response(JSON.stringify({ error: 'Datos inválidos o incompletos' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -110,9 +111,10 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
     const { product_id } = body;
+    const UUID_RE_DEL = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (!product_id) {
-      return new Response(JSON.stringify({ error: 'Falta el ID del producto' }), {
+    if (!product_id || typeof product_id !== 'string' || !UUID_RE_DEL.test(product_id)) {
+      return new Response(JSON.stringify({ error: 'ID de producto inválido' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });

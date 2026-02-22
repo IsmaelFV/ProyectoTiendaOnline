@@ -114,9 +114,10 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
     const { id, ...updateFields } = body;
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (!id) {
-      return new Response(JSON.stringify({ error: 'ID del código requerido' }), {
+    if (!id || typeof id !== 'string' || !UUID_RE.test(id)) {
+      return new Response(JSON.stringify({ error: 'ID del código inválido' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -183,9 +184,10 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
     const { id } = body;
+    const UUID_RE_DEL = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (!id) {
-      return new Response(JSON.stringify({ error: 'ID del código requerido' }), {
+    if (!id || typeof id !== 'string' || !UUID_RE_DEL.test(id)) {
+      return new Response(JSON.stringify({ error: 'ID del código inválido' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });

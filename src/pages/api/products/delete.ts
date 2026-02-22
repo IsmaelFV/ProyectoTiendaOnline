@@ -19,9 +19,10 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
     // Obtener ID del producto
     const body = await request.json();
     const { id } = body;
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (!id) {
-      return new Response(JSON.stringify({ error: 'ID de producto no proporcionado' }), {
+    if (!id || typeof id !== 'string' || !UUID_RE.test(id)) {
+      return new Response(JSON.stringify({ error: 'ID de producto inválido' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });

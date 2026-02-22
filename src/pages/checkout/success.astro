@@ -50,7 +50,20 @@ if (sessionId) {
     } else if (session.payment_status === 'paid') {
       // FALLBACK: El webhook no creo el pedido, crearlo aqui
       console.log('[SUCCESS] Pedido NO encontrado, creando como fallback...');
-      
+
+      // Re-check atómico por payment_id para evitar duplicado con el webhook
+      const { data: doubleCheck } = await supabaseAdmin
+        .from('orders')
+        .select('id, order_number')
+        .eq('payment_id', session.payment_intent as string)
+        .maybeSingle();
+
+      if (doubleCheck) {
+        orderNumber = doubleCheck.order_number;
+        orderStatus = 'exists';
+        console.log(`[SUCCESS] Pedido encontrado en re-check: ${orderNumber}`);
+      } else {
+      // Continuar con fallback creation
       const { user_id, discount_code } = session.metadata || {};
 
       let orderItemsSizes: Array<{ id: string; size: string; qty: number }> = [];
@@ -220,6 +233,7 @@ if (sessionId) {
           console.error('[SUCCESS] Error enviando email:', emailErr.message);
         }
       }
+      } // fin del else de doubleCheck (re-check anti-duplicado)
     } else {
       orderStatus = 'pending';
     }
