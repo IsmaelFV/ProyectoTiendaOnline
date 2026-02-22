@@ -436,6 +436,12 @@ if (!isRebajas && !isNovedades) {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
   }
 
+  function escapeHtml(str: string): string {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+  }
+
   function optimizeImage(url: string): string {
     if (!url || !url.includes('cloudinary.com')) return url;
     return url.replace('/upload/', '/upload/w_400,h_500,c_fill,g_auto,f_auto,q_auto/');
@@ -447,7 +453,9 @@ if (!isRebajas && !isNovedades) {
     const hasDiscount = p.is_on_sale && p.sale_price && p.sale_price < p.price;
     const discountPct = hasDiscount ? Math.round((1 - p.sale_price / p.price) * 100) : 0;
     const displayPrice = hasDiscount ? p.sale_price : p.price;
-    const catName = p.category?.name || 'Moda';
+    const catName = escapeHtml(p.category?.name || 'Moda');
+    const safeName = escapeHtml(p.name || '');
+    const safeSlug = encodeURIComponent(p.slug || '');
 
     return `
       <article class="product-card-premium group" data-product-id="${p.id}">
@@ -455,9 +463,9 @@ if (!isRebajas && !isNovedades) {
           <svg class="w-5 h-5 wishlist-icon-outline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
           <svg class="w-5 h-5 wishlist-icon-filled hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
         </button>
-        <a href="/productos/${p.slug}" class="block">
+        <a href="/productos/${safeSlug}" class="block">
           <div class="product-image-container">
-            <img src="${img}" alt="${p.name}" class="product-image" loading="lazy"/>
+            <img src="${img}" alt="${safeName}" class="product-image" loading="lazy"/>
             <div class="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
               ${hasDiscount ? `<span class="badge-discount">-${discountPct}%</span>` : ''}
               ${p.stock <= 3 && p.stock > 0 ? '<span class="badge-low-stock">¡Últimas unidades!</span>' : ''}
@@ -470,7 +478,7 @@ if (!isRebajas && !isNovedades) {
           </div>
           <div class="product-content">
             <div class="product-category">${catName}</div>
-            <h3 class="product-name">${p.name}</h3>
+            <h3 class="product-name">${safeName}</h3>
             <div class="product-price-container">
               <span class="product-price-current">${formatPrice(displayPrice)}</span>
               ${hasDiscount ? `<span class="product-price-original">${formatPrice(p.price)}</span>` : ''}

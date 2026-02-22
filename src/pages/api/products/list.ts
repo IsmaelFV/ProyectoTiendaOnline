@@ -11,17 +11,21 @@
 import type { APIRoute } from 'astro';
 import { supabase } from '../../../lib/supabase';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_LIMIT = 100;
+const MAX_CATEGORY_IDS = 50;
+
 export const GET: APIRoute = async ({ url }) => {
   try {
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '24');
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1') || 1);
+    const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(url.searchParams.get('limit') || '24') || 24));
     const genderId = url.searchParams.get('gender_id');
     const categoryIds = url.searchParams.get('category_ids');
     const isOnSale = url.searchParams.get('is_on_sale');
     const isNew = url.searchParams.get('is_new');
 
-    if (!genderId) {
-      return new Response(JSON.stringify({ error: 'gender_id es requerido' }), {
+    if (!genderId || !UUID_RE.test(genderId)) {
+      return new Response(JSON.stringify({ error: 'gender_id inválido o ausente' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -49,7 +53,7 @@ export const GET: APIRoute = async ({ url }) => {
     }
 
     if (categoryIds) {
-      const ids = categoryIds.split(',').filter(Boolean);
+      const ids = categoryIds.split(',').filter(id => UUID_RE.test(id)).slice(0, MAX_CATEGORY_IDS);
       if (ids.length > 0) {
         query = query.in('category_id', ids);
       }
