@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { verifyAdminFromCookies, createServerSupabaseClient } from '@lib/auth';
 import Stripe from 'stripe';
+import { createAndSendCreditNote } from '../../../../lib/credit-note-service';
 
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-12-15.clover',
@@ -176,7 +177,6 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
 
     if (updateError) {
       console.error('Error updating order:', updateError);
-      // El reembolso ya se procesó en Stripe, así que es mejor avisar
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Reembolso procesado en Stripe pero error actualizando base de datos',
@@ -187,6 +187,16 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
       });
     }
 
+    // 5. Generar y enviar Factura de Abono (Rectificativa)
+    const creditNoteNumber = await createAndSendCreditNote({
+      supabase,
+      order,
+      orderItems,
+      stripeRefundId: refund.id,
+      reason: 'Reembolso completo del pedido solicitado por el administrador',
+      logPrefix: '[REFUND]',
+    });
+
     console.log(`[REFUND] Order ${order.order_number} refunded successfully`);
 
     return new Response(JSON.stringify({ 
@@ -196,7 +206,8 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
         id: refund.id,
         amount: refund.amount / 100,
         status: refund.status
-      }
+      },
+      creditNote: creditNoteNumber || null
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

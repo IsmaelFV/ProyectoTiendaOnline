@@ -8,6 +8,7 @@
 import type { APIRoute } from 'astro';
 import { createServerSupabaseClient, verifyAdminFromCookies } from '../../../../lib/auth';
 import Stripe from 'stripe';
+import { createAndSendCreditNote } from '../../../../lib/credit-note-service';
 
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-12-15.clover',
@@ -117,10 +118,22 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           })
           .eq('id', order.id);
 
+        // Generar y enviar Factura de Abono (Rectificativa)
+        const creditNoteNumber = await createAndSendCreditNote({
+          supabase,
+          order,
+          orderItems,
+          stripeRefundId,
+          reason: returnData.reason || 'Devolución de producto',
+          returnId,
+          logPrefix: '[RETURNS]',
+        });
+
         return json({ 
           success: true, 
           message: 'Producto recibido y reembolso procesado correctamente',
-          refundId: stripeRefundId
+          refundId: stripeRefundId,
+          creditNote: creditNoteNumber || null
         });
       }
 

@@ -202,6 +202,84 @@ export async function sendInvoiceEmail({
 }
 
 /**
+ * Enviar factura de abono (rectificativa) por email con PDF adjunto
+ */
+export async function sendCreditNoteEmail({
+  to,
+  customerName,
+  creditNoteNumber,
+  originalOrderNumber,
+  refundAmount,
+  pdfBase64,
+}: {
+  to: string;
+  customerName: string;
+  creditNoteNumber: string;
+  originalOrderNumber: string;
+  refundAmount: number; // en centavos
+  pdfBase64: string;
+}) {
+  const apiInstance = getBrevoClient();
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+
+  const safeCustomerName = escapeHtml(customerName);
+  const safeCreditNoteNumber = escapeHtml(creditNoteNumber);
+  const safeOriginalOrder = escapeHtml(originalOrderNumber);
+  const formattedAmount = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(refundAmount / 100);
+
+  sendSmtpEmail.subject = `Factura de Abono ${creditNoteNumber} — Devolución pedido ${originalOrderNumber}`;
+
+  sendSmtpEmail.htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"></head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="margin: 0; font-size: 22px;">Factura de Abono</h1>
+          <p style="margin: 8px 0 0; opacity: 0.9;">Factura rectificativa</p>
+        </div>
+        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px;">
+          <p>Hola <strong>${safeCustomerName}</strong>,</p>
+          <p>Se ha emitido una factura de abono correspondiente a la devolución de tu pedido <strong>${safeOriginalOrder}</strong>.</p>
+          <div style="background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #dc2626;">
+            <p style="margin: 0;"><strong>Nº Factura de Abono:</strong> ${safeCreditNoteNumber}</p>
+            <p style="margin: 8px 0 0;"><strong>Pedido original:</strong> ${safeOriginalOrder}</p>
+            <p style="margin: 8px 0 0;"><strong>Importe reembolsado:</strong> <span style="color: #dc2626; font-weight: bold;">${formattedAmount}</span></p>
+          </div>
+          <p>El reembolso se ha procesado a tu método de pago original. Puede tardar entre 5-10 días hábiles en reflejarse.</p>
+          <p>Adjuntamos la factura rectificativa en PDF para tu contabilidad.</p>
+          <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
+        </div>
+        <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px;">
+          <p>Fashion Store - Moda de calidad para ti</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  sendSmtpEmail.sender = {
+    name: 'Fashion Store',
+    email: import.meta.env.EMAIL_FROM,
+  };
+  sendSmtpEmail.to = [{ email: to, name: customerName }];
+  sendSmtpEmail.attachment = [{
+    content: pdfBase64,
+    name: `Abono_${creditNoteNumber}.pdf`,
+  }];
+
+  try {
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log(`[EMAIL] Factura de abono enviada a ${to}:`, data);
+    return { success: true, data };
+  } catch (error: any) {
+    console.error('[EMAIL] Error al enviar factura de abono:', error);
+    throw error;
+  }
+}
+
+/**
  * Enviar email de contacto a todos los administradores
  */
 export async function sendContactEmailToAdmins({
