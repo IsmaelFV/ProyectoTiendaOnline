@@ -78,7 +78,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
       console.error('Error creating refund in Stripe:', stripeError);
       return new Response(JSON.stringify({ 
         success: false, 
-        error: `Error en Stripe: ${stripeError.message}` 
+        error: 'Error al procesar el reembolso en la pasarela de pago' 
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -217,7 +217,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
     console.error('Error in refund endpoint:', error);
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message || 'Error procesando reembolso'
+      error: 'Error procesando reembolso'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

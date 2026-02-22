@@ -94,8 +94,7 @@ export const GET: APIRoute = async ({ url }) => {
     
     return new Response(
       JSON.stringify({ 
-        error: 'Error en la búsqueda',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Error en la búsqueda'
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );

@@ -110,8 +110,7 @@ export const GET: APIRoute = async ({ params, request, cookies }) => {
   } catch (error: any) {
     console.error('Error generating invoice:', error);
     return new Response(JSON.stringify({ 
-      error: 'Error generating invoice',
-      details: error.message 
+      error: 'Error al generar la factura'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

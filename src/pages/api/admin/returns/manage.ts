@@ -70,7 +70,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             console.log(`[RETURNS] Reembolso Stripe (devolucion): ${refund.id}`);
           } catch (stripeErr: any) {
             console.error('[RETURNS] Stripe refund error:', stripeErr.message);
-            return json({ success: false, message: `Error Stripe: ${stripeErr.message}` }, 500);
+            return json({ success: false, message: 'Error al procesar el reembolso en la pasarela de pago' }, 500);
           }
         }
 
@@ -179,6 +179,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   } catch (error: any) {
     console.error('[ADMIN RETURNS] Error:', error);
-    return json({ success: false, message: error.message || 'Error interno' }, 500);
+    return json({ success: false, message: 'Error interno del servidor' }, 500);
   }
 };

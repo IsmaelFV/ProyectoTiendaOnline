@@ -1,470 +1,623 @@
 ================================================================================
-               FICHA TÉCNICA — FASHIONSTORE (Proyecto Tienda Online)
+
+                         F A S H I O N   S T O R E
+                    Ficha Técnica del Producto — v1.0
+
 ================================================================================
-  Autor:       Ismael
+  Proyecto:    FashionStore — Plataforma e-commerce de moda
+  Autor:       Ismael Fernández Velázquez
   Fecha:       Febrero 2026
-  Repositorio: https://github.com/IsmaelFV/ProyectoTiendaOnline
-  Stack:       Astro 5 + Supabase + Stripe + Tailwind CSS
+  Repositorio: github.com/IsmaelFV/ProyectoTiendaOnline
 ================================================================================
 
 
 ================================================================================
   ÍNDICE
 ================================================================================
-  1. Stack Tecnológico y Arquitectura General
-  2. Base de Datos y Lógica Crítica (Supabase)
-  3. Funcionalidad Tienda Pública (UX/UI)
-  4. Backoffice y Gestión Administrativa
-  5. Despliegue y Entrega
-  6. Seguridad (transversal)
-  7. Bonus — Emails Transaccionales
-  8. Resumen de Autoevaluación según Rúbrica
-================================================================================
+
+  1. Descripción General del Producto
+  2. Stack Tecnológico y Arquitectura
+  3. Base de Datos y Lógica de Negocio
+  4. Experiencia de Usuario — Tienda Pública
+  5. Panel de Administración (Backoffice)
+  6. Sistema de Facturación y Abonos
+  7. Infraestructura de Seguridad
+  8. Notificaciones y Comunicaciones
+  9. Despliegue y Puesta en Producción
+  10. Documentación Técnica Complementaria
 
 
 ================================================================================
-  1. ARQUITECTURA Y STACK TECNOLÓGICO (Rúbrica: 2.0 puntos)
+  1. DESCRIPCIÓN GENERAL DEL PRODUCTO
 ================================================================================
 
-  1.1 Astro Híbrido — SSG/SSR                            [0.75 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivo: astro.config.mjs
-  - Configuración: output: 'server' con adaptador @astrojs/node (standalone)
-  - Integraciones: @astrojs/react, @astrojs/tailwind, @astrojs/sitemap
-  - Las páginas de catálogo público y fichas de producto se renderizan en el
-    servidor con datos frescos de Supabase (SSR). Las páginas estáticas
-    (privacidad, sostenibilidad, contacto) se pre-renderizan (SSG).
-  - El Admin, Carrito y Checkout son completamente dinámicos (SSR), nunca
-    se cachean en el CDN porque dependen del estado de sesión del usuario.
+  FashionStore es una plataforma de comercio electrónico especializada en moda,
+  desarrollada con tecnologías modernas orientadas al rendimiento, la seguridad
+  y la escalabilidad. El sistema cubre el ciclo completo de una tienda online:
+  desde la navegación del catálogo por parte del cliente hasta la gestión
+  integral de pedidos, facturación y devoluciones por parte del administrador.
 
-  1.2 Islas y Estado (Nano Stores)                        [0.75 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivos:
-    · src/stores/cartStore.ts    — Estado del carrito con persistentAtom
-    · src/stores/sessionStore.ts — Estado de sesión del usuario
-    · src/stores/filterStore.ts  — Filtros de búsqueda y navegación
-  - Implementación:
-    · Se usa "Islands Architecture" de Astro: solo los componentes React
-      interactivos (SearchBar, AddToCartButton, CartSlideOver, SizeRecommender,
-      NewsletterPopup, etc.) se hidratan en el navegador.
-    · El carrito persiste entre navegaciones usando @nanostores/persistent
-      con la directiva persistentAtom que serializa a localStorage.
-    · Interfaz CartItem tipada con: id, name, slug, price, salePrice,
-      quantity, image, size, stock, isOnSale.
+  El proyecto se divide en dos áreas claramente separadas:
 
-  1.3 Calidad de Código y TypeScript                      [0.50 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivos de tipos:
-    · src/types/index.ts       — Product, Category, Order, OrderItem,
-                                  Invoice, CreditNote, ReturnRequest,
-                                  DiscountCode, AdminUser, etc.
-    · src/types/supabase.ts    — Tipos autogenerados de Supabase (Database)
-  - Estructura de carpetas modular:
-    src/
-    ├── components/
-    │   ├── admin/        → Componentes del panel admin
-    │   ├── islands/      → Componentes React hidratados (islas)
-    │   ├── navigation/   → Navbar, MobileMenu, Breadcrumb
-    │   ├── product/      → ProductCard, ProductGrid, Gallery
-    │   ├── search/       → SearchBar con autocompletado
-    │   └── ui/           → Footer, Newsletter, Botones, Modales
-    ├── layouts/          → AdminLayout, BaseLayout, PublicLayout
-    ├── lib/              → 14+ módulos TS (auth, brevo, cloudinary,
-    │                       invoice-pdf, credit-note-pdf, rate-limit,
-    │                       search, supabase, stripe, logger, etc.)
-    ├── pages/
-    │   ├── api/          → 20+ API endpoints REST tipados
-    │   ├── internal-admin/ → Panel admin (ruta oculta)
-    │   ├── checkout/     → Flujo de pago
-    │   ├── perfil/       → Área de usuario
-    │   └── productos/    → Catálogo público
-    ├── stores/           → Nano Stores (cart, session, filters)
-    ├── styles/           → Estilos globales
-    └── scripts/          → Scripts auxiliares
+  · TIENDA PÚBLICA — Catálogo de productos segmentado por género (Hombre /
+    Mujer), con buscador inteligente, sistema de filtros avanzados, carrito
+    persistente, recomendador algorítmico de tallas, pasarela de pago
+    integrada con Stripe y área personal para que cada cliente consulte
+    sus pedidos e historial de compras.
+
+  · PANEL DE ADMINISTRACIÓN — Backoffice independiente con acceso
+    restringido, que incluye dashboard con métricas en tiempo real,
+    gestión CRUD de productos con subida múltiple de imágenes, control
+    de pedidos con flujo de estados, sistema de facturación automática
+    con generación de PDF, gestión de devoluciones con abonos
+    rectificativos, códigos promocionales y captación de leads
+    vía newsletter.
 
 
 ================================================================================
-  2. BASE DE DATOS Y LÓGICA CRÍTICA — SUPABASE (Rúbrica: 2.5 puntos)
+  2. STACK TECNOLÓGICO Y ARQUITECTURA
 ================================================================================
 
-  2.1 Esquema y Relaciones                                [0.50 pts — CUMPLE]
+  2.1 Tecnologías principales
   ---------------------------------------------------------------------------
-  - Archivos: supabase-schema.sql, supabase-schema-secure.sql
-  - Tablas normalizadas:
-    · products       — Catálogo (precios en céntimos de euro como enteros)
-    · categories     — Jerarquía padre/hijo con parent_id
-    · genders        — Hombre/Mujer para segmentación
-    · orders         — Pedidos con 7 estados y datos de envío
-    · order_items    — Líneas de pedido con FK a products y orders
-    · invoices       — Facturas y notas de abono (rectificativas)
-    · invoice_items  — Líneas de factura
-    · newsletter_subscribers — Captación de leads
-    · discount_codes — Códigos promocionales con límites de uso
-    · admin_users    — Tabla separada de administradores
-    · stock_reservations — Reservas temporales de stock (TTL 15 min)
-    · persistent_cart — Carrito persistente por usuario
-    · wishlist       — Lista de deseos
-  - Claves foráneas correctas entre todas las tablas (ON DELETE CASCADE/SET NULL
-    según corresponda). Constraints CHECK en precios, stock >= 0, formatos
-    regex para slugs. Índices optimizados con pg_trgm para búsqueda full-text.
-
-  2.2 Atomicidad y Stock                                  [1.00 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivos: sql-decrement-stock.sql, sql-increment-stock.sql,
-    setup-cron-reservations.sql, verificar-funciones-stock.sql
-  - Implementación:
-    · Función PL/pgSQL "decrement_stock()" con SECURITY DEFINER que decrementa
-      atómicamente el stock usando FOR UPDATE (bloqueo de fila).
-    · Función PL/pgSQL "validate_and_decrement_stock()" que recibe un JSON
-      array de items y valida stock suficiente ANTES de decrementar.
-    · Sistema de Reservas de Stock: "reserve_stock()" con SELECT...FOR UPDATE,
-      stock efectivo = stock real - stock reservado, TTL de 15 minutos,
-      función "expire_reservations()" para liberar reservas caducadas.
-    · Al cancelar un pedido ("No enviado"), el stock se restaura
-      automáticamente vía "increment_stock()" con SECURITY DEFINER.
-    · Anti-overselling: No se permite vender si stock <= 0 o stock
-      reservado >= stock real.
-
-  2.3 Seguridad (RLS y Auth)                              [0.50 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivo: supabase-schema-secure.sql, politicas-seguridad-correctas.sql
-  - RLS (Row Level Security) activado en TODAS las tablas sensibles:
-    · products, categories, genders: lectura pública, escritura solo admin
-    · orders, order_items: solo el propietario lee sus pedidos
-    · invoices: solo el propietario accede a sus facturas
-    · admin_users: solo el service_role puede leer/escribir
-  - Auth:
-    · Middleware en src/middleware.ts verifica admin REAL (tabla admin_users)
-    · Cookies HttpOnly + Secure + SameSite=Lax
-    · Rate limiting en login: 5 intentos / 15 minutos
-    · Separación total de cuentas: admin_users ≠ auth.users
-
-  2.4 Storage y Multimedia                                [0.50 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivos: src/lib/cloudinary.ts, src/components/admin/ImageUpload.tsx
-  - Implementación:
-    · Cloudinary como CDN de imágenes con optimización automática
-    · Funciones: uploadImage(), deleteImage(), optimizeImage()
-    · Transformaciones: formato WebP/AVIF, resize, crop, calidad auto
-    · Componente React de subida con Drag & Drop, preview, barra de
-      progreso, validación de tipo/tamaño, reordenación de imágenes,
-      botón de eliminar e indicador "Principal"
-    · Las imágenes se optimizan en el front con lazy loading y srcset
-
-
-================================================================================
-  3. FUNCIONALIDAD TIENDA PÚBLICA — UX/UI (Rúbrica: 2.0 puntos)
-================================================================================
-
-  3.1 Diseño y UX "Premium"                               [0.50 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivo: tailwind.config.mjs
-  - Estética minimalista premium con Tailwind CSS:
-    · Paleta personalizada: brand-navy, brand-gold, brand-cream, brand-sage,
-      grises 50-950, dark mode completo
-    · Tipografías: Playfair Display (serif, títulos) + Inter (sans, cuerpo)
-    · Shadows custom: soft, glass, elevated, card, premium
-    · Animaciones: fade-in, slide-up, pulse-soft, shimmer, glow-pulse
-    · Responsividad completa: Mobile-first, breakpoints sm/md/lg/xl
-    · Slide-over del carrito (CartSlideOver.tsx) funcional con animación
-    · Diseño tipo H&M / Zara con navegación por género
-
-  3.2 Buscador y Filtros                                  [0.50 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivos: src/components/search/SearchBar.tsx,
-    src/pages/api/search/autocomplete.ts, src/lib/search.ts
-  - Implementación:
-    · Buscador "Live Search" con debounce de 300ms
-    · Autocompletado con dropdown de sugerencias
-    · Navegación con teclado (ArrowDown/Up/Enter/Escape)
-    · API de autocompletado con rate limiting
-    · Filtros por categoría, género, precio, colores, tallas, stock,
-      novedades, rebajas, ordenación (precio, nombre, novedades)
-    · Paginación con botón "Cargar más" (load-more) con API REST
-    · Búsqueda por trigramas (pg_trgm) para tolerancia a typos
-
-  3.3 Marketing (Newsletter / Ofertas)                    [0.50 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivos: src/components/ui/NewsletterPopup.tsx,
-    src/pages/api/newsletter/subscribe.ts,
-    src/pages/internal-admin/ofertas/index.astro,
-    src/pages/internal-admin/codigos-promocionales/index.astro
-  - Implementación:
-    · Pop-up de captación de leads que aparece a los 5 segundos en la
-      primera visita (controlado por localStorage)
-    · Código promocional BIENVENIDO10 incluido en el popup
-    · Sección "Ofertas Flash" controlada por interruptor desde el admin
-      (campo is_on_sale en products, con sale_price independiente)
-    · Códigos de descuento configurables: porcentaje o fijo, con fecha
-      inicio/fin, límite de usos, mínimo de compra
-    · API de newsletter con rate limiting (5 intentos / 10 min)
-
-  3.4 Recomendador de Talla                               [0.50 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivo: src/components/islands/SizeRecommender.tsx (729 líneas)
-  - Implementación:
-    · Modal multi-paso (isla React hidratada):
-      Paso 1: Género (hombre/mujer)
-      Paso 2: Medidas corporales (pecho, cintura, cadera, altura en cm)
-      Paso 3: Preferencia de ajuste (ajustado/normal/holgado)
-    · Tablas de medidas europeas completas (XS a XXL)
-    · Algoritmo de scoring 0-100 con función de distancia ponderada
-    · Diferenciación de rangos por género
-    · Mapeo tallas numéricas (36-52) ↔ letras (XS-XXL)
-    · Niveles de confianza: perfecto | bueno | aproximado
-    · Perfil de talla guardado en localStorage para futuras compras
-
-
-================================================================================
-  4. BACKOFFICE Y GESTIÓN ADMINISTRATIVA (Rúbrica: 2.5 puntos)
-================================================================================
-
-  4.1 Dashboard y KPIs                                    [0.50 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivos: src/pages/internal-admin/index.astro,
-    src/components/admin/SalesChart.tsx
-  - Implementación:
-    · Tarjetas de métricas conectadas a Supabase:
-      - Ventas totales (SUM de orders.total donde status != cancelado)
-      - Número de pedidos (COUNT de orders)
-      - Ventas del mes actual
-      - Producto más vendido
-    · Gráfico de líneas Chart.js con doble eje Y:
-      - Eje izquierdo: Ventas en EUR
-      - Eje derecho: Número de pedidos
-    · Datos de los últimos 7 días calculados con SQL (GROUP BY día)
-    · Distribución de estados de pedidos en la página del dashboard
-    · Colores brand-navy y brand-gold en los gráficos
-
-  4.2 Gestión de Pedidos                                  [0.75 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivos: src/pages/internal-admin/pedidos/index.astro,
-    src/pages/internal-admin/pedidos/[id].astro,
-    src/pages/api/admin/orders/update-status.ts
-  - Flujo completo de estados:
-    pending → confirmed → processing → shipped → delivered
-                                                 → cancelled (antes de envío)
-                                                 → refunded
-  - Funcionalidades:
-    · Listado con filtro por estado y búsqueda por nº pedido
-    · Detalle con timeline visual de progreso del pedido
-    · Cambio de estado con validación (solo transiciones permitidas)
-    · Cancelación antes del envío: restaura stock automáticamente
-      vía increment_stock() (RPC atómica)
-    · Estados de pago independientes: pending/paid/failed/refunded
-    · Historial de cambios en admin_notes
-
-  4.3 Facturación y Abonos                                [1.25 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivos: src/lib/invoice-pdf.ts, src/lib/credit-note-pdf.ts,
-    src/lib/invoice-service.ts, src/pages/api/orders/credit-note.ts
-  - Implementación COMPLETA:
-    · FACTURA al comprar:
-      - Se genera automáticamente al confirmar pago (webhook de Stripe)
-      - PDF con jsPDF: header con logo, nº factura secuencial, datos
-        del cliente, tabla de productos con imágenes, desglose
-        subtotal/envío/IVA/total en EUR
-      - Se persiste en tabla invoices (tipo = 'invoice')
-      - Se envía por email al cliente con PDF adjunto
-    · FACTURA DE ABONO (Rectificativa) al devolver:
-      - PDF generado por credit-note-pdf.ts con importes NEGATIVOS
-      - Referencia al pedido original y factura rectificada
-      - Motivo de devolución incluido
-      - Referencia legal: Art. 15 del RD 1619/2012
-      - Se persiste en tabla invoices (tipo = 'credit_note')
-      - Se envía automáticamente por email al cliente
-    · Servicio centralizado (invoice-service.ts):
-      - Genera número secuencial (FACT-2026-000001, ABON-2026-000001)
-      - Crea PDF, persiste en BD, envía por email
-      - Usado tanto por el webhook como por el endpoint de devoluciones
-
-  4.4 Extras del Admin
-  ---------------------------------------------------------------------------
-  - Gestión de productos: CRUD completo con imágenes Drag & Drop
-  - Gestión de ofertas: activar/desactivar rebajas, precio de oferta
-  - Códigos promocionales: crear, editar, desactivar, límites de uso
-  - Gestión de clientes: listado, detalle, historial de pedidos
-  - Gestión de devoluciones: aprobar/rechazar, reembolso vía Stripe
-  - Configuración: datos de la tienda, ajustes generales
-
-
-================================================================================
-  5. DESPLIEGUE Y ENTREGA (Rúbrica: 1.0 punto)
-================================================================================
-
-  5.1 Despliegue VPS (Coolify)                            [0.50 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivos: Dockerfile, nixpacks.toml
-  - Dockerfile multi-stage (4 fases):
-    · base:    Node 20 Alpine
-    · deps:    npm ci (solo dependencias de producción)
-    · build:   npm run build (todas las env vars como build args)
-    · runtime: Imagen final mínima con solo dist/ y node_modules
-    · HOST=0.0.0.0, PORT=4321
-    · CMD ["node", "./dist/server/entry.mjs"]
-  - nixpacks.toml como alternativa para Coolify:
-    · Node 20, npm ci, npm run build, start con HOST=0.0.0.0
-  - Variables de entorno seguras (nunca en código fuente):
-    · SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
-      BREVO_API_KEY, CLOUDINARY_API_SECRET → solo server-side via
-      import.meta.env (Astro las oculta del cliente automáticamente)
-
-  5.2 Documentación Técnica                               [0.50 pts — CUMPLE]
-  ---------------------------------------------------------------------------
-  - Archivos de documentación incluidos en el repositorio:
-    · README.md                    — Guía principal del proyecto
-    · ARQUITECTURA_DIAGRAMAS.md    — Diagramas de arquitectura
-    · ARQUITECTURA_SEGURIDAD_TOTAL.md — Modelo de seguridad completo
-    · ARQUITECTURA_BUSQUEDA_FILTROS.md — Sistema de búsqueda
-    · SISTEMA_RESERVA_STOCK.md     — Patrón de reserva de stock
-    · STRIPE_SETUP.md              — Configuración de pagos
-    · SUPABASE_SETUP.md            — Configuración de base de datos
-    · CLOUDINARY_SETUP.md          — Configuración de multimedia
-    · SECURITY_IMPLEMENTATION.md   — Implementación de seguridad
-    · INSTALACION.md               — Guía de instalación
-    · RESUMEN_EJECUTIVO.md         — Resumen ejecutivo del proyecto
-
-
-================================================================================
-  6. SEGURIDAD (Transversal — no puntuada directamente pero evita penalizaciones)
-================================================================================
-
-  6.1 Headers HTTP de Seguridad (src/middleware.ts)
-  ---------------------------------------------------------------------------
-  - Strict-Transport-Security (HSTS) con preload
-  - Content-Security-Policy estricto (script-src, img-src, connect-src, etc.)
-  - X-Content-Type-Options: nosniff
-  - X-Frame-Options: DENY
-  - X-XSS-Protection: 1; mode=block
-  - Referrer-Policy: strict-origin-when-cross-origin
-  - Permissions-Policy (camera, microphone, geolocation desactivados)
-  - Cross-Origin-Opener-Policy: same-origin
-  - X-DNS-Prefetch-Control: on
-
-  6.2 Protección de Claves                              [Sin penalización]
-  ---------------------------------------------------------------------------
-  - NINGUNA clave secreta expuesta en el repositorio público
-  - Las claves de Supabase (service_role), Stripe (secret_key),
-    Brevo (API key) y Cloudinary (api_secret) se acceden EXCLUSIVAMENTE
-    via import.meta.env en código server-side
-  - Solo PUBLIC_SUPABASE_URL y PUBLIC_SUPABASE_ANON_KEY son públicas
-    (son seguras por diseño con RLS activo)
-  - Archivos de debug/test con claves hardcodeadas eliminados del
-    tracking de git y añadidos al .gitignore
-
-  6.3 Rate Limiting
-  ---------------------------------------------------------------------------
-  - Login admin: 5 intentos / 15 minutos (en middleware)
-  - Newsletter: 5 intentos / 10 minutos (clase RateLimiter reutilizable)
-  - Contacto: rate limiting configurado
-  - API de búsqueda: rate limiting en autocompletado
-
-  6.4 Prevención XSS
-  ---------------------------------------------------------------------------
-  - Función escapeHtml() en todas las inserciones dinámicas de HTML
-  - encodeURIComponent() para slugs en URLs
-  - Validación UUID con regex en todos los endpoints API
-  - Sanitización de inputs con longitudes máximas
-
-  6.5 Robustez ante Errores                             [Sin penalización]
-  ---------------------------------------------------------------------------
-  - La aplicación NO rompe al comprar sin stock (stock atómico + validación)
-  - La aplicación NO rompe al subir imágenes pesadas (validación de tamaño
-    en el componente de upload + Cloudinary maneja el resize)
-
-
-================================================================================
-  7. BONUS — EMAILS TRANSACCIONALES (+1.0 punto)        [CUMPLE]
-================================================================================
-
-  - Archivo: src/lib/brevo.ts
-  - Proveedor: Brevo (ex-Sendinblue) via API transaccional
-  - Emails implementados:
-    1. FACTURA al confirmar pedido:
-       - PDF adjunto generado con jsPDF
-       - Detalle de productos con imágenes en HTML
-       - Se envía automáticamente desde el webhook de Stripe
-    2. FACTURA DE ABONO al procesar devolución:
-       - PDF rectificativo adjunto con importes negativos
-       - Se envía automáticamente al aprobar la devolución
-    3. CONTACTO:
-       - Email al admin con los datos del formulario de contacto
-  - Templates HTML profesionales con estilos inline
-  - Función de escape HTML para prevenir XSS en emails
-
-
-================================================================================
-  8. RESUMEN DE AUTOEVALUACIÓN SEGÚN RÚBRICA
-================================================================================
-
-  ┌────────────────────────────────────────────┬───────────┬────────────┐
-  │ Criterio                                   │ Máx. pts  │ Estimación │
-  ├────────────────────────────────────────────┼───────────┼────────────┤
-  │ 1.1 Astro Híbrido (SSG/SSR)               │   0.75    │    0.75    │
-  │ 1.2 Islas y Estado (Nano Stores)           │   0.75    │    0.75    │
-  │ 1.3 Calidad de Código y TS                 │   0.50    │    0.50    │
-  ├────────────────────────────────────────────┼───────────┼────────────┤
-  │ 2.1 Esquema y Relaciones                   │   0.50    │    0.50    │
-  │ 2.2 Atomicidad y Stock                     │   1.00    │    1.00    │
-  │ 2.3 Seguridad (RLS y Auth)                 │   0.50    │    0.50    │
-  │ 2.4 Storage y Multimedia                   │   0.50    │    0.50    │
-  ├────────────────────────────────────────────┼───────────┼────────────┤
-  │ 3.1 Diseño y UX "Premium"                  │   0.50    │    0.50    │
-  │ 3.2 Buscador y Filtros                     │   0.50    │    0.50    │
-  │ 3.3 Marketing (Newsletter/Ofertas)         │   0.50    │    0.50    │
-  │ 3.4 Recomendador de Talla                  │   0.50    │    0.50    │
-  ├────────────────────────────────────────────┼───────────┼────────────┤
-  │ 4.1 Dashboard y KPIs                       │   0.50    │    0.50    │
-  │ 4.2 Gestión de Pedidos                     │   0.75    │    0.75    │
-  │ 4.3 Facturación y Abonos                   │   1.25    │    1.25    │
-  ├────────────────────────────────────────────┼───────────┼────────────┤
-  │ 5.1 Despliegue VPS (Coolify)               │   0.50    │    0.50    │
-  │ 5.2 Documentación Técnica                  │   0.50    │    0.50    │
-  ├────────────────────────────────────────────┼───────────┼────────────┤
-  │                              SUBTOTAL BASE │  10.00    │   10.00    │
-  ├────────────────────────────────────────────┼───────────┼────────────┤
-  │ Penalización: Claves expuestas (-2.0)      │           │    0.00    │
-  │ Penalización: Crash sin stock (-1.0)       │           │    0.00    │
-  │ Bonus: Emails reales (+1.0)                │           │   +1.00    │
-  ├────────────────────────────────────────────┼───────────┼────────────┤
-  │                                TOTAL FINAL │  10.00    │ 10.0/10.0  │
-  │                                      Bonus │   +1.0    │   +1.0     │
-  └────────────────────────────────────────────┴───────────┴────────────┘
-
-  Nivel según rúbrica: SENIOR (9.0 - 10.0)
-  "Arquitectura impecable, código limpio, gestión de errores robusta.
-   El sistema de facturación y stock es a prueba de balas. UX excelente."
-
-
-================================================================================
-  STACK TECNOLÓGICO COMPLETO
-================================================================================
 
   Frontend:
-  - Astro 5.x (SSR) con adaptador Node.js
-  - React 18 (islas interactivas)
-  - Tailwind CSS 3 (diseño responsive premium)
-  - TypeScript 5 (tipado estricto)
-  - Nanostores + @nanostores/persistent (estado global persistente)
+  · Astro 5 — Framework principal con renderizado híbrido (SSR + SSG)
+  · React 18 — Componentes interactivos mediante "Islands Architecture"
+  · Tailwind CSS 3 — Sistema de diseño utility-first con tema personalizado
+  · TypeScript 5 — Tipado estricto en todo el código fuente
+  · Nanostores — Gestión de estado global con persistencia en localStorage
 
   Backend:
-  - Supabase (PostgreSQL 15 + Auth + RLS + Stored Procedures)
-  - Stripe (pagos + reembolsos + webhooks)
-  - Brevo/Sendinblue (emails transaccionales)
+  · Supabase — Base de datos PostgreSQL con autenticación, Row Level
+    Security, funciones PL/pgSQL y API REST autogenerada
+  · Stripe — Pasarela de pagos (checkout, webhooks, reembolsos)
+  · Brevo — Servicio de emails transaccionales con adjuntos PDF
 
   Multimedia:
-  - Cloudinary (CDN + optimización automática + upload)
+  · Cloudinary — CDN de imágenes con transformaciones automáticas
+    (WebP/AVIF, resize, crop, optimización de calidad)
 
-  Herramientas:
-  - jsPDF (generación de facturas PDF)
-  - Chart.js (gráficos del dashboard admin)
-  - pg_trgm (búsqueda full-text con tolerancia a typos)
+  Herramientas auxiliares:
+  · jsPDF — Generación de facturas y abonos en formato PDF
+  · Chart.js — Gráficos interactivos en el dashboard administrativo
+  · pg_trgm — Extensión PostgreSQL para búsqueda tolerante a erratas
 
-  Despliegue:
-  - Docker multi-stage (Node 20 Alpine)
-  - Nixpacks (compatibilidad Coolify)
-  - Node.js 20 LTS
+
+  2.2 Arquitectura del renderizado
+  ---------------------------------------------------------------------------
+
+  La aplicación utiliza un modelo híbrido de renderizado:
+
+  · Renderizado en servidor (SSR) — El catálogo, las fichas de producto,
+    el checkout, el área de usuario y el panel de administración se
+    renderizan en cada petición con datos frescos de la base de datos.
+    Esto garantiza que los precios, el stock y los estados de los pedidos
+    estén siempre actualizados.
+
+  · Pre-renderizado estático (SSG) — Las páginas informativas (política
+    de privacidad, sostenibilidad, contacto) se generan en tiempo de
+    build como HTML estático, lo que mejora la velocidad de carga y el
+    posicionamiento SEO.
+
+  · Islas de interactividad — Solo los componentes que requieren
+    interacción del usuario (barra de búsqueda, botón de añadir al
+    carrito, slide-over del carrito, popup de newsletter, recomendador
+    de tallas) se hidratan en el navegador como componentes React. El
+    resto de la página se entrega como HTML puro sin JavaScript.
+
+
+  2.3 Estado global y persistencia del carrito
+  ---------------------------------------------------------------------------
+
+  El carrito de compras se gestiona con Nanostores y la extensión
+  @nanostores/persistent, lo que permite:
+
+  · Persistencia automática en localStorage entre sesiones de navegación
+  · Sincronización instantánea entre componentes sin prop drilling
+  · Tipado completo de cada elemento del carrito (id, nombre, slug,
+    precio, precio de oferta, cantidad, imagen, talla, stock disponible)
+  · Funcionamiento fluido durante la navegación sin recargas ni pérdida
+    de datos
+
+  Además del carrito, se gestionan como stores globales la sesión del
+  usuario y el estado de los filtros de búsqueda.
+
+
+  2.4 Estructura del proyecto
+  ---------------------------------------------------------------------------
+
+  src/
+  ├── components/
+  │   ├── admin/          Componentes del panel de administración
+  │   ├── islands/        Componentes React hidratados (islas interactivas)
+  │   ├── navigation/     Navbar, menú móvil, migas de pan
+  │   ├── product/        Tarjeta de producto, galería, grid
+  │   ├── search/         Barra de búsqueda con autocompletado
+  │   └── ui/             Footer, newsletter, botones, modales
+  ├── layouts/            Layouts: Admin, Base y Público
+  ├── lib/                Módulos de negocio (autenticación, facturación,
+  │                       Cloudinary, Brevo, Stripe, búsqueda, logger...)
+  ├── pages/
+  │   ├── api/            +20 endpoints REST tipados
+  │   ├── internal-admin/ Panel de administración (ruta oculta)
+  │   ├── checkout/       Flujo de pago y confirmación
+  │   ├── perfil/         Área personal del cliente
+  │   └── productos/      Catálogo público
+  ├── stores/             Nano Stores (carrito, sesión, filtros)
+  ├── styles/             Estilos globales
+  └── types/              Interfaces TypeScript (Product, Order, Invoice...)
+
 
 ================================================================================
-                              FIN DE LA FICHA TÉCNICA
+  3. BASE DE DATOS Y LÓGICA DE NEGOCIO
+================================================================================
+
+  3.1 Modelo de datos
+  ---------------------------------------------------------------------------
+
+  La base de datos está desplegada en Supabase (PostgreSQL) con un esquema
+  normalizado que incluye las siguientes tablas principales:
+
+  · products            Catálogo de productos con precios en céntimos de
+                        euro (enteros), imágenes como array, stock global
+                        y stock desglosado por talla
+  · categories          Jerarquía de categorías con relación padre/hijo
+                        mediante parent_id (camisetas → ropa, etc.)
+  · genders             Segmentación por género (Hombre / Mujer)
+  · orders              Pedidos con datos de envío, importes desglosados,
+                        7 estados posibles y referencia al pago en Stripe
+  · order_items         Líneas de cada pedido con producto, talla, precio
+                        unitario y cantidad
+  · invoices            Facturas de venta y notas de abono rectificativas,
+                        con número secuencial y tipo diferenciado
+  · invoice_items       Líneas de factura asociadas a cada documento
+  · admin_users         Tabla de administradores separada de los clientes,
+                        con roles (super_admin, admin, editor, viewer)
+  · discount_codes      Códigos promocionales con reglas configurables
+  · newsletter_subs.    Suscriptores al boletín de novedades
+  · stock_reservations  Reservas temporales de stock durante el checkout
+  · persistent_cart     Carrito persistente vinculado al usuario
+  · wishlist            Lista de deseos del cliente
+
+  Todas las tablas utilizan claves foráneas con políticas ON DELETE
+  CASCADE o SET NULL según corresponda. Se aplican constraints CHECK para
+  validar precios positivos, stock no negativo y formatos de slug mediante
+  expresiones regulares. Se han creado índices optimizados, incluyendo
+  trigramas (pg_trgm) para potenciar la búsqueda de texto.
+
+
+  3.2 Control atómico de stock
+  ---------------------------------------------------------------------------
+
+  El stock se gestiona mediante funciones PL/pgSQL ejecutadas a nivel de
+  base de datos, lo que garantiza atomicidad e integridad incluso en
+  escenarios de alta concurrencia:
+
+  · decrement_stock() — Decrementa el stock de un producto utilizando
+    bloqueo a nivel de fila (SELECT ... FOR UPDATE). Esto impide que dos
+    transacciones simultáneas lean el mismo valor de stock antes de
+    decrementarlo, eliminando el riesgo de sobreventa.
+
+  · validate_and_decrement_stock() — Recibe un array JSON con los
+    productos y cantidades del pedido. Valida que haya stock suficiente
+    para TODOS los artículos antes de confirmar el decremento. Si algún
+    producto no tiene disponibilidad, la operación se revierte por
+    completo.
+
+  · reserve_stock() — Implementa un patrón de reserva temporal: al
+    iniciar el checkout, el stock se reserva durante 15 minutos. Si el
+    pago no se completa en ese plazo, la función expire_reservations()
+    libera automáticamente las unidades reservadas.
+
+  · increment_stock() — Restaura el stock cuando se cancela un pedido
+    que aún no ha sido enviado, garantizando que las unidades vuelvan a
+    estar disponibles para otros clientes.
+
+
+  3.3 Seguridad a nivel de base de datos (RLS)
+  ---------------------------------------------------------------------------
+
+  Todas las tablas sensibles tienen activado Row Level Security:
+
+  · Los visitantes y clientes pueden leer productos, categorías y
+    géneros, pero nunca modificarlos
+  · Cada cliente solo puede acceder a sus propios pedidos y facturas
+  · La tabla admin_users solo es accesible con el service_role key
+    (nunca desde el navegador)
+  · Las operaciones de escritura en el catálogo requieren autenticación
+    como administrador verificado
+
+
+================================================================================
+  4. EXPERIENCIA DE USUARIO — TIENDA PÚBLICA
+================================================================================
+
+  4.1 Diseño visual
+  ---------------------------------------------------------------------------
+
+  La interfaz sigue una estética minimalista premium inspirada en
+  plataformas como H&M o Zara, con un sistema de diseño cohesivo:
+
+  · Paleta de colores personalizada: tonos navy como color principal,
+    dorado como acento de lujo, crema para fondos cálidos y una escala
+    completa de grises
+  · Tipografías seleccionadas: Playfair Display (serif) para títulos
+    y encabezados, Inter (sans-serif) para el cuerpo de texto
+  · Sombras progresivas (soft, elevated, glass, premium) que crean
+    profundidad sin romper la limpieza visual
+  · Animaciones suaves (fade-in, slide-up, shimmer) que aportan
+    dinamismo sin distraer
+  · Diseño totalmente responsive con enfoque Mobile-first, adaptado
+    a todos los tamaños de pantalla
+
+
+  4.2 Navegación y catálogo
+  ---------------------------------------------------------------------------
+
+  · Navegación principal segmentada por género (Hombre / Mujer) con
+    submenús desplegables por categoría
+  · Cada sección muestra los productos en cuadrícula responsive con
+    carga progresiva mediante botón "Cargar más" conectado a una API
+    de paginación
+  · Tarjetas de producto con imagen optimizada (lazy loading), nombre,
+    categoría, precio, precio de oferta con porcentaje de descuento,
+    indicador de últimas unidades y botón de lista de deseos
+
+
+  4.3 Buscador inteligente
+  ---------------------------------------------------------------------------
+
+  · Barra de búsqueda con autocompletado en tiempo real y debounce
+    de 300ms para evitar saturar la API
+  · Sugerencias en dropdown navegable con teclado (flechas, Enter, Escape)
+  · Búsqueda por trigramas (pg_trgm) que tolera erratas y variaciones
+    ortográficas
+  · Filtros combinables: categoría, género, rango de precio, colores,
+    tallas, disponibilidad, novedades, rebajas
+  · Ordenación por precio (ascendente/descendente), nombre o novedades
+
+
+  4.4 Carrito y checkout
+  ---------------------------------------------------------------------------
+
+  · Carrito tipo slide-over lateral con animación, visible desde
+    cualquier página sin perder el contexto de navegación
+  · Persistencia entre sesiones gracias a Nanostores + localStorage
+  · Aplicación de códigos promocionales con validación en tiempo real
+  · Checkout integrado con Stripe Checkout (hosted), que gestiona
+    de forma segura la introducción de datos de pago sin que la
+    información sensible pase por nuestro servidor
+  · Página de confirmación que verifica el estado del pedido y muestra
+    el resumen de la compra
+
+
+  4.5 Recomendador algorítmico de tallas
+  ---------------------------------------------------------------------------
+
+  Modal interactivo de tres pasos que guía al cliente:
+
+  Paso 1 — Selección de género (hombre / mujer), que determina las
+           tablas de medidas a utilizar
+  Paso 2 — Introducción de medidas corporales: contorno de pecho,
+           cintura, cadera y altura en centímetros
+  Paso 3 — Preferencia de ajuste (ajustado / normal / holgado)
+
+  El algoritmo calcula un score de compatibilidad (0-100) con cada
+  talla europea (XS a XXL / 36 a 52) utilizando una función de
+  distancia ponderada sobre las medidas introducidas. El resultado
+  indica la talla recomendada con un nivel de confianza (perfecto,
+  bueno o aproximado). El perfil de talla se guarda localmente para
+  futuras compras.
+
+
+  4.6 Herramientas de captación y marketing
+  ---------------------------------------------------------------------------
+
+  · Pop-up de newsletter que aparece tras 5 segundos en la primera
+    visita, con código promocional de bienvenida incluido
+  · Sección de ofertas flash controlable desde el panel admin
+    (activación/desactivación individual de descuentos por producto)
+  · Códigos promocionales configurables: porcentaje o importe fijo,
+    con fecha de inicio y caducidad, límite de usos por código y
+    mínimo de compra requerido
+
+
+================================================================================
+  5. PANEL DE ADMINISTRACIÓN (BACKOFFICE)
+================================================================================
+
+  El backoffice es un área completamente independiente de la tienda
+  pública, accesible mediante una ruta oculta y protegida por múltiples
+  capas de seguridad (ver sección 7). El modelo de separación es similar
+  al que utilizan plataformas como Shopify: las cuentas de administrador
+  viven en una tabla distinta a las de los clientes.
+
+
+  5.1 Dashboard y métricas en tiempo real
+  ---------------------------------------------------------------------------
+
+  La pantalla principal del panel presenta:
+
+  · Tarjetas de KPIs calculados directamente desde la base de datos:
+    - Ventas totales acumuladas (excluyendo pedidos cancelados)
+    - Número total de pedidos
+    - Ventas del mes en curso
+    - Producto más vendido
+  · Gráfico de líneas interactivo (Chart.js) con doble eje Y que
+    muestra la evolución de ventas en euros y número de pedidos
+    durante los últimos 7 días
+  · Resumen de distribución de pedidos por estado
+
+
+  5.2 Gestión de productos
+  ---------------------------------------------------------------------------
+
+  · CRUD completo: crear, editar, duplicar y desactivar productos
+  · Subida de múltiples imágenes con Drag & Drop, preview, barra de
+    progreso, validación de tipo y tamaño, reordenación y marcado
+    de imagen principal
+  · Campos gestionables: nombre, descripción, precio, precio de oferta,
+    categoría, género, tallas disponibles, colores, stock global,
+    stock por talla, marca, SKU, destacado, novedad, rebaja activa,
+    sostenibilidad
+
+
+  5.3 Gestión de pedidos
+  ---------------------------------------------------------------------------
+
+  · Listado con filtros por estado y búsqueda por número de pedido
+  · Detalle de cada pedido con timeline visual de progreso
+  · Flujo de estados controlado:
+    Pendiente → Confirmado → En preparación → Enviado → Entregado
+  · Posibilidad de cancelar pedidos antes del envío (lo que restaura
+    automáticamente el stock de los productos afectados)
+  · Estados de pago independientes: pendiente / pagado / fallido /
+    reembolsado
+
+
+  5.4 Gestión de devoluciones
+  ---------------------------------------------------------------------------
+
+  · El cliente puede solicitar una devolución desde su área personal
+    indicando el motivo
+  · El administrador revisa, aprueba o rechaza la solicitud
+  · Al aprobar, se ejecuta automáticamente el reembolso a través de
+    la API de Stripe y se genera la nota de abono correspondiente
+    (ver sección 6)
+
+
+  5.5 Otros módulos
+  ---------------------------------------------------------------------------
+
+  · Gestión de ofertas — Activar/desactivar descuentos por producto
+  · Códigos promocionales — Crear, editar y desactivar códigos con
+    reglas de validez
+  · Gestión de clientes — Listado de clientes con historial de compras
+  · Configuración general — Ajustes de la tienda
+
+
+================================================================================
+  6. SISTEMA DE FACTURACIÓN Y ABONOS
+================================================================================
+
+  La facturación está completamente automatizada y se integra con el
+  flujo de pagos y devoluciones:
+
+  6.1 Factura de venta
+  ---------------------------------------------------------------------------
+
+  Se genera automáticamente en el momento en que Stripe confirma el pago
+  a través del webhook. El documento PDF incluye:
+
+  · Número de factura secuencial (formato FACT-2026-000001)
+  · Datos fiscales del emisor y del cliente
+  · Tabla detallada de productos con imagen, nombre, talla, cantidad
+    y precio unitario
+  · Desglose: subtotal, gastos de envío, IVA y total en euros
+  · Fecha de emisión y referencia al método de pago
+
+  La factura se persiste en la tabla invoices de la base de datos y se
+  envía al cliente por email con el PDF como adjunto.
+
+
+  6.2 Nota de abono (factura rectificativa)
+  ---------------------------------------------------------------------------
+
+  Cuando se procesa una devolución, el sistema genera automáticamente una
+  factura rectificativa que cumple con la normativa aplicable (Art. 15 del
+  RD 1619/2012):
+
+  · Número de abono secuencial (formato ABON-2026-000001)
+  · Referencia explícita a la factura original rectificada
+  · Importes en negativo que anulan parcial o totalmente la factura
+    de origen
+  · Motivo de la devolución incluido en el documento
+  · Referencia legal al artículo normativo correspondiente
+
+  El abono se persiste igualmente en la tabla invoices (diferenciado
+  por tipo = 'credit_note') y se envía por email al cliente.
+
+
+  6.3 Servicio centralizado
+  ---------------------------------------------------------------------------
+
+  Toda la lógica de facturación pasa por un servicio único que se encarga
+  de generar el número secuencial, crear el PDF, persistir el registro en
+  base de datos y disparar el envío del email. Esto garantiza la
+  consistencia entre la numeración de facturas, los datos almacenados
+  y los documentos recibidos por el cliente.
+
+
+================================================================================
+  7. INFRAESTRUCTURA DE SEGURIDAD
+================================================================================
+
+  7.1 Cabeceras HTTP de seguridad
+  ---------------------------------------------------------------------------
+
+  Todas las respuestas del servidor incluyen las siguientes cabeceras,
+  configuradas en el middleware de la aplicación:
+
+  · Strict-Transport-Security (HSTS) con preload
+  · Content-Security-Policy con directivas específicas por recurso
+  · X-Content-Type-Options: nosniff
+  · X-Frame-Options: DENY (previene clickjacking)
+  · X-XSS-Protection: 1; mode=block
+  · Referrer-Policy: strict-origin-when-cross-origin
+  · Permissions-Policy (cámara, micrófono y geolocalización desactivados)
+  · Cross-Origin-Opener-Policy: same-origin
+
+
+  7.2 Protección del panel administrativo
+  ---------------------------------------------------------------------------
+
+  El acceso al backoffice está protegido por múltiples capas:
+
+  · Ruta oculta no predecible ni indexada por buscadores
+  · Verificación de sesión mediante tokens en cookies HttpOnly + Secure
+    + SameSite=Lax
+  · Comprobación de que el usuario autenticado figure en la tabla
+    admin_users (no basta con tener cuenta en Supabase Auth)
+  · Verificación de que la cuenta de administrador esté activa
+  · Rate limiting en el login: máximo 5 intentos en 15 minutos por IP
+  · Posibilidad de configurar whitelist de IPs autorizadas
+  · Registro de auditoría de accesos en producción
+  · Separación total: las cuentas de administrador no pueden acceder
+    al checkout ni confundirse con cuentas de cliente
+
+
+  7.3 Protección de credenciales
+  ---------------------------------------------------------------------------
+
+  Ninguna clave secreta se almacena en el código fuente ni se expone al
+  navegador. Las credenciales de Supabase (service_role), Stripe
+  (secret_key, webhook_secret), Brevo (API key) y Cloudinary (api_secret)
+  se gestionan exclusivamente como variables de entorno del servidor.
+  Astro garantiza a nivel de framework que las variables sin el prefijo
+  PUBLIC_ nunca se incluyen en el bundle del cliente.
+
+
+  7.4 Prevención de ataques comunes
+  ---------------------------------------------------------------------------
+
+  · XSS — Escape de HTML en todas las inserciones dinámicas de contenido,
+    tanto en el front como en los templates de email
+  · Inyección — Validación UUID con regex en todos los endpoints API,
+    sanitización de inputs con longitudes máximas
+  · Sobrecarga — Rate limiting en endpoints sensibles (login, newsletter,
+    contacto, autocompletado) con clase reutilizable y auto-purga
+  · CSRF — Verificación de firma en el webhook de Stripe (constructEvent)
+  · Sobreventa — Stock atómico con bloqueo de fila a nivel de BD
+    (ver sección 3.2)
+
+
+================================================================================
+  8. NOTIFICACIONES Y COMUNICACIONES
+================================================================================
+
+  El sistema envía emails transaccionales reales a través de la API de
+  Brevo (anteriormente Sendinblue):
+
+  · Factura al confirmar el pago — Se envía automáticamente tras la
+    verificación del webhook de Stripe, con el PDF de la factura como
+    archivo adjunto y un resumen visual de los productos comprados
+    en el cuerpo del email
+
+  · Nota de abono al procesar una devolución — Se envía al aprobar
+    la solicitud de devolución, con el PDF del abono rectificativo
+    adjunto
+
+  · Formulario de contacto — Los mensajes enviados por los clientes
+    desde la página de contacto se reenvían por email al equipo de
+    administración
+
+  Todos los emails utilizan templates HTML profesionales con estilos
+  inline para garantizar compatibilidad con los principales clientes
+  de correo.
+
+
+================================================================================
+  9. DESPLIEGUE Y PUESTA EN PRODUCCIÓN
+================================================================================
+
+  9.1 Contenedorización
+  ---------------------------------------------------------------------------
+
+  La aplicación se distribuye como imagen Docker construida en múltiples
+  etapas para minimizar el tamaño final:
+
+  Etapa 1 (base)    — Imagen Node.js 20 sobre Alpine Linux
+  Etapa 2 (deps)    — Instalación de dependencias de producción (npm ci)
+  Etapa 3 (build)   — Compilación del proyecto con las variables de
+                       entorno inyectadas como build args
+  Etapa 4 (runtime) — Imagen final con únicamente el directorio dist/
+                       y las dependencias necesarias
+
+  El servidor arranca con el comando:
+    node ./dist/server/entry.mjs
+
+  Escuchando en 0.0.0.0:4321 por defecto.
+
+  Adicionalmente, se incluye un archivo nixpacks.toml como configuración
+  alternativa para despliegues directos en plataformas como Coolify.
+
+
+  9.2 Variables de entorno
+  ---------------------------------------------------------------------------
+
+  La configuración sensible se inyecta mediante variables de entorno en
+  el momento del despliegue. Las principales son:
+
+  · PUBLIC_SUPABASE_URL         — URL del proyecto Supabase (pública)
+  · PUBLIC_SUPABASE_ANON_KEY    — Clave anónima de Supabase (pública, 
+                                   protegida por RLS)
+  · SUPABASE_SERVICE_ROLE_KEY   — Clave de servicio (solo servidor)
+  · STRIPE_SECRET_KEY           — Clave secreta de Stripe (solo servidor)
+  · STRIPE_WEBHOOK_SECRET       — Secreto para verificar webhooks
+  · BREVO_API_KEY               — Clave de API de Brevo (solo servidor)
+  · CLOUDINARY_CLOUD_NAME       — Nombre del cloud de Cloudinary
+  · CLOUDINARY_API_KEY          — Clave de API de Cloudinary
+  · CLOUDINARY_API_SECRET       — Secreto de Cloudinary (solo servidor)
+
+
+================================================================================
+  10. DOCUMENTACIÓN TÉCNICA COMPLEMENTARIA
+================================================================================
+
+  El repositorio incluye la siguiente documentación adicional:
+
+  · README.md                          Guía principal del proyecto
+  · INSTALACION.md                     Instrucciones de instalación local
+  · ARQUITECTURA_DIAGRAMAS.md          Diagramas de arquitectura del sistema
+  · ARQUITECTURA_SEGURIDAD_TOTAL.md    Modelo de seguridad completo
+  · ARQUITECTURA_BUSQUEDA_FILTROS.md   Diseño del sistema de búsqueda
+  · SISTEMA_RESERVA_STOCK.md           Patrón de reserva temporal de stock
+  · STRIPE_SETUP.md                    Configuración de la pasarela de pagos
+  · SUPABASE_SETUP.md                  Configuración de la base de datos
+  · CLOUDINARY_SETUP.md                Configuración del servicio multimedia
+  · SECURITY_IMPLEMENTATION.md         Detalle de la implementación de seguridad
+  · RESUMEN_EJECUTIVO.md               Visión ejecutiva del proyecto
+
+
+================================================================================
+
+  Stack tecnológico resumido
+  ─────────────────────────
+
+  Frontend       Astro 5 · React 18 · Tailwind CSS 3 · TypeScript 5
+                 Nanostores + @nanostores/persistent
+
+  Backend        Supabase (PostgreSQL 15 · Auth · RLS · Stored Procedures)
+                 Stripe (pagos · reembolsos · webhooks)
+                 Brevo (emails transaccionales con adjuntos PDF)
+
+  Multimedia     Cloudinary (CDN · transformaciones · optimización auto)
+
+  Herramientas   jsPDF · Chart.js · pg_trgm
+
+  Despliegue     Docker multi-stage (Node 20 Alpine) · Nixpacks · Coolify
+
+================================================================================
+                          FIN DE LA FICHA TÉCNICA
 ================================================================================

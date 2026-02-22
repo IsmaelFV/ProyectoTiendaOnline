@@ -43,6 +43,33 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
+    // 2.5 Validar estructura de cada item del carrito
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    for (const item of items) {
+      if (!item.id || typeof item.id !== 'string' || !UUID_RE.test(item.id)) {
+        return new Response(JSON.stringify({ error: 'ID de producto no válido' }), {
+          status: 400, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 99) {
+        return new Response(JSON.stringify({ error: 'Cantidad no válida' }), {
+          status: 400, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      if (item.size !== undefined && (typeof item.size !== 'string' || item.size.length > 10)) {
+        return new Response(JSON.stringify({ error: 'Talla no válida' }), {
+          status: 400, headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // Limitar cantidad de items en el carrito
+    if (items.length > 50) {
+      return new Response(JSON.stringify({ error: 'Demasiados artículos en el carrito' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     // 3. Validar stock y precios en Supabase (ÚNICA FUENTE DE VERDAD)
     const productIds = items.map((item: any) => item.id);
     const { data: products, error: productsError } = await supabase
@@ -53,8 +80,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (productsError || !products) {
       console.error('Error al validar productos:', productsError);
       return new Response(JSON.stringify({ 
-        error: 'Error al validar productos',
-        details: productsError?.message 
+        error: 'Error al validar productos'
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -238,15 +264,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const finalTotalAmount = totalAmount - discountAmount;
 
     // 7. Crear sesion de Stripe Checkout
-    // Obtener URL base de forma robusta (proxy-safe)
-    const origin = request.headers.get('origin') 
-      || request.headers.get('x-forwarded-proto') && request.headers.get('x-forwarded-host') 
-        ? `${request.headers.get('x-forwarded-proto') || 'https'}://${request.headers.get('x-forwarded-host')}`
-        : null;
-    const referer = request.headers.get('referer');
-    const baseUrl = origin 
-      || (referer ? new URL(referer).origin : null) 
-      || import.meta.env.PUBLIC_SITE_URL 
+    // Usar SIEMPRE la URL configurada del sitio (nunca headers del cliente para evitar open redirect)
+    const baseUrl = import.meta.env.PUBLIC_SITE_URL 
+      || import.meta.env.SITE 
       || 'http://localhost:4321';
 
     console.log(`[CHECKOUT] Base URL para Stripe: ${baseUrl}`);
@@ -297,8 +317,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   } catch (error: any) {
     console.error('Error en checkout:', error);
     return new Response(JSON.stringify({ 
-      error: 'Error al procesar el pago',
-      details: error.message
+      error: 'Error al procesar el pago'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

@@ -72,7 +72,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
       console.error('Error updating order:', error);
       return new Response(JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: 'Error al actualizar el pedido' 
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -91,7 +91,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
     console.error('Error in update order endpoint:', error);
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message 
+      error: 'Error interno del servidor' 
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

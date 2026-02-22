@@ -102,8 +102,8 @@ export const GET: APIRoute = async ({ url }) => {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error al obtener reseñas';
-    return new Response(JSON.stringify({ error: message }), {
+    console.error('Error al obtener reseñas:', error);
+    return new Response(JSON.stringify({ error: 'Error al obtener reseñas' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -202,8 +202,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error interno';
-    return new Response(JSON.stringify({ error: message }), {
+    console.error('Error al crear/actualizar reseña:', error);
+    return new Response(JSON.stringify({ error: 'Error al procesar la reseña' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -276,8 +276,8 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error al eliminar';
-    return new Response(JSON.stringify({ error: message }), {
+    console.error('Error al eliminar reseña:', error);
+    return new Response(JSON.stringify({ error: 'Error al eliminar la reseña' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });

@@ -106,7 +106,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (error) {
       console.error('[Upload] Error de Supabase Storage:', error.message, error);
       return new Response(JSON.stringify({ 
-        error: `Error al subir la imagen: ${error.message}` 
+        error: 'Error al subir la imagen' 
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
