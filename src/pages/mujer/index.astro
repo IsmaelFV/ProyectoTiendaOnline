@@ -136,8 +136,14 @@ const productsArray = (products || []) as Product[];
           )}
 
           {productsArray.length >= 24 && (
-            <div class="text-center mt-12">
-              <button class="px-8 py-3 border border-white/20 text-white hover:bg-white/5 transition-all uppercase tracking-wider text-sm rounded-lg">
+            <div class="text-center mt-12" id="load-more-container">
+              <button 
+                id="load-more-btn"
+                data-gender-id={gender.id}
+                data-page="1"
+                data-limit="24"
+                class="px-8 py-3 border border-white/20 text-white hover:bg-white/5 transition-all uppercase tracking-wider text-sm rounded-lg"
+              >
                 Cargar más productos
               </button>
             </div>
@@ -147,3 +153,123 @@ const productsArray = (products || []) as Product[];
     </main>
   </div>
 </PublicLayout>
+
+<script>
+  function initLoadMore() {
+    const btn = document.getElementById('load-more-btn') as HTMLButtonElement | null;
+    if (!btn) return;
+
+    // Evitar doble binding
+    if (btn.dataset.bound === 'true') return;
+    btn.dataset.bound = 'true';
+
+    btn.addEventListener('click', async () => {
+      const currentPage = parseInt(btn.dataset.page || '1');
+      const nextPage = currentPage + 1;
+      const limit = parseInt(btn.dataset.limit || '24');
+      const genderId = btn.dataset.genderId;
+
+      // Estado loading
+      btn.disabled = true;
+      btn.textContent = 'Cargando...';
+
+      try {
+        const params = new URLSearchParams({
+          page: nextPage.toString(),
+          limit: limit.toString(),
+          gender_id: genderId || '',
+        });
+
+        const res = await fetch(`/api/products/list?${params}`);
+        if (!res.ok) throw new Error('Error al cargar productos');
+
+        const data = await res.json();
+        const { products, pagination } = data;
+
+        if (products.length > 0) {
+          const grid = document.querySelector('.grid.grid-cols-2');
+          if (grid) {
+            products.forEach((product: any) => {
+              grid.insertAdjacentHTML('beforeend', renderProductCard(product));
+            });
+            // Re-inicializar wishlist para los nuevos cards
+            if (typeof (window as any).initWishlistButtons === 'function') {
+              (window as any).initWishlistButtons();
+            } else {
+              document.dispatchEvent(new Event('astro:page-load'));
+            }
+          }
+          btn.dataset.page = nextPage.toString();
+        }
+
+        if (!pagination.hasMore) {
+          btn.parentElement?.remove();
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Cargar más productos';
+        }
+      } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+        btn.textContent = 'Cargar más productos';
+      }
+    });
+  }
+
+  function formatPrice(cents: number): string {
+    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
+  }
+
+  function optimizeImage(url: string): string {
+    if (!url || !url.includes('cloudinary.com')) return url;
+    return url.replace('/upload/', '/upload/w_400,h_500,c_fill,g_auto,f_auto,q_auto/');
+  }
+
+  function renderProductCard(p: any): string {
+    const mainImage = p.images?.[0] || '/placeholder.svg';
+    const img = optimizeImage(mainImage);
+    const hasDiscount = p.is_on_sale && p.sale_price && p.sale_price < p.price;
+    const discountPct = hasDiscount ? Math.round((1 - p.sale_price / p.price) * 100) : 0;
+    const displayPrice = hasDiscount ? p.sale_price : p.price;
+    const catName = p.category?.name || 'Moda';
+
+    return `
+      <article class="product-card-premium group" data-product-id="${p.id}">
+        <button class="wishlist-btn" aria-label="Añadir a favoritos" data-wishlist-id="${p.id}">
+          <svg class="w-5 h-5 wishlist-icon-outline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+          <svg class="w-5 h-5 wishlist-icon-filled hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+        </button>
+        <a href="/productos/${p.slug}" class="block">
+          <div class="product-image-container">
+            <img src="${img}" alt="${p.name}" class="product-image" loading="lazy"/>
+            <div class="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+              ${hasDiscount ? `<span class="badge-discount">-${discountPct}%</span>` : ''}
+              ${p.stock <= 3 && p.stock > 0 ? '<span class="badge-low-stock">¡Últimas unidades!</span>' : ''}
+            </div>
+            <div class="product-overlay"></div>
+            <div class="quick-view-btn">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              <span>Ver detalles</span>
+            </div>
+          </div>
+          <div class="product-content">
+            <div class="product-category">${catName}</div>
+            <h3 class="product-name">${p.name}</h3>
+            <div class="product-price-container">
+              <span class="product-price-current">${formatPrice(displayPrice)}</span>
+              ${hasDiscount ? `<span class="product-price-original">${formatPrice(p.price)}</span>` : ''}
+            </div>
+            <div class="product-stock">
+              ${p.stock > 0 
+                ? '<div class="stock-available"><span class="stock-dot"></span><span>Disponible</span></div>'
+                : '<div class="stock-unavailable"><span class="stock-dot-red"></span><span>Agotado</span></div>'}
+            </div>
+          </div>
+        </a>
+      </article>
+    `;
+  }
+
+  initLoadMore();
+  document.addEventListener('astro:page-load', initLoadMore);
+</script>
