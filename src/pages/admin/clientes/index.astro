@@ -17,7 +17,7 @@ const supabase = createServerSupabaseClient();
 // Obtener todos los pedidos con información del usuario
 const { data: orders, error } = await supabase
   .from('orders')
-  .select('user_id, shipping_full_name, total, created_at')
+  .select('user_id, shipping_full_name, total, status, created_at')
   .order('created_at', { ascending: false });
 
 // Agrupar por usuario
@@ -35,8 +35,10 @@ if (orders) {
         });
       }
       const client = clientsMap.get(order.user_id);
-      client.orderCount += 1;
-      client.totalSpent += parseFloat(order.total);
+      if (order.status !== 'cancelled' && order.status !== 'refunded') {
+        client.orderCount += 1;
+        client.totalSpent += parseFloat(order.total);
+      }
     }
   });
 }
