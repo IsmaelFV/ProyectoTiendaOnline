@@ -121,7 +121,7 @@ const productsArray = (products || []) as Product[];
           </h2>
 
           {productsArray.length > 0 ? (
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div id="products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {productsArray.map((product) => (
                 <ProductCard product={product} />
               ))}
@@ -187,17 +187,13 @@ const productsArray = (products || []) as Product[];
         const { products, pagination } = data;
 
         if (products.length > 0) {
-          const grid = document.querySelector('.grid.grid-cols-2');
+          const grid = document.getElementById('products-grid');
           if (grid) {
             products.forEach((product: any) => {
               grid.insertAdjacentHTML('beforeend', renderProductCard(product));
             });
             // Re-inicializar wishlist para los nuevos cards
-            if (typeof (window as any).initWishlistButtons === 'function') {
-              (window as any).initWishlistButtons();
-            } else {
-              document.dispatchEvent(new Event('astro:page-load'));
-            }
+            document.dispatchEvent(new Event('astro:page-load'));
           }
           btn.dataset.page = nextPage.toString();
         }
