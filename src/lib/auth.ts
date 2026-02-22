@@ -396,8 +396,9 @@ export async function verifyAdminFromCookies(
   const supabase = createServerSupabaseClient();
   const { data: adminData, error } = await supabase
     .from('admin_users')
-    .select('id, user_id, email')
+    .select('id, user_id, email, is_active')
     .eq('user_id', user.id)
+    .eq('is_active', true)
     .maybeSingle();
 
   logger.debug('[verifyAdminFromCookies] adminData:', adminData);

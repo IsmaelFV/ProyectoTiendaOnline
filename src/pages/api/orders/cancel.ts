@@ -45,6 +45,12 @@ export const POST: APIRoute = async ({ request }) => {
       return json({ success: false, message: 'ID de pedido requerido' }, 400);
     }
 
+    // Validar formato UUID
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (typeof orderId !== 'string' || !UUID_RE.test(orderId)) {
+      return json({ success: false, message: 'ID de pedido inválido' }, 400);
+    }
+
     // 2. Obtener pedido (verificar propiedad)
     const { data: order, error: orderError } = await supabase
       .from('orders')
@@ -58,7 +64,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // 3. Verificaciones de estado
-    if (['cancelled', 'refunded', 'return_requested'].includes(order.status)) {
+    if (['cancelled', 'refunded', 'return_requested', 'cancelling'].includes(order.status)) {
       return json({ success: false, message: 'Este pedido ya no se puede cancelar' }, 400);
     }
     if (['shipped', 'delivered'].includes(order.status)) {
@@ -78,6 +84,20 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // === CANCELACIÓN DIRECTA (< 2h) ===
+
+    // Lock atómico: marcar como 'cancelling' para prevenir doble cancelación/reembolso
+    const { error: lockError } = await supabase
+      .from('orders')
+      .update({ status: 'cancelling', updated_at: new Date().toISOString() })
+      .eq('id', orderId)
+      .eq('user_id', user.id)
+      .not('status', 'in', '(cancelled,refunded,cancelling,return_requested,shipped,delivered)')
+      .select('id')
+      .single();
+
+    if (lockError) {
+      return json({ success: false, message: 'El pedido ya está siendo procesado' }, 409);
+    }
 
     // a) Reembolso Stripe
     let stripeRefundId: string | null = null;
@@ -122,45 +142,9 @@ export const POST: APIRoute = async ({ request }) => {
           console.warn(`[CANCEL] RPC increment_stock no disponible para ${item.product_id}:`, err);
         }
 
-        // Intento 2: Fallback directo UPDATE (stock + stock_by_size)
+        // Si RPC falló, registrar para revisión manual (no usar fallback no-atómico que causa drift de stock)
         if (!restored) {
-          try {
-            const { data: prod } = await supabase
-              .from('products')
-              .select('stock, stock_by_size')
-              .eq('id', item.product_id)
-              .single();
-
-            if (prod) {
-              const newStock = (prod.stock || 0) + item.quantity;
-              const updateData: any = {
-                stock: newStock,
-                updated_at: new Date().toISOString()
-              };
-
-              // Restaurar stock_by_size también
-              const itemSize = item.size || 'Única';
-              if (prod.stock_by_size && typeof prod.stock_by_size === 'object') {
-                const sizeStock = prod.stock_by_size as Record<string, number>;
-                sizeStock[itemSize] = (sizeStock[itemSize] || 0) + item.quantity;
-                updateData.stock_by_size = sizeStock;
-              }
-
-              const { error: updateErr } = await supabase
-                .from('products')
-                .update(updateData)
-                .eq('id', item.product_id);
-
-              if (!updateErr) {
-                restored = true;
-                console.log(`[CANCEL] Stock restaurado (fallback directo): ${item.product_id} talla ${itemSize} +${item.quantity}`);
-              } else {
-                console.error(`[CANCEL] Fallback UPDATE falló para ${item.product_id}:`, updateErr);
-              }
-            }
-          } catch (fallbackErr) {
-            console.error(`[CANCEL] Error en fallback stock ${item.product_id}:`, fallbackErr);
-          }
+          console.error(`[CANCEL][CRITICAL] Stock increment RPC failed for product ${item.product_id} size ${item.size || 'Única'} qty ${item.quantity} — requires manual stock adjustment`);
         }
 
         if (restored) restoredItems++;

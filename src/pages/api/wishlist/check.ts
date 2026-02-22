@@ -24,7 +24,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
       return new Response(JSON.stringify({ ids: [] }), { status: 200, headers });
     }
 
-    const productIds = productIdsParam.split(',').filter(Boolean);
+    const productIds = productIdsParam.split(',').filter(Boolean).slice(0, 100);
 
     const { data, error } = await serverSupabase
       .from('wishlist_items')

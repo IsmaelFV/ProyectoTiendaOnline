@@ -1,12 +1,24 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '../../../lib/logger';
+import { RateLimiter, getClientIP } from '../../../lib/rate-limit';
+
+const changePwdLimiter = new RateLimiter({ maxAttempts: 5, windowMs: 15 * 60_000 });
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
+    // Rate limiting: máximo 5 intentos en 15 minutos por IP
+    const ip = getClientIP(request);
+    if (!changePwdLimiter.check(ip)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Demasiados intentos. Inténtalo de nuevo más tarde.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const body = await request.json();
     const { currentPassword, newPassword } = body;
 

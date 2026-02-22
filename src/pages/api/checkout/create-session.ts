@@ -165,11 +165,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         
         console.warn(`[CHECKOUT] RECHAZADO: ${errorMsg}`);
         return new Response(JSON.stringify({ 
-          error: errorMsg,
-          available: availableStock,
-          requested: cartQuantity,
-          size: itemSize,
-          stockBySize: currentStockBySize
+          error: `No hay suficiente stock de "${product.name}" en talla ${itemSize}`,
         }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' }

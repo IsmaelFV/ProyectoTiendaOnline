@@ -50,8 +50,9 @@ export const POST: APIRoute = async ({ request }) => {
 
     const { data: adminData, error } = await supabaseAdmin
       .from('admin_users')
-      .select('id, user_id, email')
+      .select('id, user_id, email, is_active')
       .eq('user_id', user.id)
+      .eq('is_active', true)
       .maybeSingle();
 
     if (error) {

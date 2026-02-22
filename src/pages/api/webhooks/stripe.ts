@@ -322,25 +322,9 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
               if (!rpcErr) itemUpdated = true;
             } catch (_) { /* RPC no disponible */ }
 
-            // Intento B: UPDATE con condición de stock suficiente (evita race condition)
+            // Si RPC falló, registrar para revisión manual (no usar fallback no-atómico)
             if (!itemUpdated) {
-              // Leemos stock actual y usamos .gte() como guarda
-              const { data: prod } = await supabaseAdmin
-                .from('products')
-                .select('stock')
-                .eq('id', item.product_id)
-                .single();
-
-              if (prod) {
-                const newStock = Math.max(0, (prod.stock || 0) - item.quantity);
-                const { error: updateErr } = await supabaseAdmin
-                  .from('products')
-                  .update({ stock: newStock, updated_at: new Date().toISOString() })
-                  .eq('id', item.product_id);
-
-                if (!updateErr) itemUpdated = true;
-                else console.error(`[WEBHOOK] Error actualizando stock de ${item.product_id}:`, updateErr);
-              }
+              console.error(`[WEBHOOK][CRITICAL] Stock decrement failed for product ${item.product_id} size ${item.size} qty ${item.quantity} — requires manual stock adjustment`);
             }
 
             if (itemUpdated) {

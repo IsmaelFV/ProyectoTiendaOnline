@@ -25,9 +25,7 @@ export const GET: APIRoute = async ({ url }) => {
       );
     }
     
-    const limit = url.searchParams.get('limit') 
-      ? parseInt(url.searchParams.get('limit')!) 
-      : 5;
+    const limit = Math.min(20, Math.max(1, parseInt(url.searchParams.get('limit') || '5') || 5));
     
     const suggestions = await autocompleteSearch(query, limit);
     

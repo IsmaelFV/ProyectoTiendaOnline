@@ -119,45 +119,9 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
           console.warn('[REFUND] RPC increment_stock no disponible:', error);
         }
 
-        // Intento 2: Fallback directo UPDATE (stock + stock_by_size)
+        // Si RPC falló, registrar para revisión manual (no usar fallback no-atómico que causa drift de stock)
         if (!restored) {
-          try {
-            const { data: prod } = await supabase
-              .from('products')
-              .select('stock, stock_by_size')
-              .eq('id', item.product_id)
-              .single();
-
-            if (prod) {
-              const newStock = (prod.stock || 0) + item.quantity;
-              const updateData: any = {
-                stock: newStock,
-                updated_at: new Date().toISOString()
-              };
-
-              // Restaurar stock_by_size también
-              const itemSize = item.size || 'Única';
-              if (prod.stock_by_size && typeof prod.stock_by_size === 'object') {
-                const sizeStock = prod.stock_by_size as Record<string, number>;
-                sizeStock[itemSize] = (sizeStock[itemSize] || 0) + item.quantity;
-                updateData.stock_by_size = sizeStock;
-              }
-
-              const { error: updateErr } = await supabase
-                .from('products')
-                .update(updateData)
-                .eq('id', item.product_id);
-
-              if (!updateErr) {
-                restored = true;
-                console.log(`[REFUND] Stock restaurado (fallback directo): ${item.product_id} talla ${itemSize} +${item.quantity}`);
-              } else {
-                console.error(`[REFUND] Fallback UPDATE falló para ${item.product_id}:`, updateErr);
-              }
-            }
-          } catch (fallbackErr) {
-            console.error(`[REFUND] Error en fallback stock ${item.product_id}:`, fallbackErr);
-          }
+          console.error(`[REFUND][CRITICAL] Stock increment RPC failed for product ${item.product_id} size ${item.size || 'Única'} qty ${item.quantity} — requires manual stock adjustment`);
         }
       }
     }

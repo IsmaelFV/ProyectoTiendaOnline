@@ -35,24 +35,43 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       return json({ success: false, message: 'Faltan parámetros' }, 400);
     }
 
-    // Obtener la devolución con el pedido asociado
-    const { data: returnData, error: retError } = await supabase
-      .from('returns')
-      .select('*, orders(*)')
-      .eq('id', returnId)
-      .single();
+    // Obtener la devolución con lock atómico según la acción
+    let returnData: any;
+    let retError: any;
 
-    if (retError || !returnData) {
-      return json({ success: false, message: 'Devolución no encontrada' }, 404);
+    if (action === 'receive') {
+      // Lock atómico: marcar como 'processing' para prevenir doble reembolso
+      const result = await supabase
+        .from('returns')
+        .update({ status: 'processing', updated_at: new Date().toISOString() })
+        .eq('id', returnId)
+        .in('status', ['pending', 'approved'])
+        .select('*, orders(*)')
+        .single();
+      returnData = result.data;
+      retError = result.error;
+
+      if (retError || !returnData) {
+        return json({ success: false, message: 'Devolución no encontrada o ya procesada' }, 409);
+      }
+    } else {
+      const result = await supabase
+        .from('returns')
+        .select('*, orders(*)')
+        .eq('id', returnId)
+        .single();
+      returnData = result.data;
+      retError = result.error;
+
+      if (retError || !returnData) {
+        return json({ success: false, message: 'Devolución no encontrada' }, 404);
+      }
     }
 
     switch (action) {
       // ========== MARCAR COMO RECIBIDO → REEMBOLSAR ========== 
       case 'receive': {
-        if (!['pending', 'approved'].includes(returnData.status)) {
-          return json({ success: false, message: 'Solo se pueden recibir devoluciones pendientes o aprobadas' }, 400);
-        }
-
+        // El lock atómico ya verificó el status y marcó como 'processing'
         const order = returnData.orders;
         if (!order) {
           return json({ success: false, message: 'Pedido asociado no encontrado' }, 400);
