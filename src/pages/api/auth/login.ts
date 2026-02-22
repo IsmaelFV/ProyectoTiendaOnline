@@ -7,7 +7,7 @@
  */
 
 import type { APIRoute } from 'astro';
-import { supabase } from '../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { logger } from '../../../lib/logger';
 import { RateLimiter, getClientIP } from '../../../lib/rate-limit';
 
@@ -36,9 +36,23 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect(`/auth/login?error=${encodeURIComponent('El formato del email no es válido')}`);
   }
 
+  // Cliente Supabase fresco para esta petición (evita estado residual del singleton)
+  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
+    logger.error('[Login] Missing Supabase env vars');
+    return redirect(`/auth/login?error=${encodeURIComponent('Error de configuración del servidor')}`);
+  }
+
+  const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
   try {
-    // Autenticar con Supabase
-    const { data, error } = await supabase.auth.signInWithPassword({
+    // Autenticar con Supabase (cliente fresco sin estado residual)
+    const { data, error } = await supabaseAuth.auth.signInWithPassword({
       email,
       password,
     });
@@ -97,12 +111,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
     // Verificar si el usuario es administrador (usar service_role para evitar RLS)
     try {
-      const { createClient: createAdminClient } = await import('@supabase/supabase-js');
-      const supabaseAdmin = createAdminClient(
-        import.meta.env.PUBLIC_SUPABASE_URL,
-        import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
-        { auth: { autoRefreshToken: false, persistSession: false } }
-      );
+      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
 
       const { data: adminData } = await supabaseAdmin
         .from('admin_users')
