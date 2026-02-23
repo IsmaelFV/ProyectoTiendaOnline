@@ -52,8 +52,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const { data: adminUsers, error: adminError } = await adminSupabase
       .from('admin_users')
       .select('*')
-      .eq('user_id', data.user.id)
-      .eq('is_active', true);
+      .eq('user_id', data.user.id);
 
     if (adminError || !adminUsers || adminUsers.length === 0) {
       console.error('[Admin Login] Usuario no es admin:', email, 'Error:', adminError?.message);

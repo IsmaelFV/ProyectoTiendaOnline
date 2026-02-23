@@ -90,8 +90,7 @@ export const POST: APIRoute = async ({ request }) => {
     const supabase = createServerSupabaseClient();
     const { data: admins, error: adminsError } = await supabase
       .from('admin_users')
-      .select('email, full_name')
-      .eq('is_active', true);
+      .select('email, full_name');
 
     if (adminsError || !admins || admins.length === 0) {
       console.error('[Contact] Error obteniendo admins:', adminsError);
