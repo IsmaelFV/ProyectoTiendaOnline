@@ -1035,30 +1035,25 @@ import SearchBar from '../search/SearchBar';
        * el servidor en /api/auth/logout. Aquí limpiamos lo que SÍ podemos
        * tocar desde JS: sb-session-data y localStorage.
        */
-      const clearClientArtifacts = () => {
+      const clearSessionCookie = () => {
         try {
-          // sb-session-data NO es HttpOnly → se puede borrar desde JS
+          // Solo borrar la cookie sb-session-data (non-HttpOnly)
+          // Las cookies HttpOnly las borra el servidor en /api/auth/logout
+          // NO tocar localStorage: session.ts gestiona la limpieza via
+          // onAuthStateChange y el carrito depende de last_cart_owner
           const isSecure = window.location.protocol === 'https:';
           const securePart = isSecure ? '; Secure' : '';
           const expire = `Expires=Thu, 01 Jan 1970 00:00:01 GMT; Path=/; SameSite=Lax${securePart}`;
           document.cookie = `sb-session-data=; ${expire}`;
-
-          // Limpiar localStorage de Supabase (sesiones stale)
-          const toRemove: string[] = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('sb-')) toRemove.push(key);
-          }
-          toRemove.forEach((k) => localStorage.removeItem(k));
         } catch (e) {
-          console.warn('No se pudieron limpiar artefactos de sesión:', e);
+          console.warn('No se pudo limpiar cookie de sesión:', e);
         }
       };
 
       // Logout: llamar al endpoint server-side que borra las cookies HttpOnly
       document.getElementById('logout-btn-header')?.addEventListener('click', async () => {
         try {
-          clearClientArtifacts();
+          clearSessionCookie();
           // Enviar POST al servidor para borrar cookies HttpOnly + audit log
           const form = document.createElement('form');
           form.method = 'POST';
@@ -1084,7 +1079,7 @@ import SearchBar from '../search/SearchBar';
             toggle(true);
           }
           if (event === 'SIGNED_OUT') {
-            clearClientArtifacts();
+            clearSessionCookie();
             toggle(false);
           }
         });
