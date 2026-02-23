@@ -106,9 +106,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
       const { data: adminData } = await supabaseAdmin
         .from('admin_users')
-        .select('id, user_id, email, is_active')
+        .select('user_id')
         .eq('user_id', data.session.user.id)
-        .eq('is_active', true)
         .maybeSingle();
 
       if (adminData) {
