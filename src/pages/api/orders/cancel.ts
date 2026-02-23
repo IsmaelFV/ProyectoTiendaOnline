@@ -168,9 +168,14 @@ export const POST: APIRoute = async ({ request }) => {
     // e) Generar y enviar Factura de Abono (Rectificativa)
     let creditNoteNumber: string | null = null;
     if (stripeRefundId) {
+      // Asegurar que el email del cliente está disponible (fallback a user.email)
+      const orderForCreditNote = {
+        ...order,
+        customer_email: order.customer_email || user.email || '',
+      };
       creditNoteNumber = await createAndSendCreditNote({
         supabase,
-        order,
+        order: orderForCreditNote,
         orderItems: orderItems || null,
         stripeRefundId,
         reason: 'Cancelación del pedido por el cliente (dentro del plazo de 2 horas)',

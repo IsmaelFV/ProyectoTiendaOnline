@@ -140,9 +140,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         // Generar y enviar Factura de Abono (Rectificativa)
         let creditNoteNumber: string | null = null;
         if (stripeRefundId) {
+          // Asegurar email: order.customer_email o el email de la devolución
+          const orderForCreditNote = {
+            ...order,
+            customer_email: order.customer_email || returnData.customer_email || '',
+          };
           creditNoteNumber = await createAndSendCreditNote({
             supabase,
-            order,
+            order: orderForCreditNote,
             orderItems: orderItems || null,
             stripeRefundId,
             reason: `Devolución aprobada - ${returnData.reason || 'Producto devuelto por el cliente'}`,

@@ -73,18 +73,24 @@ export async function createAndSendCreditNote({
     const creditNoteNumber = await getNextCreditNoteNumber(supabase);
     console.log(`${logPrefix} Generando abono ${creditNoteNumber} para pedido ${order.order_number}`);
 
-    // 3. Preparar items para el PDF
-    const items = (orderItems || []).map((item: any) => ({
-      name: item.product_name || item.name || 'Producto',
-      quantity: item.quantity || 1,
-      price: item.unit_price || item.price || 0,
-      total: (item.unit_price || item.price || 0) * (item.quantity || 1),
-    }));
+    // 3. Preparar items para el PDF (convertir euros → céntimos, el PDF espera céntimos)
+    const items = (orderItems || []).map((item: any) => {
+      const priceEur = item.unit_price || item.price || 0;
+      const qty = item.quantity || 1;
+      return {
+        name: item.product_name || item.name || 'Producto',
+        quantity: qty,
+        price: Math.round(priceEur * 100),        // céntimos
+        total: Math.round(priceEur * qty * 100),   // céntimos
+      };
+    });
 
-    // 4. Calcular totales (en céntimos)
+    // 4. Calcular totales en céntimos (la BD almacena en euros)
     const subtotal = items.reduce((sum: number, i: any) => sum + i.total, 0);
-    const shipping = order.shipping_cost || 0;
-    const total = order.total || (subtotal + shipping);
+    const shippingEur = order.shipping_cost || 0;
+    const shipping = Math.round(shippingEur * 100);
+    const totalEur = order.total || ((subtotal / 100) + shippingEur);
+    const total = Math.round(totalEur * 100);
     const tax = Math.round(total * 21 / 121); // IVA incluido al 21%
 
     // 5. Generar PDF
@@ -103,7 +109,7 @@ export async function createAndSendCreditNote({
       refundMethod: `Stripe - Reembolso ${stripeRefundId}`,
     });
 
-    // 6. Persistir en BD (tabla invoices: customer_name, customer_email, subtotal, shipping, tax, total, reason, stripe_refund_id)
+    // 6. Persistir en BD (tabla invoices espera céntimos en los campos de importe)
     try {
       const { error: insertErr } = await supabase.from('invoices').insert({
         invoice_number: creditNoteNumber,
@@ -111,10 +117,10 @@ export async function createAndSendCreditNote({
         order_id: order.id,
         customer_name: customerName,
         customer_email: customerEmail || 'no-email@placeholder.com',
-        subtotal: subtotal,
-        shipping: shipping,
-        tax: tax,
-        total: -Math.abs(total), // Negativo para abonos
+        subtotal: subtotal,       // céntimos
+        shipping: shipping,       // céntimos
+        tax: tax,                 // céntimos
+        total: -Math.abs(total),  // céntimos, negativo para abonos
         reason: reason,
         stripe_refund_id: stripeRefundId,
       });
@@ -162,7 +168,7 @@ export async function createAndSendCreditNote({
                 <p>Adjuntamos la nota de abono <strong>${safeCreditNote}</strong> en formato PDF.</p>
                 <div style="background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #dc2626;">
                   <p style="margin: 0;"><strong>Motivo:</strong> ${escapeHtml(reason)}</p>
-                  <p style="margin: 8px 0 0;"><strong>Importe reembolsado:</strong> ${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(total / 100)}</p>
+                  <p style="margin: 8px 0 0;"><strong>Importe reembolsado:</strong> ${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(total / 100)}</p> <!-- total ya está en céntimos -->
                 </div>
                 <p>El reembolso se reflejará en tu cuenta en un plazo de 3 a 5 días laborables.</p>
                 <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
