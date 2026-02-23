@@ -995,7 +995,6 @@ import SearchBar from '../search/SearchBar';
   // ==============================
   (async () => {
     try {
-      const { supabase } = await import('../../lib/supabase');
       const guestEl = document.getElementById('user-guest');
       const authEl = document.getElementById('user-auth');
 
@@ -1014,13 +1013,37 @@ import SearchBar from '../search/SearchBar';
         }
       };
 
-      const clearAuthArtifacts = () => {
+      /**
+       * Leer la cookie sb-session-data (non-HttpOnly, puesta por el servidor).
+       * Es la fuente de verdad para el estado de sesión en el cliente.
+       */
+      const getSessionFromCookie = (): { id: string; email: string } | null => {
         try {
+          const match = document.cookie.match(/sb-session-data=([^;]+)/);
+          if (!match) return null;
+          const data = JSON.parse(decodeURIComponent(match[1]));
+          if (data?.user?.id) return data.user;
+          return null;
+        } catch {
+          return null;
+        }
+      };
+
+      /**
+       * Limpiar artefactos de sesión del lado del cliente.
+       * Las cookies HttpOnly (sb-access-token, sb-refresh-token) las borra
+       * el servidor en /api/auth/logout. Aquí limpiamos lo que SÍ podemos
+       * tocar desde JS: sb-session-data y localStorage.
+       */
+      const clearClientArtifacts = () => {
+        try {
+          // sb-session-data NO es HttpOnly → se puede borrar desde JS
           const isSecure = window.location.protocol === 'https:';
           const securePart = isSecure ? '; Secure' : '';
           const expire = `Expires=Thu, 01 Jan 1970 00:00:01 GMT; Path=/; SameSite=Lax${securePart}`;
-          document.cookie = `sb-access-token=; ${expire}`;
-          document.cookie = `sb-refresh-token=; ${expire}`;
+          document.cookie = `sb-session-data=; ${expire}`;
+
+          // Limpiar localStorage de Supabase (sesiones stale)
           const toRemove: string[] = [];
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
@@ -1028,37 +1051,47 @@ import SearchBar from '../search/SearchBar';
           }
           toRemove.forEach((k) => localStorage.removeItem(k));
         } catch (e) {
-          console.warn('No se pudieron limpiar claves/cookies sb-*', e);
+          console.warn('No se pudieron limpiar artefactos de sesión:', e);
         }
       };
 
-      // Logout
+      // Logout: llamar al endpoint server-side que borra las cookies HttpOnly
       document.getElementById('logout-btn-header')?.addEventListener('click', async () => {
         try {
-          clearAuthArtifacts();
-          await supabase.auth.signOut();
+          clearClientArtifacts();
+          // Enviar POST al servidor para borrar cookies HttpOnly + audit log
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '/api/auth/logout';
+          form.style.display = 'none';
+          document.body.appendChild(form);
+          form.submit();
         } catch (e) {
-          console.warn('signOut falló:', e);
-        } finally {
-          await new Promise((r) => setTimeout(r, 200));
+          console.warn('Logout falló:', e);
           window.location.href = '/';
         }
       });
 
-      // Estado inicial
-      const { data } = await supabase.auth.getSession();
-      toggle(!!data.session?.user);
+      // Estado inicial: leer la cookie del servidor (fuente de verdad)
+      const cookieUser = getSessionFromCookie();
+      toggle(!!cookieUser);
 
-      // Escuchar cambios
-      supabase.auth.onAuthStateChange((event: any, session: any) => {
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          toggle(!!session?.user);
-        }
-        if (event === 'SIGNED_OUT') {
-          clearAuthArtifacts();
-          toggle(false);
-        }
-      });
+      // También escuchar cambios del cliente (Google OAuth, etc.)
+      try {
+        const { supabase } = await import('../../lib/supabase');
+        supabase.auth.onAuthStateChange((event: any, session: any) => {
+          if (event === 'SIGNED_IN') {
+            toggle(true);
+          }
+          if (event === 'SIGNED_OUT') {
+            clearClientArtifacts();
+            toggle(false);
+          }
+        });
+      } catch (e) {
+        // Si falla el import de supabase, no es crítico
+        console.warn('No se pudo suscribir a auth changes:', e);
+      }
     } catch (err) {
       console.error('Error en auth del header:', err);
     }
