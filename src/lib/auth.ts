@@ -268,16 +268,27 @@ export async function getUserFromSession(
 ): Promise<User | null> {
   const supabase = createServerSupabaseClient();
 
-  const { data, error } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
-  });
+  // Usar getUser() en vez de setSession() — es stateless y más fiable en SSR
+  // setSession() intenta gestionar estado de sesión en el cliente, lo que
+  // falla de forma intermitente en entornos de servidor sin persistencia
+  const { data: { user }, error } = await supabase.auth.getUser(accessToken);
 
-  if (error || !data.session) {
-    return null;
+  if (error || !user) {
+    // Si el access token expiró, intentar refrescar con el refresh token
+    try {
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
+        refresh_token: refreshToken,
+      });
+      if (refreshError || !refreshData.session) {
+        return null;
+      }
+      return refreshData.session.user;
+    } catch {
+      return null;
+    }
   }
 
-  return data.session.user;
+  return user;
 }
 
 /**
