@@ -27,9 +27,8 @@ export const PATCH: APIRoute = async ({ request, cookies, params }) => {
 
     const supabase = createServerSupabaseClient();
     const { id } = params;
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!id || !UUID_RE.test(id)) {
-      return new Response(JSON.stringify({ error: 'ID de producto inválido' }), {
+    if (!id) {
+      return new Response(JSON.stringify({ error: 'ID de producto no proporcionado' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -151,9 +150,8 @@ export const PUT: APIRoute = async ({ request, cookies, params }) => {
 
     // Obtener ID del producto
     const { id } = params;
-    const UUID_RE_PUT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!id || !UUID_RE_PUT.test(id)) {
-      return new Response(JSON.stringify({ error: 'ID de producto inválido' }), {
+    if (!id) {
+      return new Response(JSON.stringify({ error: 'ID de producto no proporcionado' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });

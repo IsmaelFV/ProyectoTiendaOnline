@@ -28,7 +28,7 @@ const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2025-12-15.clover',
 });
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request }) => {
   try {
     const { sessionId } = await request.json();
 
@@ -75,44 +75,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    // Verificar identidad: si la sesión tiene user_id, comprobar que el caller es ese usuario
-    const sessionUserId = session.metadata?.user_id;
-    if (sessionUserId && sessionUserId !== 'guest') {
-      const accessToken = cookies.get('sb-access-token')?.value;
-      if (!accessToken) {
-        return new Response(JSON.stringify({ error: 'Autenticación requerida' }), {
-          status: 401, headers: { 'Content-Type': 'application/json' }
-        });
-      }
-      const { data: authData } = await supabaseAdmin.auth.getUser(accessToken);
-      if (!authData.user || authData.user.id !== sessionUserId) {
-        return new Response(JSON.stringify({ error: 'No autorizado' }), {
-          status: 403, headers: { 'Content-Type': 'application/json' }
-        });
-      }
-    }
-
     // 2. Verificar si ya existe un pedido para esta sesion (el webhook ya lo creo)
-    const paymentIntent = session.payment_intent as string;
-    let existingOrder: { id: string; order_number: string; status: string } | null = null;
-
-    if (paymentIntent) {
-      const { data } = await supabaseAdmin
-        .from('orders')
-        .select('id, order_number, status')
-        .eq('payment_id', paymentIntent)
-        .maybeSingle();
-      existingOrder = data;
-    }
-
-    if (!existingOrder) {
-      const { data } = await supabaseAdmin
-        .from('orders')
-        .select('id, order_number, status')
-        .ilike('admin_notes', `%${sessionId}%`)
-        .maybeSingle();
-      existingOrder = data;
-    }
+    const { data: existingOrder } = await supabaseAdmin
+      .from('orders')
+      .select('id, order_number, status')
+      .or(`payment_id.eq.${session.payment_intent},admin_notes.ilike.%${sessionId}%`)
+      .maybeSingle();
 
     if (existingOrder) {
       console.log(`[VERIFY-ORDER] Pedido ya existe: ${existingOrder.order_number}`);
@@ -128,25 +96,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // 3. EL PEDIDO NO EXISTE - Crearlo como fallback
     console.log('[VERIFY-ORDER] Pedido NO encontrado, creando como fallback...');
-
-    // Re-check atómico por payment_id para reducir race condition de pedidos duplicados
-    const { data: doubleCheck } = await supabaseAdmin
-      .from('orders')
-      .select('id, order_number')
-      .eq('payment_id', session.payment_intent as string)
-      .maybeSingle();
-
-    if (doubleCheck) {
-      console.log(`[VERIFY-ORDER] Pedido encontrado en re-check: ${doubleCheck.order_number}`);
-      return new Response(JSON.stringify({
-        status: 'exists',
-        orderNumber: doubleCheck.order_number,
-        orderId: doubleCheck.id
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
 
     const { user_id, discount_code } = session.metadata || {};
 
@@ -272,34 +221,27 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             subtotal: (pricePerUnit * quantity) / 100,
           });
 
-        // Decrementar stock atómicamente (evita race condition)
-        // Intento 1: RPC atómica
-        let stockUpdated = false;
-        try {
-          const { error: rpcErr } = await supabaseAdmin.rpc('atomic_decrement_stock', {
-            p_product_id: product.id,
-            p_quantity: quantity,
-            p_size: itemSize
-          });
-          if (!rpcErr) stockUpdated = true;
-        } catch (_) { /* RPC no disponible */ }
-
-        // Intento 2: Fallback con validate_and_decrement_stock
-        if (!stockUpdated) {
-          try {
-            const { data: result, error: rpcErr2 } = await supabaseAdmin.rpc('validate_and_decrement_stock', {
-              p_items: [{ product_id: product.id, size: itemSize, quantity }]
-            }) as { data: any; error: any };
-            if (!rpcErr2 && result?.success) stockUpdated = true;
-          } catch (_) { /* RPC no disponible */ }
+        // Decrementar stock directamente
+        const newStock = Math.max(0, (product.stock || 0) - quantity);
+        let updateData: any = { 
+          stock: newStock,
+          updated_at: new Date().toISOString()
+        };
+        
+        if (product.stock_by_size && typeof product.stock_by_size === 'object') {
+          const sizeStock = product.stock_by_size as Record<string, number>;
+          if (itemSize in sizeStock) {
+            sizeStock[itemSize] = Math.max(0, (sizeStock[itemSize] || 0) - quantity);
+            updateData.stock_by_size = sizeStock;
+          }
         }
 
-        // Si RPC falló, registrar para revisión manual (no usar fallback no-atómico que causa drift de stock)
-        if (!stockUpdated) {
-          console.error(`[VERIFY-ORDER][CRITICAL] Stock decrement RPC failed for product ${product.id} size ${itemSize} qty ${quantity} — requires manual stock adjustment`);
-        }
+        await supabaseAdmin
+          .from('products')
+          .update(updateData)
+          .eq('id', product.id);
 
-        console.log(`[VERIFY-ORDER] Stock procesado: ${product.id} (stockUpdated: ${stockUpdated})`);
+        console.log(`[VERIFY-ORDER] Stock actualizado: ${product.id} -> ${newStock}`);
       } else {
         console.warn(`[VERIFY-ORDER] Producto "${productName}" no encontrado en BD`);
       }
@@ -363,7 +305,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   } catch (error: any) {
     console.error('[VERIFY-ORDER] Error general:', error);
     return new Response(JSON.stringify({ 
-      error: 'Error verificando pedido'
+      error: 'Error verificando pedido',
+      details: error.message 
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

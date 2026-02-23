@@ -17,8 +17,7 @@ const supabase = createServerSupabaseClient();
 const { data: codes } = await supabase
   .from('discount_codes')
   .select('*')
-  .order('created_at', { ascending: false })
-  .limit(500);
+  .order('created_at', { ascending: false });
 
 const now = new Date();
 ---

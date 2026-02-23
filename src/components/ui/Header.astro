@@ -995,6 +995,7 @@ import SearchBar from '../search/SearchBar';
   // ==============================
   (async () => {
     try {
+      const { supabase } = await import('../../lib/supabase');
       const guestEl = document.getElementById('user-guest');
       const authEl = document.getElementById('user-auth');
 
@@ -1013,96 +1014,51 @@ import SearchBar from '../search/SearchBar';
         }
       };
 
-      /**
-       * Leer la cookie sb-session-data (non-HttpOnly, puesta por el servidor).
-       * Es la fuente de verdad para el estado de sesión en el cliente.
-       */
-      const getSessionFromCookie = (): { id: string; email: string } | null => {
+      const clearAuthArtifacts = () => {
         try {
-          const match = document.cookie.match(/sb-session-data=([^;]+)/);
-          if (!match) return null;
-          const data = JSON.parse(decodeURIComponent(match[1]));
-          if (data?.user?.id) return data.user;
-          return null;
-        } catch {
-          return null;
-        }
-      };
-
-      /**
-       * Limpiar artefactos de sesión del lado del cliente.
-       * Las cookies HttpOnly (sb-access-token, sb-refresh-token) las borra
-       * el servidor en /api/auth/logout. Aquí limpiamos lo que SÍ podemos
-       * tocar desde JS: sb-session-data y localStorage.
-       */
-      const clearSessionCookie = () => {
-        try {
-          // Solo borrar la cookie sb-session-data (non-HttpOnly)
-          // Las cookies HttpOnly las borra el servidor en /api/auth/logout
-          // NO tocar localStorage: session.ts gestiona la limpieza via
-          // onAuthStateChange y el carrito depende de last_cart_owner
           const isSecure = window.location.protocol === 'https:';
           const securePart = isSecure ? '; Secure' : '';
           const expire = `Expires=Thu, 01 Jan 1970 00:00:01 GMT; Path=/; SameSite=Lax${securePart}`;
-          document.cookie = `sb-session-data=; ${expire}`;
+          document.cookie = `sb-access-token=; ${expire}`;
+          document.cookie = `sb-refresh-token=; ${expire}`;
+          const toRemove: string[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('sb-')) toRemove.push(key);
+          }
+          toRemove.forEach((k) => localStorage.removeItem(k));
         } catch (e) {
-          console.warn('No se pudo limpiar cookie de sesión:', e);
+          console.warn('No se pudieron limpiar claves/cookies sb-*', e);
         }
       };
 
-      // Logout: limpiar sesión client-side + cookies server-side
+      // Logout
       document.getElementById('logout-btn-header')?.addEventListener('click', async () => {
         try {
-          clearSessionCookie();
-
-          // Cerrar sesión del SDK de Supabase (limpia localStorage)
-          try {
-            const { supabase } = await import('../../lib/supabase');
-            await supabase.auth.signOut();
-          } catch (e) {
-            // No bloquear el logout si falla
-          }
-
-          // Enviar POST al servidor para borrar cookies HttpOnly + audit log
-          const resp = await fetch('/api/auth/logout', { method: 'POST', redirect: 'manual' });
-          // Redirigir a la tienda
-          window.location.href = '/';
+          clearAuthArtifacts();
+          await supabase.auth.signOut();
         } catch (e) {
-          console.warn('Logout falló:', e);
+          console.warn('signOut falló:', e);
+        } finally {
+          await new Promise((r) => setTimeout(r, 200));
           window.location.href = '/';
         }
       });
 
-      // Estado inicial: leer cookie + SDK de Supabase
-      const cookieUser = getSessionFromCookie();
-      toggle(!!cookieUser);
+      // Estado inicial
+      const { data } = await supabase.auth.getSession();
+      toggle(!!data.session?.user);
 
-      // Cargar SDK y sincronizar
-      try {
-        const { supabase } = await import('../../lib/supabase');
-
-        // Si no hay cookie pero sí sesión en SDK, actualizar
-        if (!cookieUser) {
-          const { data } = await supabase.auth.getSession();
-          if (data.session?.user) {
-            toggle(true);
-          }
+      // Escuchar cambios
+      supabase.auth.onAuthStateChange((event: any, session: any) => {
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          toggle(!!session?.user);
         }
-
-        // Escuchar cambios en tiempo real (login, logout, Google OAuth)
-        supabase.auth.onAuthStateChange((event: any, session: any) => {
-          if (event === 'SIGNED_IN') {
-            toggle(true);
-          }
-          if (event === 'SIGNED_OUT') {
-            clearSessionCookie();
-            toggle(false);
-          }
-        });
-      } catch (e) {
-        // Si falla el import de supabase, no es crítico
-        console.warn('No se pudo suscribir a auth changes:', e);
-      }
+        if (event === 'SIGNED_OUT') {
+          clearAuthArtifacts();
+          toggle(false);
+        }
+      });
     } catch (err) {
       console.error('Error en auth del header:', err);
     }

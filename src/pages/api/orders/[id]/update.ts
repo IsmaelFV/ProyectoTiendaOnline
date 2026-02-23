@@ -16,12 +16,11 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
 
     const supabase = createServerSupabaseClient();
     const { id } = params;
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     
-    if (!id || !UUID_RE.test(id)) {
+    if (!id) {
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'ID de pedido inválido' 
+        error: 'Order ID required' 
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
@@ -49,30 +48,9 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
     };
 
     if (status) updateData.status = status;
-    if (shipping_method !== undefined) {
-      if (typeof shipping_method !== 'string' || shipping_method.length > 200) {
-        return new Response(JSON.stringify({ success: false, error: 'shipping_method inválido' }), {
-          status: 400, headers: { 'Content-Type': 'application/json' }
-        });
-      }
-      updateData.shipping_method = shipping_method;
-    }
-    if (tracking_number !== undefined) {
-      if (typeof tracking_number !== 'string' || tracking_number.length > 200) {
-        return new Response(JSON.stringify({ success: false, error: 'tracking_number inválido' }), {
-          status: 400, headers: { 'Content-Type': 'application/json' }
-        });
-      }
-      updateData.tracking_number = tracking_number;
-    }
-    if (admin_notes !== undefined) {
-      if (typeof admin_notes !== 'string' || admin_notes.length > 5000) {
-        return new Response(JSON.stringify({ success: false, error: 'admin_notes inválido' }), {
-          status: 400, headers: { 'Content-Type': 'application/json' }
-        });
-      }
-      updateData.admin_notes = admin_notes;
-    }
+    if (shipping_method !== undefined) updateData.shipping_method = shipping_method;
+    if (tracking_number !== undefined) updateData.tracking_number = tracking_number;
+    if (admin_notes !== undefined) updateData.admin_notes = admin_notes;
 
     // Actualizar timestamps según el estado
     if (status === 'shipped' && !updateData.shipped_at) {

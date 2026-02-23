@@ -25,8 +25,7 @@ const { data: returns, error } = await supabase
       shipping_full_name
     )
   `)
-  .order('created_at', { ascending: false })
-  .limit(500);
+  .order('created_at', { ascending: false });
 
 // Función para formatear moneda
 function formatCurrency(amount: number) {

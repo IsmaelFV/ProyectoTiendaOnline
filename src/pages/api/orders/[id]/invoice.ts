@@ -6,10 +6,9 @@ import { generateInvoicePDF } from '../../../../lib/invoice-pdf';
 export const GET: APIRoute = async ({ params, request, cookies }) => {
   try {
     const orderId = params.id;
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (!orderId || !UUID_RE.test(orderId)) {
-      return new Response(JSON.stringify({ error: 'ID de pedido inválido' }), {
+    if (!orderId) {
+      return new Response(JSON.stringify({ error: 'Order ID required' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });

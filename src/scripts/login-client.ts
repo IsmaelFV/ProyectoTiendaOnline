@@ -2,111 +2,140 @@ import { supabase } from '../lib/supabase';
 import { customAlert } from '../lib/notifications';
 
 /**
- * Login híbrido:
- * 1. signInWithPassword() client-side → el SDK de Supabase guarda la sesión
- *    en localStorage → session.ts y cart.ts la detectan
- * 2. POST a /api/auth/set-session con los tokens → el servidor guarda
- *    cookies HttpOnly para SSR (admin pages, etc.)
- * 3. El servidor responde con { isAdmin } → redirigimos al sitio correcto
+ * Setear cookie de forma robusta para funcionar detras de reverse proxy (Coolify)
  */
+function setAuthCookie(name: string, value: string, maxAge: number) {
+  // En produccion con HTTPS, usar Secure
+  const isSecure = window.location.protocol === 'https:';
+  const parts = [
+    `${name}=${value}`,
+    'Path=/',
+    `Max-Age=${maxAge}`,
+    'SameSite=Lax',
+  ];
+  if (isSecure) {
+    parts.push('Secure');
+  }
+  document.cookie = parts.join('; ');
+}
+
+/**
+ * Limpiar cookies de autenticacion
+ */
+function clearAuthCookies() {
+  const isSecure = window.location.protocol === 'https:';
+  const securePart = isSecure ? '; Secure' : '';
+  document.cookie = `sb-access-token=; Path=/; Max-Age=0; SameSite=Lax${securePart}`;
+  document.cookie = `sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax${securePart}`;
+}
+
+// Separa la logica en un script empaquetado para que los imports funcionen en el navegador
 function setupLogin() {
   const form = document.querySelector<HTMLFormElement>('#login-form');
   const googleBtn = document.querySelector<HTMLButtonElement>('#google-login-btn');
-
+  
   if (!form) return;
 
-  // Google OAuth (sigue igual - redirige a /auth/callback)
+  // Google OAuth
   googleBtn?.addEventListener('click', async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    console.log('[LOGIN PAGE] Iniciando Google OAuth...');
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      }
     });
+    
     if (error) {
       customAlert('Error al iniciar sesion con Google: ' + error.message, 'error');
     }
   });
 
-  // Interceptar envío del formulario
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
     const submitBtn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
-    const emailInput = form.querySelector<HTMLInputElement>('#email');
-    const passwordInput = form.querySelector<HTMLInputElement>('#password');
-    const email = (emailInput?.value || '').trim();
-    const password = passwordInput?.value || '';
+    const email = (form.querySelector<HTMLInputElement>('#email')?.value || '').trim();
+    const password = form.querySelector<HTMLInputElement>('#password')?.value || '';
 
-    // Validación básica
     if (!email || !password) {
-      customAlert('Por favor ingresa email y contraseña', 'warning');
+      customAlert('Por favor ingresa email y contrasena', 'warning');
       return;
     }
 
-    // Mostrar spinner
-    const originalText = submitBtn?.textContent || 'Iniciar sesión';
+    // Deshabilitar boton durante el login
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Iniciando sesión...';
+      submitBtn.textContent = 'Iniciando sesion...';
     }
 
     try {
-      // PASO 1: Autenticar con Supabase client-side
-      // Esto guarda la sesión en localStorage → session.ts y cart.ts la detectan
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      console.log('[LOGIN PAGE] Enviando login...', email);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log('[LOGIN PAGE] Resultado login:', { user: data?.user?.email, error: error?.message });
 
       if (error) {
-        let msg = 'Email o contraseña incorrectos';
-        if (error.message.includes('Email not confirmed')) {
-          msg = 'Por favor confirma tu email antes de iniciar sesión';
-        }
-        customAlert(msg, 'error');
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = originalText;
-        }
+        customAlert(error.message || 'Error al iniciar sesion', 'error');
         return;
       }
 
-      if (!data.session) {
-        customAlert('No se pudo crear la sesión', 'error');
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = originalText;
-        }
+      if (!data?.session) {
+        customAlert('No se pudo crear la sesion. Intenta de nuevo.', 'error');
         return;
       }
 
-      // PASO 2: Enviar tokens al servidor para guardar cookies HttpOnly
-      // y verificar si es admin
-      const resp = await fetch('/api/auth/set-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        }),
-      });
+      // Guardar tokens en cookies para SSR
+      const accessToken = data.session.access_token;
+      const refreshToken = data.session.refresh_token;
+      const maxAge = 60 * 60 * 24 * 7; // 7 dias
+      
+      if (accessToken) {
+        setAuthCookie('sb-access-token', accessToken, maxAge);
+      }
+      if (refreshToken) {
+        setAuthCookie('sb-refresh-token', refreshToken, maxAge);
+      }
 
-      const result = await resp.json();
+      console.log('[LOGIN PAGE] Cookies seteadas correctamente');
 
-      // PASO 3: Redirigir
-      if (result.isAdmin) {
+      // Verificar si el usuario es admin mediante API server-side
+      let isAdmin = false;
+      try {
+        const userId = data.user?.id;
+        if (userId) {
+          console.log('[LOGIN PAGE] Verificando admin para userId:', userId);
+          const res = await fetch('/api/auth/check-admin', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+          if (res.ok) {
+            const result = await res.json();
+            console.log('[LOGIN PAGE] Resultado check-admin:', result);
+            isAdmin = !!result.isAdmin;
+          }
+        }
+      } catch (adminCheckErr) {
+        console.warn('[LOGIN PAGE] Error verificando admin (no critico):', adminCheckErr);
+      }
+
+      if (isAdmin) {
+        console.log('[LOGIN PAGE] Usuario es ADMIN, redirigiendo a /admin');
         window.location.href = '/admin';
       } else {
+        console.log('[LOGIN PAGE] Usuario normal, redirigiendo a /');
         window.location.href = '/';
       }
-
     } catch (err) {
-      console.error('[LOGIN] Error inesperado:', err);
-      customAlert('Error al iniciar sesión. Inténtalo de nuevo.', 'error');
+      console.error('[LOGIN PAGE] Error inesperado:', err);
+      customAlert('Error inesperado. Por favor intenta de nuevo.', 'error');
+    } finally {
+      // Restaurar boton
       if (submitBtn) {
         submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
+        submitBtn.textContent = 'Iniciar sesion';
       }
     }
   });

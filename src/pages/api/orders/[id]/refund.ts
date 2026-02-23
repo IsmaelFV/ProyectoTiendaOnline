@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import { verifyAdminFromCookies, createServerSupabaseClient } from '@lib/auth';
 import Stripe from 'stripe';
-import { createAndSendCreditNote } from '../../../../lib/credit-note-service';
 
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-12-15.clover',
@@ -22,12 +21,11 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
 
     const supabase = createServerSupabaseClient();
     const { id } = params;
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     
-    if (!id || !UUID_RE.test(id)) {
+    if (!id) {
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'ID de pedido inválido' 
+        error: 'Order ID required' 
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
@@ -79,7 +77,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
       console.error('Error creating refund in Stripe:', stripeError);
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'Error al procesar el reembolso en la pasarela de pago' 
+        error: `Error en Stripe: ${stripeError.message}` 
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -142,6 +140,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
 
     if (updateError) {
       console.error('Error updating order:', updateError);
+      // El reembolso ya se procesó en Stripe, así que es mejor avisar
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Reembolso procesado en Stripe pero error actualizando base de datos',
@@ -152,16 +151,6 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
       });
     }
 
-    // 5. Generar y enviar Factura de Abono (Rectificativa)
-    const creditNoteNumber = await createAndSendCreditNote({
-      supabase,
-      order,
-      orderItems,
-      stripeRefundId: refund.id,
-      reason: 'Reembolso completo del pedido solicitado por el administrador',
-      logPrefix: '[REFUND]',
-    });
-
     console.log(`[REFUND] Order ${order.order_number} refunded successfully`);
 
     return new Response(JSON.stringify({ 
@@ -171,8 +160,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
         id: refund.id,
         amount: refund.amount / 100,
         status: refund.status
-      },
-      creditNote: creditNoteNumber || null
+      }
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
@@ -182,7 +170,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
     console.error('Error in refund endpoint:', error);
     return new Response(JSON.stringify({ 
       success: false, 
-      error: 'Error procesando reembolso'
+      error: error.message || 'Error procesando reembolso'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

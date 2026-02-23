@@ -15,8 +15,7 @@ const supabase = createServerSupabaseClient();
 
 const { id } = Astro.params;
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-if (!id || !UUID_RE.test(id)) {
+if (!id) {
   return Astro.redirect('/admin/pedidos');
 }
 

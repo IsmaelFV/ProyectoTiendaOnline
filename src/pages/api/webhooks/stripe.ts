@@ -76,7 +76,8 @@ export const POST: APIRoute = async ({ request }) => {
   } catch (error: any) {
     console.error('Error processing webhook:', error);
     return new Response(JSON.stringify({ 
-      error: 'Webhook processing failed'
+      error: 'Webhook processing failed',
+      details: error.message 
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -306,29 +307,48 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
         console.warn(`[WEBHOOK] RPC no disponible: ${rpcErr.message}`);
       }
 
-      // Intento 2: Fallback - Decremento atómico con SQL (sin race condition)
+      // Intento 2: Fallback - UPDATE directo producto por producto
       if (!stockSuccess) {
-        console.log('[WEBHOOK] Usando fallback: decremento atómico de stock...');
+        console.log('[WEBHOOK] Usando fallback: UPDATE directo de stock...');
         for (const item of stockDecrementItems) {
           try {
-            // Intento A: RPC atómica dedicada
-            let itemUpdated = false;
-            try {
-              const { error: rpcErr } = await supabaseAdmin.rpc('atomic_decrement_stock', {
-                p_product_id: item.product_id,
-                p_quantity: item.quantity,
-                p_size: item.size
-              });
-              if (!rpcErr) itemUpdated = true;
-            } catch (_) { /* RPC no disponible */ }
+            // Leer stock actual
+            const { data: prod, error: readErr } = await supabaseAdmin
+              .from('products')
+              .select('stock, stock_by_size')
+              .eq('id', item.product_id)
+              .single();
 
-            // Si RPC falló, registrar para revisión manual (no usar fallback no-atómico)
-            if (!itemUpdated) {
-              console.error(`[WEBHOOK][CRITICAL] Stock decrement failed for product ${item.product_id} size ${item.size} qty ${item.quantity} — requires manual stock adjustment`);
+            if (readErr || !prod) {
+              console.error(`[WEBHOOK] No se pudo leer producto ${item.product_id}:`, readErr);
+              continue;
             }
 
-            if (itemUpdated) {
-              console.log(`[WEBHOOK] Stock decrementado (atómico): ${item.product_id} qty=${item.quantity}`);
+            const newStock = Math.max(0, (prod.stock || 0) - item.quantity);
+            
+            // Actualizar stock_by_size si existe
+            let updateData: any = { 
+              stock: newStock,
+              updated_at: new Date().toISOString()
+            };
+            
+            if (prod.stock_by_size && typeof prod.stock_by_size === 'object') {
+              const sizeStock = prod.stock_by_size as Record<string, number>;
+              if (item.size in sizeStock) {
+                sizeStock[item.size] = Math.max(0, (sizeStock[item.size] || 0) - item.quantity);
+                updateData.stock_by_size = sizeStock;
+              }
+            }
+
+            const { error: updateErr } = await supabaseAdmin
+              .from('products')
+              .update(updateData)
+              .eq('id', item.product_id);
+
+            if (updateErr) {
+              console.error(`[WEBHOOK] Error actualizando stock de ${item.product_id}:`, updateErr);
+            } else {
+              console.log(`[WEBHOOK] Stock actualizado (fallback): ${item.product_id} -> ${newStock}`);
               stockSuccess = true;
             }
           } catch (itemErr: any) {

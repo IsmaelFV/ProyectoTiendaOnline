@@ -23,8 +23,7 @@ const searchQuery = url.searchParams.get('search') || '';
 let query = supabase
   .from('orders')
   .select('*')
-  .order('created_at', { ascending: false })
-  .limit(500);
+  .order('created_at', { ascending: false });
 
 // Aplicar filtros
 if (statusFilter !== 'all') {

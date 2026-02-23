@@ -8,7 +8,6 @@
 import type { APIRoute } from 'astro';
 import { createServerSupabaseClient, verifyAdminFromCookies } from '../../../../lib/auth';
 import Stripe from 'stripe';
-import { createAndSendCreditNote } from '../../../../lib/credit-note-service';
 
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-12-15.clover',
@@ -31,14 +30,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const supabase = createServerSupabaseClient();
     const { action, returnId, notes } = await request.json();
 
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!returnId || typeof returnId !== 'string' || !UUID_RE.test(returnId)) {
-      return json({ success: false, message: 'returnId inválido' }, 400);
-    }
-    if (!action || typeof action !== 'string') {
+    if (!returnId || !action) {
       return json({ success: false, message: 'Faltan parámetros' }, 400);
     }
-    const safeNotes = typeof notes === 'string' ? notes.slice(0, 2000) : '';
 
     // Obtener la devolución con lock atómico según la acción
     let returnData: any;
@@ -94,7 +88,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             console.log(`[RETURNS] Reembolso Stripe (devolucion): ${refund.id}`);
           } catch (stripeErr: any) {
             console.error('[RETURNS] Stripe refund error:', stripeErr.message);
-            return json({ success: false, message: 'Error al procesar el reembolso en la pasarela de pago' }, 500);
+            return json({ success: false, message: `Error Stripe: ${stripeErr.message}` }, 500);
           }
         }
 
@@ -142,22 +136,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           })
           .eq('id', order.id);
 
-        // Generar y enviar Factura de Abono (Rectificativa)
-        const creditNoteNumber = await createAndSendCreditNote({
-          supabase,
-          order,
-          orderItems,
-          stripeRefundId,
-          reason: returnData.reason || 'Devolución de producto',
-          returnId,
-          logPrefix: '[RETURNS]',
-        });
-
         return json({ 
           success: true, 
           message: 'Producto recibido y reembolso procesado correctamente',
-          refundId: stripeRefundId,
-          creditNote: creditNoteNumber || null
+          refundId: stripeRefundId
         });
       }
 
@@ -171,7 +153,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           .from('returns')
           .update({
             status: 'rejected',
-            admin_notes: `${returnData.admin_notes || ''}\n[ADMIN] Devolución rechazada. Motivo: ${safeNotes || 'Sin especificar'}. (${new Date().toLocaleString('es-ES')})`.trim(),
+            admin_notes: `${returnData.admin_notes || ''}\n[ADMIN] Devolución rechazada. Motivo: ${notes || 'Sin especificar'}. (${new Date().toLocaleString('es-ES')})`.trim(),
             updated_at: new Date().toISOString()
           })
           .eq('id', returnId);
@@ -203,6 +185,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   } catch (error: any) {
     console.error('[ADMIN RETURNS] Error:', error);
-    return json({ success: false, message: 'Error interno del servidor' }, 500);
+    return json({ success: false, message: error.message || 'Error interno' }, 500);
   }
 };
