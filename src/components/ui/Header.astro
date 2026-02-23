@@ -1037,10 +1037,11 @@ import SearchBar from '../search/SearchBar';
         try {
           clearAuthArtifacts();
           await supabase.auth.signOut();
+          // Llamar al servidor para borrar cookies HttpOnly
+          await fetch('/api/auth/logout', { method: 'POST', redirect: 'manual' });
         } catch (e) {
           console.warn('signOut falló:', e);
         } finally {
-          await new Promise((r) => setTimeout(r, 200));
           window.location.href = '/';
         }
       });
