@@ -64,8 +64,8 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // 3. Verificaciones de estado
-    if (['cancelled', 'refunded', 'return_requested', 'cancelling'].includes(order.status)) {
-      return json({ success: false, message: 'Este pedido ya no se puede cancelar' }, 400);
+    if (['cancelled', 'refunded'].includes(order.status)) {
+      return json({ success: false, message: 'Este pedido ya ha sido cancelado o reembolsado' }, 400);
     }
     if (['shipped', 'delivered'].includes(order.status)) {
       return json({ success: false, message: 'No se puede cancelar un pedido ya enviado o entregado' }, 400);
@@ -84,20 +84,6 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // === CANCELACIÓN DIRECTA (< 2h) ===
-
-    // Lock atómico: marcar como 'cancelling' para prevenir doble cancelación/reembolso
-    const { error: lockError } = await supabase
-      .from('orders')
-      .update({ status: 'cancelling', updated_at: new Date().toISOString() })
-      .eq('id', orderId)
-      .eq('user_id', user.id)
-      .not('status', 'in', '(cancelled,refunded,cancelling,return_requested,shipped,delivered)')
-      .select('id')
-      .single();
-
-    if (lockError) {
-      return json({ success: false, message: 'El pedido ya está siendo procesado' }, 409);
-    }
 
     // a) Reembolso Stripe
     let stripeRefundId: string | null = null;
