@@ -1050,30 +1050,46 @@ import SearchBar from '../search/SearchBar';
         }
       };
 
-      // Logout: llamar al endpoint server-side que borra las cookies HttpOnly
+      // Logout: limpiar sesión client-side + cookies server-side
       document.getElementById('logout-btn-header')?.addEventListener('click', async () => {
         try {
           clearSessionCookie();
+
+          // Cerrar sesión del SDK de Supabase (limpia localStorage)
+          try {
+            const { supabase } = await import('../../lib/supabase');
+            await supabase.auth.signOut();
+          } catch (e) {
+            // No bloquear el logout si falla
+          }
+
           // Enviar POST al servidor para borrar cookies HttpOnly + audit log
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = '/api/auth/logout';
-          form.style.display = 'none';
-          document.body.appendChild(form);
-          form.submit();
+          const resp = await fetch('/api/auth/logout', { method: 'POST', redirect: 'manual' });
+          // Redirigir a la tienda
+          window.location.href = '/';
         } catch (e) {
           console.warn('Logout falló:', e);
           window.location.href = '/';
         }
       });
 
-      // Estado inicial: leer la cookie del servidor (fuente de verdad)
+      // Estado inicial: leer cookie + SDK de Supabase
       const cookieUser = getSessionFromCookie();
       toggle(!!cookieUser);
 
-      // También escuchar cambios del cliente (Google OAuth, etc.)
+      // Cargar SDK y sincronizar
       try {
         const { supabase } = await import('../../lib/supabase');
+
+        // Si no hay cookie pero sí sesión en SDK, actualizar
+        if (!cookieUser) {
+          const { data } = await supabase.auth.getSession();
+          if (data.session?.user) {
+            toggle(true);
+          }
+        }
+
+        // Escuchar cambios en tiempo real (login, logout, Google OAuth)
         supabase.auth.onAuthStateChange((event: any, session: any) => {
           if (event === 'SIGNED_IN') {
             toggle(true);
