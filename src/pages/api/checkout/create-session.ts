@@ -261,8 +261,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // 7. Crear sesion de Stripe Checkout
     // Usar SIEMPRE la URL configurada del sitio (nunca headers del cliente para evitar open redirect)
-    const baseUrl = import.meta.env.PUBLIC_SITE_URL 
-      || import.meta.env.SITE 
+    // SITE viene de astro.config.mjs (fuente fiable), PUBLIC_SITE_URL es fallback de env vars
+    const baseUrl = import.meta.env.SITE 
+      || import.meta.env.PUBLIC_SITE_URL 
       || 'http://localhost:4321';
 
     console.log(`[CHECKOUT] Base URL para Stripe: ${baseUrl}`);

@@ -88,7 +88,7 @@ export async function notifyWishlistSale(data: SaleNotificationData): Promise<vo
 
     console.log(`[Wishlist Notify] Enviando notificación de oferta de "${data.productName}" a ${users.length} usuario(s)...`);
 
-    const productUrl = `${import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321'}/productos/${encodeURIComponent(data.productSlug)}`;
+    const productUrl = `${import.meta.env.SITE || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321'}/productos/${encodeURIComponent(data.productSlug)}`;
     const safeProductUrl = escapeHtml(productUrl);
     const safeProductName = escapeHtml(data.productName);
     const imageHtml = data.productImage
@@ -188,7 +188,7 @@ export async function notifyWishlistLowStock(data: LowStockNotificationData): Pr
 
     console.log(`[Wishlist Notify] Enviando alerta de stock bajo de "${data.productName}" (${data.currentStock} uds.) a ${users.length} usuario(s)...`);
 
-    const productUrl = `${import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321'}/productos/${encodeURIComponent(data.productSlug)}`;
+    const productUrl = `${import.meta.env.SITE || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321'}/productos/${encodeURIComponent(data.productSlug)}`;
     const safeProductUrl = escapeHtml(productUrl);
     const safeProductName = escapeHtml(data.productName);
     const imageHtml = data.productImage
