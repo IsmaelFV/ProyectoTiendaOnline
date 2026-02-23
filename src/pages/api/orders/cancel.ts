@@ -148,7 +148,24 @@ export const POST: APIRoute = async ({ request }) => {
       })
       .eq('id', orderId);
 
-    // d) Generar y enviar Factura de Abono (Rectificativa)
+    // d) Registrar cancelación en tabla returns (para trazabilidad)
+    try {
+      await supabase.from('returns').insert({
+        order_id: orderId,
+        user_id: user.id,
+        type: 'cancellation',
+        status: 'refunded',
+        reason: 'Cancelación del pedido por el cliente (dentro del plazo de 2 horas)',
+        refund_amount: order.total,
+        stripe_refund_id: stripeRefundId || null,
+        customer_email: order.customer_email || user.email || '',
+      });
+    } catch (retErr: any) {
+      // No bloquear la cancelación si falla el registro en returns
+      console.warn('[CANCEL] Error al registrar en returns:', retErr.message);
+    }
+
+    // e) Generar y enviar Factura de Abono (Rectificativa)
     let creditNoteNumber: string | null = null;
     if (stripeRefundId) {
       creditNoteNumber = await createAndSendCreditNote({

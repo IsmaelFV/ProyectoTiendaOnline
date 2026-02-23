@@ -62,8 +62,8 @@ export async function createAndSendCreditNote({
 }: CreditNoteParams): Promise<string | null> {
   try {
     // 1. Obtener datos del cliente
-    const customerEmail = order.email || order.shipping_email || '';
-    const customerName = order.shipping_name || order.customer_name || 'Cliente';
+    const customerEmail = order.customer_email || '';
+    const customerName = order.shipping_full_name || order.customer_name || 'Cliente';
 
     if (!customerEmail) {
       console.warn(`${logPrefix} No se puede enviar abono: email no disponible`);
@@ -103,26 +103,26 @@ export async function createAndSendCreditNote({
       refundMethod: `Stripe - Reembolso ${stripeRefundId}`,
     });
 
-    // 6. Persistir en BD
+    // 6. Persistir en BD (tabla invoices: customer_name, customer_email, subtotal, shipping, tax, total, reason, stripe_refund_id)
     try {
-      await supabase.from('invoices').insert({
-        order_id: order.id,
+      const { error: insertErr } = await supabase.from('invoices').insert({
         invoice_number: creditNoteNumber,
         type: 'credit_note',
-        total_amount: total,
-        pdf_base64: pdfBase64,
-        created_at: new Date().toISOString(),
+        order_id: order.id,
+        customer_name: customerName,
+        customer_email: customerEmail || 'no-email@placeholder.com',
+        subtotal: subtotal,
+        shipping: shipping,
+        tax: tax,
+        total: -Math.abs(total), // Negativo para abonos
+        reason: reason,
+        stripe_refund_id: stripeRefundId,
       });
+      if (insertErr) {
+        console.warn(`${logPrefix} Error al persistir abono en BD:`, insertErr.message);
+      }
     } catch (dbErr: any) {
-      // Si la tabla no tiene todas las columnas, intentar inserción mínima
-      console.warn(`${logPrefix} Insert completo falló, intentando mínimo:`, dbErr.message);
-      await supabase.from('invoices').insert({
-        order_id: order.id,
-        invoice_number: creditNoteNumber,
-        type: 'credit_note',
-        total_amount: total,
-        created_at: new Date().toISOString(),
-      }).then(() => {}).catch(() => {});
+      console.warn(`${logPrefix} Excepción al persistir abono:`, dbErr.message);
     }
 
     // 7. Enviar email con PDF adjunto

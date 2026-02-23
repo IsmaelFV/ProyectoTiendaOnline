@@ -167,6 +167,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       shipping_state: session.customer_details?.address?.state || '',
       shipping_postal_code: session.customer_details?.address?.postal_code || '00000',
       shipping_country: session.customer_details?.address?.country || 'España',
+      customer_email: session.customer_details?.email || session.customer_email || '',
       subtotal: subtotalCents / 100,
       shipping_cost: shippingCents / 100,
       tax: taxCents / 100,
