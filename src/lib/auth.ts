@@ -268,16 +268,26 @@ export async function getUserFromSession(
 ): Promise<User | null> {
   const supabase = createServerSupabaseClient();
 
-  const { data, error } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
-  });
+  // getUser() es stateless y funciona correctamente con service_role
+  const { data, error } = await supabase.auth.getUser(accessToken);
 
-  if (error || !data.session) {
-    return null;
+  if (!error && data.user) {
+    return data.user;
   }
 
-  return data.session.user;
+  // Fallback: intentar refrescar la sesión si el access token expiró
+  try {
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+    if (!refreshError && refreshData.session?.user) {
+      return refreshData.session.user;
+    }
+  } catch {
+    // Si falla el refresh, no hay sesión válida
+  }
+
+  return null;
 }
 
 /**
